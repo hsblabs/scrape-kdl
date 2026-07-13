@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hsblabs/scrape-kdl/internal/compiler"
+	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
 
 type fakeElement struct{ id string }
@@ -305,6 +306,88 @@ func TestExecuteBrowserValidatesDeclaredJavaScriptReturnType(t *testing.T) {
 				t.Fatalf("value = %#v (%T), want %#v (%T)", got, got, tt.want, tt.want)
 			}
 		})
+	}
+}
+
+func TestExecuteBrowserMissingAndFieldRecovery(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-recovery" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "missing" type="string" required=#false {
+    select ".missing" match="first"
+    value "text"
+  }
+  field "missing_default" type="string" required=#false default="fallback" {
+    select ".missing" match="first"
+    value "text"
+    on-error "default"
+  }
+  field "warned" type="string" required=#false {
+    evaluate-js "bad" scope="document" returns="string"
+    on-error "warn"
+  }
+  field "recovered_default" type="string" required=#false default="fallback" {
+    evaluate-js "bad" scope="document" returns="string"
+    on-error "default"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+
+	result, err := Execute(context.Background(), extractor, nil, Options{Browser: &fakeBrowser{}, AllowJavaScript: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Value["missing"] != nil || result.Value["missing_default"] != "fallback" || result.Value["warned"] != nil || result.Value["recovered_default"] != "fallback" {
+		t.Fatalf("value = %#v", result.Value)
+	}
+	if !result.Partial || len(result.Warnings) != 2 || result.Warnings[0].Code != "W_ERROR_RECOVERED" || result.Warnings[0].Path != "output.warned" || result.Warnings[1].Code != "W_PARTIAL_EXTRACTION" {
+		t.Fatalf("recovery = partial:%v warnings:%#v", result.Partial, result.Warnings)
+	}
+}
+
+func TestExecuteBrowserRequiredMissingIsNotRecovered(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-required-missing" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "missing" type="string" required=#true {
+    select ".missing" match="first"
+    value "text"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+
+	_, err := Execute(context.Background(), extractor, nil, Options{Browser: &fakeBrowser{}})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_REQUIRED_VALUE_MISSING" || execution.Path != "output.missing" {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestExecuteBrowserWrapsInvalidRecoveryDefault(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-invalid-default" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "value" type="string" required=#false default="fallback" {
+    evaluate-js "bad" scope="document" returns="string"
+    on-error "default"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	field := extractor.Output.Members[0].(ir.Field)
+	invalid := json.RawMessage(`not-json`)
+	field.Default = &invalid
+	extractor.Output.Members[0] = field
+
+	_, err := Execute(context.Background(), extractor, nil, Options{Browser: &fakeBrowser{}, AllowJavaScript: true})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "output.value" || execution.Cause == nil {
+		t.Fatalf("error = %#v", err)
 	}
 }
 

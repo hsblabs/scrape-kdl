@@ -521,7 +521,7 @@ func (e *browserEngine) recoverField(field ir.Field, path string, cause error) (
 		}
 		v, err := decodeJSON(*field.Default)
 		if err != nil {
-			return nil, err
+			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
 		}
 		e.partial = true
 		return v, nil
