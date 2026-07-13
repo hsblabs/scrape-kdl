@@ -2,7 +2,7 @@
 
 | Area | Minimum | CI target |
 |---|---:|---:|
-| Go | 1.23 | 1.23.x and 1.26.x |
+| Go | 1.26 | 1.26.x |
 | KDL lexical base | KDL 2.0 concepts | Scraping KDL supported subset |
 | Scraping KDL language | v0.1 working draft | v0.1 |
 | go-rod adapter | go-rod v0.116.2 | v0.116.2 |

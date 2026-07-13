@@ -35,10 +35,10 @@ test-rod-contract:
 	./scripts/verify-rod-contract.sh
 
 test-rod:
-	cd adapters/rod && go test ./... && go vet ./...
+	./scripts/verify-rod.sh
 
 test-rod-e2e:
-	cd adapters/rod && go test -tags=e2e -timeout=15m ./...
+	./scripts/verify-rod.sh --e2e
 
 verify: format-check module-check golden diagnostics vet test race build validate-example extract-example test-rod-contract
 

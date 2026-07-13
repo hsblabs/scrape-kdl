@@ -15,18 +15,17 @@ concurrency:
 
 jobs:
   core:
-    name: Core / ${{ matrix.os }} / Go ${{ matrix.go-version }}
+    name: Core / ${{ matrix.os }} / Go 1.26.x
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        go-version: ["1.23.x", "1.26.x"]
     steps:
       - uses: actions/checkout@v7.0.0
       - uses: actions/setup-go@v6.5.0
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: "1.26.x"
           cache: false
       - run: go test ./...
       - run: go vet ./...
@@ -35,7 +34,7 @@ jobs:
       - run: ./scripts/check-diagnostics.sh
       - run: ./scripts/check-module-paths.sh
       - run: ./scripts/check-format.sh
-      - if: matrix.go-version == '1.26.x' && matrix.os == 'ubuntu-latest'
+      - if: matrix.os == 'ubuntu-latest'
         run: go test -race ./...
 
   rod-contract:
@@ -58,7 +57,4 @@ jobs:
         with:
           go-version: "1.26.x"
           cache-dependency-path: adapters/rod/go.mod
-      - working-directory: adapters/rod
-        run: go test ./...
-      - working-directory: adapters/rod
-        run: go vet ./...
+      - run: ./scripts/verify-rod.sh

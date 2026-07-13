@@ -2,7 +2,10 @@
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
-mapfile -t files < <(find . -name '*.go' -type f -not -path './.git/*' | sort)
+files=()
+while IFS= read -r file; do
+  files+=("$file")
+done < <(find . -name '*.go' -type f -not -path './.git/*' | LC_ALL=C sort)
 if ((${#files[@]} == 0)); then
   exit 0
 fi

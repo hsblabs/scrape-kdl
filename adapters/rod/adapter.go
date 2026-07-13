@@ -20,6 +20,71 @@ import (
 
 var _ scrapekdl.BrowserAdapter = (*Adapter)(nil)
 
+var namedKeys = map[string]input.Key{
+	"Escape":         input.Escape,
+	"F1":             input.F1,
+	"F2":             input.F2,
+	"F3":             input.F3,
+	"F4":             input.F4,
+	"F5":             input.F5,
+	"F6":             input.F6,
+	"F7":             input.F7,
+	"F8":             input.F8,
+	"F9":             input.F9,
+	"F10":            input.F10,
+	"F11":            input.F11,
+	"F12":            input.F12,
+	"Backspace":      input.Backspace,
+	"Tab":            input.Tab,
+	"CapsLock":       input.CapsLock,
+	"Enter":          input.Enter,
+	"Shift":          input.ShiftLeft,
+	"ShiftLeft":      input.ShiftLeft,
+	"ShiftRight":     input.ShiftRight,
+	"Control":        input.ControlLeft,
+	"ControlLeft":    input.ControlLeft,
+	"ControlRight":   input.ControlRight,
+	"Meta":           input.MetaLeft,
+	"MetaLeft":       input.MetaLeft,
+	"MetaRight":      input.MetaRight,
+	"Alt":            input.AltLeft,
+	"AltLeft":        input.AltLeft,
+	"AltRight":       input.AltRight,
+	"Space":          input.Space,
+	"AltGraph":       input.AltGraph,
+	"ContextMenu":    input.ContextMenu,
+	"PrintScreen":    input.PrintScreen,
+	"ScrollLock":     input.ScrollLock,
+	"Pause":          input.Pause,
+	"PageUp":         input.PageUp,
+	"PageDown":       input.PageDown,
+	"Insert":         input.Insert,
+	"Delete":         input.Delete,
+	"Home":           input.Home,
+	"End":            input.End,
+	"ArrowLeft":      input.ArrowLeft,
+	"ArrowUp":        input.ArrowUp,
+	"ArrowRight":     input.ArrowRight,
+	"ArrowDown":      input.ArrowDown,
+	"NumLock":        input.NumLock,
+	"NumpadDivide":   input.NumpadDivide,
+	"NumpadMultiply": input.NumpadMultiply,
+	"NumpadSubtract": input.NumpadSubtract,
+	"Numpad7":        input.Numpad7,
+	"Numpad8":        input.Numpad8,
+	"Numpad9":        input.Numpad9,
+	"Numpad4":        input.Numpad4,
+	"Numpad5":        input.Numpad5,
+	"Numpad6":        input.Numpad6,
+	"NumpadAdd":      input.NumpadAdd,
+	"Numpad1":        input.Numpad1,
+	"Numpad2":        input.Numpad2,
+	"Numpad3":        input.Numpad3,
+	"Numpad0":        input.Numpad0,
+	"NumpadDecimal":  input.NumpadDecimal,
+	"NumpadEnter":    input.NumpadEnter,
+}
+
 // Adapter executes browser-mode extractors against one rod page.
 // A single Adapter must not be used for concurrent extractions.
 type Adapter struct {
@@ -205,14 +270,28 @@ func (a *Adapter) Fill(ctx context.Context, selector, value string, timeout time
 }
 
 func (a *Adapter) Press(ctx context.Context, selector, key string, timeout time.Duration) error {
+	keyboardKey, err := resolveKey(key)
+	if err != nil {
+		return fmt.Errorf("press %q on %q: %w", key, selector, err)
+	}
 	el, err := a.element(ctx, selector, timeout)
 	if err != nil {
 		return err
 	}
-	if err := el.Type(input.Key(key)); err != nil {
+	if err := el.Type(keyboardKey); err != nil {
 		return fmt.Errorf("press %q on %q: %w", key, selector, err)
 	}
 	return nil
+}
+
+func resolveKey(key string) (input.Key, error) {
+	if named, ok := namedKeys[key]; ok {
+		return named, nil
+	}
+	if len(key) == 1 && key[0] >= 0x20 && key[0] <= 0x7e {
+		return input.Key(key[0]), nil
+	}
+	return 0, fmt.Errorf("unsupported key")
 }
 
 func (a *Adapter) Scroll(ctx context.Context, x, y float64) error {
@@ -407,8 +486,7 @@ func setCookies(page *rod.Page, target string, cookies []*http.Cookie) error {
 			param.Path = cookie.Path
 		}
 		if !cookie.Expires.IsZero() {
-			expires := proto.TimeSinceEpoch(float64(cookie.Expires.Unix()))
-			param.Expires = &expires
+			param.Expires = proto.TimeSinceEpoch(float64(cookie.Expires.Unix()))
 		}
 		params = append(params, param)
 	}

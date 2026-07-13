@@ -22,5 +22,4 @@ jobs:
         with:
           go-version: "1.26.x"
           cache-dependency-path: adapters/rod/go.mod
-      - working-directory: adapters/rod
-        run: go test -tags=e2e -timeout=15m ./...
+      - run: ./scripts/verify-rod.sh --e2e

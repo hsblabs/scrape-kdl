@@ -151,8 +151,8 @@ See `SECURITY.md` and `docs/security-model.md`.
 ## Compatibility and known limits
 
 - Supported operating systems: Linux and macOS only. Windows is out of scope.
-- Minimum Go version: 1.23.
-- CI targets Go 1.23 and Go 1.26 on Linux and macOS.
+- Minimum Go version: 1.26.
+- CI targets Go 1.26 on Linux and macOS.
 - The language is built on the KDL 2 data model but the reference parser intentionally supports the subset required by Scraping KDL v0.1.
 - The HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
