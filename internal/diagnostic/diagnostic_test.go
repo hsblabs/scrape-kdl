@@ -11,15 +11,15 @@ import (
 
 func TestSortedIsDeterministicAndDoesNotMutateInput(t *testing.T) {
 	input := List{
-		diagnosticAt("E_Z", SeverityError, "b.kdl", 4),
-		diagnosticAt("E_B", SeverityError, "a.kdl", 2),
-		diagnosticAt("E_A", SeverityWarning, "a.kdl", 2),
-		diagnosticAt("E_C", SeverityError, "a.kdl", 1),
+		diagnosticAt("E_TYPE_UNKNOWN", SeverityError, "b.kdl", 4),
+		diagnosticAt("E_DUPLICATE_SYMBOL", SeverityError, "a.kdl", 2),
+		diagnosticAt("E_ARGUMENT_COUNT", SeverityWarning, "a.kdl", 2),
+		diagnosticAt("E_DOCUMENT_ROOT", SeverityError, "a.kdl", 1),
 	}
 	original := append(List(nil), input...)
 
 	got := input.Sorted()
-	wantCodes := []string{"E_C", "E_A", "E_B", "E_Z"}
+	wantCodes := []string{"E_DOCUMENT_ROOT", "E_ARGUMENT_COUNT", "E_DUPLICATE_SYMBOL", "E_TYPE_UNKNOWN"}
 	for i, want := range wantCodes {
 		if got[i].Code != want {
 			t.Fatalf("sorted[%d].Code = %q, want %q", i, got[i].Code, want)
@@ -33,25 +33,25 @@ func TestSortedIsDeterministicAndDoesNotMutateInput(t *testing.T) {
 }
 
 func TestHasErrorsDistinguishesWarnings(t *testing.T) {
-	if (List{diagnosticAt("W_ONLY", SeverityWarning, "a.kdl", 0)}).HasErrors() {
+	if (List{diagnosticAt("W_JAVASCRIPT_PRESENT", SeverityWarning, "a.kdl", 0)}).HasErrors() {
 		t.Fatal("warning-only list reports errors")
 	}
-	if !(List{diagnosticAt("E_FAIL", SeverityError, "a.kdl", 0)}).HasErrors() {
+	if !(List{diagnosticAt("E_KDL_SYNTAX", SeverityError, "a.kdl", 0)}).HasErrors() {
 		t.Fatal("error list does not report errors")
 	}
 }
 
 func TestWriteTextSortsAndIncludesOptionalPath(t *testing.T) {
 	diagnostics := List{
-		{Code: "E_SECOND", Severity: SeverityError, Message: "second", Span: spanAt("b.kdl", 8, 3, 4)},
-		{Code: "W_FIRST", Severity: SeverityWarning, Message: "first", Span: spanAt("a.kdl", 2, 1, 2), Path: "output.title"},
+		{Code: "E_TYPE_MISMATCH", Severity: SeverityError, Message: "second", Span: spanAt("b.kdl", 8, 3, 4)},
+		{Code: "W_JAVASCRIPT_PRESENT", Severity: SeverityWarning, Message: "first", Span: spanAt("a.kdl", 2, 1, 2), Path: "output.title"},
 	}
 	var output bytes.Buffer
 
 	diagnostics.WriteText(&output)
 
-	want := "a.kdl:1:2: warning W_FIRST: first [output.title]\n" +
-		"b.kdl:3:4: error E_SECOND: second\n"
+	want := "a.kdl:1:2: warning W_JAVASCRIPT_PRESENT: first [output.title]\n" +
+		"b.kdl:3:4: error E_TYPE_MISMATCH: second\n"
 	if output.String() != want {
 		t.Fatalf("text output = %q, want %q", output.String(), want)
 	}
@@ -59,14 +59,14 @@ func TestWriteTextSortsAndIncludesOptionalPath(t *testing.T) {
 
 func TestWriteJSONSortsAndPropagatesWriterFailure(t *testing.T) {
 	diagnostics := List{
-		diagnosticAt("E_SECOND", SeverityError, "b.kdl", 2),
-		diagnosticAt("E_FIRST", SeverityError, "a.kdl", 1),
+		diagnosticAt("E_TYPE_MISMATCH", SeverityError, "b.kdl", 2),
+		diagnosticAt("E_KDL_SYNTAX", SeverityError, "a.kdl", 1),
 	}
 	var output bytes.Buffer
 	if err := diagnostics.WriteJSON(&output); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Index(output.String(), "E_FIRST") > strings.Index(output.String(), "E_SECOND") {
+	if strings.Index(output.String(), "E_KDL_SYNTAX") > strings.Index(output.String(), "E_TYPE_MISMATCH") {
 		t.Fatalf("JSON diagnostics are not sorted: %s", output.String())
 	}
 
