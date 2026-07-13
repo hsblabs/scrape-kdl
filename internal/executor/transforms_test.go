@@ -84,6 +84,42 @@ func TestTransformPreflightRejectsMalformedDeclarationTypes(t *testing.T) {
 	}
 }
 
+func TestTransformPreflightValidatesPipelineContinuity(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	boolType := typesys.Primitive("bool")
+	validCall := ir.TransformCall{Target: ir.BuiltinTarget{Kind: "builtin", Name: "trim"}, Input: stringType, Output: stringType}
+	valid := ir.PipelineTransform{
+		Kind:          "pipeline",
+		TransformBase: ir.TransformBase{SymbolID: "transform:pipeline", Name: "pipeline", Input: stringType, Output: stringType},
+		Calls:         []ir.TransformCall{validCall},
+	}
+	if err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{valid}}, nil).preflight(); err != nil {
+		t.Fatalf("valid pipeline preflight error = %v", err)
+	}
+	tests := []struct {
+		name   string
+		mutate func(*ir.PipelineTransform)
+	}{
+		{name: "empty", mutate: func(pipeline *ir.PipelineTransform) { pipeline.Calls = nil }},
+		{name: "first input", mutate: func(pipeline *ir.PipelineTransform) { pipeline.Calls[0].Input = boolType }},
+		{name: "adjacent input", mutate: func(pipeline *ir.PipelineTransform) {
+			pipeline.Calls = append(pipeline.Calls, ir.TransformCall{Target: validCall.Target, Input: boolType, Output: stringType})
+		}},
+		{name: "final output", mutate: func(pipeline *ir.PipelineTransform) { pipeline.Calls[0].Output = boolType }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pipeline := valid
+			pipeline.Calls = append([]ir.TransformCall(nil), valid.Calls...)
+			tt.mutate(&pipeline)
+			var execution *ExecutionError
+			if err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{pipeline}}, nil).preflight(); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "pipeline" {
+				t.Fatalf("preflight error = %#v", err)
+			}
+		})
+	}
+}
+
 func TestTransformPreflightValidatesCalls(t *testing.T) {
 	stringType := typesys.Primitive("string")
 	validCall := ir.TransformCall{
@@ -224,6 +260,7 @@ func TestTransformPreflightValidatesCalls(t *testing.T) {
 	declared := ir.PipelineTransform{
 		Kind:          "pipeline",
 		TransformBase: ir.TransformBase{SymbolID: "transform:declared", Name: "declared", Input: stringType, Output: stringType},
+		Calls:         []ir.TransformCall{validCall},
 	}
 	extractor = newExtractor()
 	extractor.Transforms = []ir.Transform{declared}

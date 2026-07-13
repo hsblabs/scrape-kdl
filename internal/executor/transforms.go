@@ -62,7 +62,13 @@ func (runtime *transformRuntime) preflight() error {
 			if err := preflightTransformTypes(typed.Input, typed.Output, typed.Name); err != nil {
 				return err
 			}
+			if len(typed.Calls) == 0 {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: "pipeline transform requires at least one call", Path: typed.Name}
+			}
 			if err := runtime.preflightCalls(typed.Calls, typed.Name); err != nil {
+				return err
+			}
+			if err := preflightCallContinuity(typed.Calls, typed.Input, typed.Output, typed.Name); err != nil {
 				return err
 			}
 		case ir.MatchTransform:
@@ -122,11 +128,48 @@ func (runtime *transformRuntime) preflightOutputCalls(object ir.OutputObject) er
 			if err := runtime.preflightCalls(typed.Transforms, typed.ID); err != nil {
 				return err
 			}
+			if raw, ok := fieldRawType(typed); ok {
+				if err := preflightCallContinuity(typed.Transforms, raw, typed.SuccessfulType, typed.ID); err != nil {
+					return err
+				}
+			}
 		case ir.Collection:
 			if err := runtime.preflightOutputCalls(typed.Row); err != nil {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func fieldRawType(field ir.Field) (typesys.Type, bool) {
+	switch source := field.ValueSource.(type) {
+	case ir.TextValueSource:
+		return source.RawType, true
+	case ir.HTMLValueSource:
+		return source.RawType, true
+	case ir.AttributeValueSource:
+		return source.RawType, true
+	case ir.JavaScriptValueSource:
+		return source.Returns, true
+	default:
+		return typesys.Type{}, false
+	}
+}
+
+func preflightCallContinuity(calls []ir.TransformCall, initial, expected typesys.Type, path string) error {
+	if !validRuntimeType(initial) || !validRuntimeType(expected) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: "transform chain has invalid boundary type metadata", Path: path}
+	}
+	current := initial
+	for index, call := range calls {
+		if !typesys.Equal(call.Input, current) {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("transform call %d input %s does not match previous output %s", index, call.Input.String(), current.String()), Path: path}
+		}
+		current = call.Output
+	}
+	if !typesys.IsAssignable(current, expected) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("transform chain output %s is not assignable to %s", current.String(), expected.String()), Path: path}
 	}
 	return nil
 }

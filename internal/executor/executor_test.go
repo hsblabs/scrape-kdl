@@ -634,6 +634,18 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM",
 		},
 		{
+			name: "field transform input discontinuity",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{
+					Target: ir.BuiltinTarget{Kind: "builtin", Name: "trim"},
+					Input:  typesys.Primitive("bool"), Output: typesys.Primitive("string"),
+				}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "malformed match literal",
 			mutate: func(extractor *ir.Extractor) {
 				stringType := typesys.Primitive("string")
