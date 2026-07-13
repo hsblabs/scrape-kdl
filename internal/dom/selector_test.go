@@ -53,3 +53,18 @@ func TestTextAndInnerHTML(t *testing.T) {
 		t.Fatalf("html = %q", got)
 	}
 }
+
+func TestParseSelectorClassifiesAttributeFlagsAsUnsupported(t *testing.T) {
+	for _, selector := range []string{`[href="x" i]`, `[href=x s]`, `[href="x" I ]`} {
+		_, err := ParseSelector(selector)
+		if err == nil || !strings.Contains(err.Error(), "unsupported") {
+			t.Fatalf("ParseSelector(%q) error = %v", selector, err)
+		}
+	}
+	for _, selector := range []string{`[href="x"i]`, `[href="x" flag]`} {
+		_, err := ParseSelector(selector)
+		if err == nil || strings.Contains(err.Error(), "unsupported") {
+			t.Fatalf("ParseSelector(%q) error = %v", selector, err)
+		}
+	}
+}

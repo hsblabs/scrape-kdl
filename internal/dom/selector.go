@@ -473,7 +473,15 @@ func (p *selectorParser) parseAttribute() (AttributeSelector, error) {
 	if err != nil {
 		return AttributeSelector{}, err
 	}
-	p.skipWhitespace()
+	separated := p.skipWhitespace()
+	if separated && !p.eof() && (p.peek() == 'i' || p.peek() == 'I' || p.peek() == 's' || p.peek() == 'S') {
+		flag := p.peek()
+		p.i++
+		p.skipWhitespace()
+		if !p.eof() && p.peek() == ']' {
+			return AttributeSelector{}, p.errorf("attribute selector case-sensitivity flag %q is unsupported", string(flag))
+		}
+	}
 	if p.eof() || p.peek() != ']' {
 		return AttributeSelector{}, p.errorf("unterminated attribute selector")
 	}
