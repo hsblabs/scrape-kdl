@@ -66,6 +66,8 @@ Baseline: `e5363b7`
 - Added direct DOM node boundary coverage for nil receivers, non-element attributes, recursive text, element-only child/sibling traversal, and the distinction between empty, zero-length, whitespace, and element children. DOM statement coverage increased to 87.1%.
 - Covered missing and malformed JSON for required `coalesce` and numeric assertion arguments, including preservation of decoding causes without changing transform diagnostics. Executor statement coverage increased to 82.3%.
 - Recorded the diagnostic-contract decision required for canceling offline `ExecuteHTML` parsing and extraction; no existing operation-specific code was broadened implicitly.
+- Added structure regressions and fuzz seeds for omitted description-list, ruby-annotation, select-option, and paragraph end tags within the parser's documented normalization scope. DOM statement coverage increased to 87.8%.
+- Enforced normative URL built-in boundaries in malformed IR: `path-segment` now requires its declared `index`, `url-query` rejects negative indexes, and malformed percent-encoded queries propagate parsing errors instead of becoming null. Added decoded, empty, absent, out-of-range, negative, and malformed URL/path coverage; executor statement coverage increased to 82.8%.
 
 ## Commits
 
@@ -138,6 +140,8 @@ Baseline: `e5363b7`
 - `55d9a41` test: cover DOM node boundaries
 - `43d513f` test: cover required builtin arguments
 - `e85deee` docs: record offline cancellation decision
+- `203d05a` test: cover optional HTML end tags
+- `0dd79c1` fix: enforce URL builtin boundaries
 
 ## Verification results
 
@@ -156,11 +160,11 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 87.1%, executor coverage at 82.3%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 87.8%, executor coverage at 82.8%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, and omitted table sections nesting under cells.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, omitted table sections nesting under cells, and malformed query escapes silently converted to absent query values.
 
 ## Environment-limited verification
 
@@ -180,5 +184,5 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 ## Next safe candidates
 
-- Extend optional-end-tag regressions for lists, descriptions, ruby annotations, and select options within the parser's documented normalization scope.
-- Cover URL built-in malformed-input and missing-result boundaries while preserving the normative return types.
+- Extend regex and replacement built-in error coverage for duplicate flags, malformed counts, and empty-match behavior without changing RE2 semantics.
+- Add direct charset fallback tests for invalid HTTP metadata and fallback decoder error wrapping that remain unambiguous under the current runtime contract.
