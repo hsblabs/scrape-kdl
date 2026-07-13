@@ -62,6 +62,7 @@ Baseline: `e5363b7`
 - Extended browser workflow-IR preflight to reject invalid wait states, non-positive timeouts and network-idle windows, and non-finite scroll coordinates before adapter acquisition. The explicit schema/compiler constraints remain unchanged; executor statement coverage increased to 82.0%.
 - Recorded the compatibility decision required to define a portable upper bound for `timeout-ms`; no overflow-limit behavior was changed implicitly.
 - Corrected HTML normalization for mixed-case start/end tag names and cascaded omitted table cell, row, and section closures across `thead`, `tbody`, and `tfoot`. Added raw-text closing-boundary and table-tree regressions plus fuzz seeds; a 20-second HTML fuzz run completed 28,788 executions without a panic. DOM statement coverage increased from 77.4% to 78.2%.
+- Exercised the normative portable selector profile across every attribute operator, empty/child/type-position pseudo-classes, positive and negative `An+B` expressions, non-matches, and selector-list de-duplication in document order. DOM statement coverage increased to 85.8%.
 
 ## Commits
 
@@ -130,6 +131,7 @@ Baseline: `e5363b7`
 - `769dace` fix: preflight malformed browser workflow values
 - `3734988` docs: record workflow timeout limit decision
 - `e523572` fix: recover mixed-case and table HTML
+- `51591fc` test: cover portable selector profile
 
 ## Verification results
 
@@ -148,7 +150,7 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 78.2%, executor coverage at 82.0%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 85.8%, executor coverage at 82.0%, and source package coverage at 100%.
 
 ## Unresolved failures
 
@@ -171,4 +173,6 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 ## Next safe candidates
 
+- Add direct DOM node helper tests for nil receivers, element filtering, sibling traversal, and `:empty` text boundaries.
+- Cover malformed built-in argument wrappers that retain an underlying JSON decoding cause without changing transform diagnostics.
 - Add direct `ExecuteHTML` cancellation tests only after identifying an existing structured diagnostic whose meaning already covers offline cancellation; otherwise record a diagnostic-contract decision.
