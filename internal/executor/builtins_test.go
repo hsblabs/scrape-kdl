@@ -250,6 +250,47 @@ func TestBuiltinBooleanParsingConfiguration(t *testing.T) {
 	if _, err := applyBuiltinRuntime("parse-bool", "true", invalidFlag); err == nil {
 		t.Fatal("parse-bool accepted non-boolean case-sensitive")
 	}
+	for _, tt := range []struct {
+		name string
+		call ir.TransformCall
+	}{
+		{name: "true value", call: testCall(map[string]any{"true": true})},
+		{name: "false value", call: testCall(map[string]any{"false": false})},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := applyBuiltinRuntime("parse-bool", "", tt.call); err == nil {
+				t.Fatal("parse-bool accepted a non-string configured value")
+			}
+		})
+	}
+}
+
+func TestBuiltinRegexCaptureGroupBounds(t *testing.T) {
+	tests := []struct {
+		name    string
+		group   int
+		want    any
+		wantErr bool
+	}{
+		{name: "whole match", group: 0, want: "a"},
+		{name: "capture", group: 1, want: "a"},
+		{name: "missing capture", group: 2},
+		{name: "negative", group: -1, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := applyBuiltinRuntime("regex-capture", "a", testCall(map[string]any{"pattern": "(a)", "group": tt.group}))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("regex-capture = %#v, want error", got)
+				}
+				return
+			}
+			if err != nil || got != tt.want {
+				t.Fatalf("regex-capture = %#v, %v; want %#v", got, err, tt.want)
+			}
+		})
+	}
 }
 
 func TestBuiltinFailures(t *testing.T) {

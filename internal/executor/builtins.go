@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
@@ -156,6 +155,18 @@ func optionalBoolArgument(arguments map[string]json.RawMessage, name string, fal
 	return parsed, nil
 }
 
+func optionalStringArgument(arguments map[string]json.RawMessage, name, fallback string) (string, error) {
+	value, ok, err := namedArgument(arguments, name)
+	if err != nil || !ok {
+		return fallback, err
+	}
+	parsed, ok := value.(string)
+	if !ok {
+		return "", fmt.Errorf("argument %q must be a string", name)
+	}
+	return parsed, nil
+}
+
 func literalInt(value any) (int, error) {
 	switch typed := value.(type) {
 	case json.Number:
@@ -270,6 +281,9 @@ func builtinRegexCapture(input any, arguments map[string]json.RawMessage) (any, 
 	group, err := optionalIntArgument(arguments, "group", 0)
 	if err != nil {
 		return nil, err
+	}
+	if group < 0 {
+		return nil, fmt.Errorf("argument %q must be non-negative", "group")
 	}
 	indexes := compiled.FindStringSubmatchIndex(value)
 	if len(indexes) == 0 || group*2+1 >= len(indexes) || indexes[group*2] < 0 {
@@ -465,15 +479,13 @@ func builtinParseBool(input any, arguments map[string]json.RawMessage) (any, err
 	}
 	trueValue := "true"
 	falseValue := "false"
-	if candidate, ok, err := namedArgument(arguments, "true"); err != nil {
+	trueValue, err = optionalStringArgument(arguments, "true", trueValue)
+	if err != nil {
 		return nil, err
-	} else if ok {
-		trueValue, _ = candidate.(string)
 	}
-	if candidate, ok, err := namedArgument(arguments, "false"); err != nil {
+	falseValue, err = optionalStringArgument(arguments, "false", falseValue)
+	if err != nil {
 		return nil, err
-	} else if ok {
-		falseValue, _ = candidate.(string)
 	}
 	compare := value
 	if !caseSensitive {
@@ -698,5 +710,3 @@ func argumentError(message string, cause error) error {
 	}
 	return fmt.Errorf("%s: %w", message, cause)
 }
-
-var _ = utf8.RuneCountInString
