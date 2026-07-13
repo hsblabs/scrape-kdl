@@ -200,6 +200,76 @@ func TestExecuteBrowserPreflightsInputsAndSessionBeforeAcquire(t *testing.T) {
 	}
 }
 
+func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
+	const spec = `extractor "browser-output-preflight" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  collection "rows" { select ".rows"; field "value" type="string" required=#true { select ".value"; value "text" } }
+}`
+	tests := []struct {
+		name     string
+		mutate   func(*ir.Extractor)
+		wantCode string
+	}{
+		{name: "success"},
+		{
+			name: "nested selector",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				field.Selection.Selector = "["
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_SELECTOR_INVALID",
+		},
+		{
+			name: "unknown output member",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Output.Members = []ir.OutputMember{nil}
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unknown value source",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				field.ValueSource = nil
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_IR_INVALID",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := compileTestSpec(t, spec)
+			extractor, diagnostics := compiler.CompileFile(path)
+			if diagnostics.HasErrors() {
+				t.Fatalf("compile diagnostics = %#v", diagnostics)
+			}
+			if tt.mutate != nil {
+				tt.mutate(extractor)
+			}
+			browser := &leasedFakeBrowser{}
+			result, err := Execute(context.Background(), extractor, nil, Options{Browser: browser})
+			if tt.wantCode == "" {
+				if err != nil || !reflect.DeepEqual(result.Value["rows"], []any{}) || browser.acquired != 1 || browser.released != 1 {
+					t.Fatalf("result=%#v error=%v acquired=%d released=%d", result, err, browser.acquired, browser.released)
+				}
+				return
+			}
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode {
+				t.Fatalf("error = %#v", err)
+			}
+			if browser.acquired != 0 || browser.released != 0 || len(browser.calls) != 0 {
+				t.Fatalf("browser used before output preflight: acquired=%d released=%d calls=%v", browser.acquired, browser.released, browser.calls)
+			}
+		})
+	}
+}
+
 type leasedFakeBrowser struct {
 	fakeBrowser
 	acquired   int

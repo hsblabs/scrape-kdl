@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hsblabs/scrape-kdl/internal/dom"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
@@ -81,6 +82,9 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	if err := transforms.preflight(); err != nil {
 		return nil, err
 	}
+	if err := preflightBrowserOutput(extractor.Output); err != nil {
+		return nil, err
+	}
 	resolved, err := resolveInputs(extractor.Inputs, inputs)
 	if err != nil {
 		return nil, err
@@ -121,6 +125,34 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 		return nil, err
 	}
 	return finalizeResult(value, e.warnings, e.partial), nil
+}
+
+func preflightBrowserOutput(object ir.OutputObject) error {
+	for _, member := range object.Members {
+		switch typed := member.(type) {
+		case ir.Field:
+			if typed.Selection != nil {
+				if _, err := dom.ParseSelector(typed.Selection.Selector); err != nil {
+					return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: typed.ID, Cause: err}
+				}
+			}
+			switch typed.ValueSource.(type) {
+			case ir.TextValueSource, ir.HTMLValueSource, ir.AttributeValueSource, ir.JavaScriptValueSource:
+			default:
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown value source %T", typed.ValueSource), Path: typed.ID}
+			}
+		case ir.Collection:
+			if _, err := dom.ParseSelector(typed.Selector); err != nil {
+				return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: typed.ID, Cause: err}
+			}
+			if err := preflightBrowserOutput(typed.Row); err != nil {
+				return err
+			}
+		default:
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown output member %T", member)}
+		}
+	}
+	return nil
 }
 
 func timeout(ms *int, fallback time.Duration) time.Duration {
