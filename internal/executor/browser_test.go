@@ -259,6 +259,87 @@ func (f *failingNavigationBrowser) Navigate(context.Context, string, BrowserNavi
 	return errors.New("navigation failed")
 }
 
+type leaseTrackingBrowser struct {
+	BrowserAdapter
+	acquired   int
+	released   int
+	nilRelease bool
+}
+
+func (b *leaseTrackingBrowser) Acquire(context.Context) (func(), error) {
+	b.acquired++
+	if b.nilRelease {
+		return nil, nil
+	}
+	return func() { b.released++ }, nil
+}
+
+func TestExecuteBrowserRejectsNilLeaseRelease(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-nil-release" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	base := &fakeBrowser{}
+	browser := &leaseTrackingBrowser{BrowserAdapter: base, nilRelease: true}
+	_, err := Execute(context.Background(), extractor, nil, Options{Browser: browser})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_BROWSER_ACQUIRE" {
+		t.Fatalf("error = %#v", err)
+	}
+	if browser.acquired != 1 || browser.released != 0 || len(base.calls) != 0 {
+		t.Fatalf("acquired=%d released=%d calls=%v", browser.acquired, browser.released, base.calls)
+	}
+}
+
+func TestExecuteBrowserReleasesLeaseAfterPostNavigationFailures(t *testing.T) {
+	cause := errors.New("adapter failed")
+	tests := []struct {
+		name     string
+		source   string
+		adapter  BrowserAdapter
+		wantCode string
+	}{
+		{
+			name: "workflow",
+			source: `extractor "browser-workflow-release" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/"; workflow { wait-for "#ready" } }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`,
+			adapter: &workflowFailureBrowser{operation: "wait-for", cause: cause}, wantCode: "E_BROWSER_WORKFLOW",
+		},
+		{
+			name: "output query",
+			source: `extractor "browser-query-release" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`,
+			adapter: &readFailureBrowser{operation: "query", err: cause}, wantCode: "E_BROWSER_QUERY",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := compileTestSpec(t, tt.source)
+			extractor, diagnostics := compiler.CompileFile(path)
+			if diagnostics.HasErrors() {
+				t.Fatalf("compile diagnostics = %#v", diagnostics)
+			}
+			browser := &leaseTrackingBrowser{BrowserAdapter: tt.adapter}
+			_, err := Execute(context.Background(), extractor, nil, Options{Browser: browser})
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode || !errors.Is(err, cause) {
+				t.Fatalf("error = %#v", err)
+			}
+			if browser.acquired != 1 || browser.released != 1 {
+				t.Fatalf("acquired=%d released=%d", browser.acquired, browser.released)
+			}
+		})
+	}
+}
+
 type rowRecoveryBrowser struct{ fakeBrowser }
 
 func (f *rowRecoveryBrowser) QueryAll(_ context.Context, scope BrowserElement, selector string) ([]BrowserElement, error) {
