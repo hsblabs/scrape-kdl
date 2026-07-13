@@ -376,9 +376,13 @@ func (runtime *transformRuntime) applyDeclared(symbolID string, input any, path 
 			return normalized, nil
 		}
 		for _, item := range typed.Cases {
-			when, err := decodeJSON(item.When)
+			rawWhen, err := decodeJSON(item.When)
 			if err != nil {
 				return nil, err
+			}
+			when, ok := normalizeJSONResult(rawWhen, typed.Input)
+			if !ok {
+				return nil, fmt.Errorf("match input of type %T is not assignable to %s", rawWhen, typed.Input.String())
 			}
 			if equalScalar(input, when) {
 				return decodeResult(item.Then)

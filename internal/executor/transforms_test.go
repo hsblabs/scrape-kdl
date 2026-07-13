@@ -399,6 +399,13 @@ func TestTransformPreflightValidatesMatchStructure(t *testing.T) {
 		{name: "duplicate case", mutate: func(match *ir.MatchTransform) {
 			match.Cases = append(match.Cases, ir.MatchCase{When: json.RawMessage(`"input"`), Then: json.RawMessage(`"other"`)})
 		}},
+		{name: "normalized numeric duplicate", mutate: func(match *ir.MatchTransform) {
+			match.Input = typesys.Primitive("float")
+			match.Cases = []ir.MatchCase{
+				{When: json.RawMessage(`1`), Then: json.RawMessage(`"one"`)},
+				{When: json.RawMessage(`1.0`), Then: json.RawMessage(`"other"`)},
+			}
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -410,6 +417,25 @@ func TestTransformPreflightValidatesMatchStructure(t *testing.T) {
 				t.Fatalf("match structure preflight error = %#v", err)
 			}
 		})
+	}
+}
+
+func TestTransformRuntimeNormalizesMatchCaseInputs(t *testing.T) {
+	floatType := typesys.Primitive("float")
+	stringType := typesys.Primitive("string")
+	match := ir.MatchTransform{
+		Kind:          "match",
+		TransformBase: ir.TransformBase{SymbolID: "transform:match", Name: "match", Input: floatType, Output: stringType},
+		Cases:         []ir.MatchCase{{When: json.RawMessage(`1.0`), Then: json.RawMessage(`"matched"`)}},
+		Default:       json.RawMessage(`"fallback"`),
+	}
+	runtime := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{match}}, nil)
+	if err := runtime.preflight(); err != nil {
+		t.Fatalf("match preflight error = %v", err)
+	}
+	result, err := runtime.applyDeclared(match.SymbolID, float64(1), "output.value")
+	if err != nil || result != "matched" {
+		t.Fatalf("match result = %#v, error = %v", result, err)
 	}
 }
 
