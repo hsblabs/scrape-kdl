@@ -315,3 +315,59 @@ func TestBuiltinFailures(t *testing.T) {
 		})
 	}
 }
+
+func FuzzBuiltinMalformedArgumentsDoNotPanic(f *testing.F) {
+	f.Add(uint8(0), "a", []byte(`-1`))
+	f.Add(uint8(1), "a", []byte(`"(a)"`))
+	f.Add(uint8(5), "", []byte(`true`))
+	f.Add(uint8(8), "1", []byte(`null`))
+	f.Fuzz(func(t *testing.T, selector uint8, input string, raw []byte) {
+		if len(input) > 256 || len(raw) > 256 {
+			t.Skip()
+		}
+		argument := func(name string) ir.NamedArgument {
+			return ir.NamedArgument{Name: name, Value: append(json.RawMessage(nil), raw...)}
+		}
+		var name string
+		var call ir.TransformCall
+		switch selector % 10 {
+		case 0:
+			name = "regex-capture"
+			call = testCall(map[string]any{"pattern": "(a*)"})
+			call.NamedArguments = append(call.NamedArguments, argument("group"))
+		case 1:
+			name = "regex-capture"
+			call = testCall(map[string]any{"group": 0})
+			call.NamedArguments = append(call.NamedArguments, argument("pattern"))
+		case 2:
+			name = "regex-replace"
+			call = testCall(map[string]any{"pattern": "a", "replacement": "x"})
+			call.NamedArguments = append(call.NamedArguments, argument("count"))
+		case 3:
+			name = "substring"
+			call.NamedArguments = append(call.NamedArguments, argument("start"))
+		case 4:
+			name = "split"
+			call = testCall(map[string]any{"separator": ""})
+			call.NamedArguments = append(call.NamedArguments, argument("limit"))
+		case 5:
+			name = "parse-bool"
+			call.NamedArguments = append(call.NamedArguments, argument("true"))
+		case 6:
+			name = "url-query"
+			call = testCall(map[string]any{"name": "value"})
+			call.NamedArguments = append(call.NamedArguments, argument("index"))
+		case 7:
+			name = "path-segment"
+			call.NamedArguments = append(call.NamedArguments, argument("index"))
+		case 8:
+			name = "assert-min"
+			call.NamedArguments = append(call.NamedArguments, argument("value"))
+		case 9:
+			name = "coalesce"
+			call.Output = typesys.Primitive("unknown")
+			call.NamedArguments = append(call.NamedArguments, argument("value"))
+		}
+		_, _ = applyBuiltinRuntime(name, input, call)
+	})
+}
