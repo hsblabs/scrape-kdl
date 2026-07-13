@@ -127,6 +127,41 @@ func TestExecuteBrowserRequiresJavaScriptOptIn(t *testing.T) {
 	}
 }
 
+func TestExecuteBrowserPreflightsExternalTransformsBeforeAcquire(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-external" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  transform "decorate" input="string" output="string" { external symbol="decorate" }
+  field "title" type="string" required=#true {
+    select "h1"
+    value "text"
+    apply "decorate"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	browser := &leasedFakeBrowser{}
+	_, err := Execute(context.Background(), extractor, nil, Options{Browser: browser})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_EXTERNAL_TRANSFORM_MISSING" {
+		t.Fatalf("error = %#v", err)
+	}
+	if browser.acquired != 0 || browser.released != 0 || len(browser.calls) != 0 {
+		t.Fatalf("browser used before preflight: acquired=%d released=%d calls=%v", browser.acquired, browser.released, browser.calls)
+	}
+
+	result, err := Execute(context.Background(), extractor, nil, Options{
+		Browser: browser,
+		ExternalTransforms: map[string]ExternalTransform{
+			"decorate": func(_ context.Context, input any) (any, error) { return "[" + input.(string) + "]", nil },
+		},
+	})
+	if err != nil || result.Value["title"] != "[Title]" || browser.acquired != 1 || browser.released != 1 {
+		t.Fatalf("result = %#v, error = %v, acquired=%d released=%d", result, err, browser.acquired, browser.released)
+	}
+}
+
 type leasedFakeBrowser struct {
 	fakeBrowser
 	acquired   int

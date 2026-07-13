@@ -77,6 +77,10 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	if !options.AllowJavaScript && containsJavaScript(extractor) {
 		return nil, &ExecutionError{Code: "E_JAVASCRIPT_DISABLED", Message: "extractor contains JavaScript; set AllowJavaScript=true for trusted specs"}
 	}
+	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
+	if err := transforms.preflight(); err != nil {
+		return nil, err
+	}
 	resolved, err := resolveInputs(extractor.Inputs, inputs)
 	if err != nil {
 		return nil, err
@@ -107,10 +111,6 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	}
 	if err := options.Browser.Navigate(ctx, target, BrowserNavigateOptions{Timeout: options.RequestTimeout, Session: session, UserAgent: options.UserAgent}); err != nil {
 		return nil, &ExecutionError{Code: operationErrorCode("E_BROWSER_NAVIGATE", err), Message: err.Error(), Cause: err}
-	}
-	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
-	if err := transforms.preflight(); err != nil {
-		return nil, err
 	}
 	e := &browserEngine{ctx: ctx, extractor: extractor, options: options, adapter: options.Browser, transforms: transforms}
 	if err := e.runWorkflow(); err != nil {
