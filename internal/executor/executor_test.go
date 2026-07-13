@@ -549,6 +549,14 @@ func (function roundTripFunc) RoundTrip(request *http.Request) (*http.Response, 
 	return function(request)
 }
 
+func cookieNames(cookies []*http.Cookie) map[string]bool {
+	present := make(map[string]bool, len(cookies))
+	for _, cookie := range cookies {
+		present[cookie.Name] = true
+	}
+	return present
+}
+
 type trackingBody struct {
 	reader io.Reader
 	closed bool
@@ -796,11 +804,7 @@ func TestExecuteHTTPCookieJarAppliesRedirectScope(t *testing.T) {
 	client := &http.Client{
 		Jar: jar,
 		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
-			present := map[string]bool{}
-			for _, cookie := range request.Cookies() {
-				present[cookie.Name] = true
-			}
-			observations = append(observations, present)
+			observations = append(observations, cookieNames(request.Cookies()))
 			if request.URL.Path == "/start" {
 				return &http.Response{
 					StatusCode: http.StatusFound, Status: "302 Found",
@@ -835,6 +839,64 @@ func TestExecuteHTTPCookieJarAppliesRedirectScope(t *testing.T) {
 	}
 	if !reflect.DeepEqual(observations, want) {
 		t.Fatalf("cookie names = %#v, want %#v", observations, want)
+	}
+}
+
+func TestExecuteHTTPClientJarPersistsResponseCookies(t *testing.T) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := &url.URL{Scheme: "https", Host: "example.invalid", Path: "/"}
+	subdomain := &url.URL{Scheme: "https", Host: "sub.example.invalid", Path: "/"}
+	var observations []map[string]bool
+	client := &http.Client{
+		Jar: jar,
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			observations = append(observations, cookieNames(request.Cookies()))
+			if request.URL.Path == "/start" {
+				return &http.Response{
+					StatusCode: http.StatusFound, Status: "302 Found",
+					Header: http.Header{
+						"Location":   []string{"https://sub.example.invalid/end"},
+						"Set-Cookie": []string{"root-only=test-value; Path=/", "shared=test-value; Domain=example.invalid; Path=/"},
+					},
+					Body: io.NopCloser(strings.NewReader("")), Request: request,
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK, Status: "200 OK",
+				Header: http.Header{"Set-Cookie": []string{"subdomain-only=test-value; Path=/"}},
+				Body:   io.NopCloser(strings.NewReader(`<h1>redirected</h1>`)), Request: request,
+			}, nil
+		}),
+	}
+	path := compileTestSpec(t, `extractor "redirect-set-cookie" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/start" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := Execute(context.Background(), extractor, nil, Options{
+		HTTPClient: client,
+		URLPolicy:  func(context.Context, *url.URL) error { return nil },
+	})
+	if err != nil || result.Value["title"] != "redirected" {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	wantRequests := []map[string]bool{{}, {"shared": true}}
+	if !reflect.DeepEqual(observations, wantRequests) {
+		t.Fatalf("request cookie names = %#v, want %#v", observations, wantRequests)
+	}
+	wantRoot := map[string]bool{"root-only": true, "shared": true}
+	wantSubdomain := map[string]bool{"shared": true, "subdomain-only": true}
+	if got := cookieNames(jar.Cookies(root)); !reflect.DeepEqual(got, wantRoot) {
+		t.Fatalf("root cookie names = %#v, want %#v", got, wantRoot)
+	}
+	if got := cookieNames(jar.Cookies(subdomain)); !reflect.DeepEqual(got, wantSubdomain) {
+		t.Fatalf("subdomain cookie names = %#v, want %#v", got, wantSubdomain)
 	}
 }
 
