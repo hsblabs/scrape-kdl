@@ -31,3 +31,34 @@ Keeping the current flags preserves compatibility but continues to expose users 
 - `SECURITY.md`
 - `docs/security-model.md`
 - `docs/compatibility.md`
+
+## Subcommand help exit status
+
+### Decision
+
+Decide whether `validate --help`, `compile --help`, and `extract --help` should change from exit status 2 to exit status 0.
+
+### Background
+
+The top-level `scrape-kdl --help` command exits successfully, while each subcommand currently routes an explicit help request through its invalid-arguments path and exits with status 2. Common CLI conventions treat an explicit `-h` or `--help` request as a successful operation. Changing the status would improve consistency but is observable to scripts.
+
+### Options
+
+1. Preserve exit status 2 for compatibility and document it.
+2. Change explicit subcommand help to exit status 0 immediately while keeping malformed arguments at status 2.
+3. Announce the new behavior and change it at the next documented compatibility boundary.
+
+### Recommendation
+
+Change explicit `-h` and `--help` requests to exit status 0 at the next compatibility boundary, with tests distinguishing help from malformed arguments.
+
+### Compatibility and safety impact
+
+Returning 0 matches established CLI behavior and prevents automation from treating a help request as a failure. Scripts that currently depend on status 2 would observe a change, although relying on failure for an explicit help request is unlikely. No extraction, network, browser, or security behavior is affected.
+
+### Related files
+
+- `cmd/scrape-kdl/main.go`
+- `cmd/scrape-kdl/main_test.go`
+- `README.md`
+- `docs/compatibility.md`
