@@ -68,6 +68,7 @@ Baseline: `e5363b7`
 - Recorded the diagnostic-contract decision required for canceling offline `ExecuteHTML` parsing and extraction; no existing operation-specific code was broadened implicitly.
 - Added structure regressions and fuzz seeds for omitted description-list, ruby-annotation, select-option, and paragraph end tags within the parser's documented normalization scope. DOM statement coverage increased to 87.8%.
 - Enforced normative URL built-in boundaries in malformed IR: `path-segment` now requires its declared `index`, `url-query` rejects negative indexes, and malformed percent-encoded queries propagate parsing errors instead of becoming null. Added decoded, empty, absent, out-of-range, negative, and malformed URL/path coverage; executor statement coverage increased to 82.8%.
+- Enforced the portable regex profile in malformed IR by rejecting duplicate/unsupported flags, named captures, negative literal/regex replacement counts, and capture indexes beyond the compiled group count. Distinguished an unmatched optional capture from an invalid group, and covered zero/all/limited/empty-match replacement plus `$` expansion. A 20-second malformed built-in fuzz run completed approximately 1.42 million executions without a panic; executor statement coverage increased to 83.7%.
 
 ## Commits
 
@@ -142,6 +143,7 @@ Baseline: `e5363b7`
 - `e85deee` docs: record offline cancellation decision
 - `203d05a` test: cover optional HTML end tags
 - `0dd79c1` fix: enforce URL builtin boundaries
+- `e5bff83` fix: enforce portable regex boundaries
 
 ## Verification results
 
@@ -153,18 +155,18 @@ Passed:
 - `make release-check`;
 - concurrent execution of all four gates above;
 - `go test -shuffle=on -count=10 ./...`;
-- 10-second fuzz runs for KDL and selector parsing, a post-fix 20-second HTML parser run covering approximately 1.64 million executions, a second 20-second HTML boundary run completing 28,788 executions, and a 20-second malformed built-in argument run covering approximately 1.60 million executions;
+- 10-second fuzz runs for KDL and selector parsing, a post-fix 20-second HTML parser run covering approximately 1.64 million executions, a second 20-second HTML boundary run completing 28,788 executions, and malformed built-in argument runs covering approximately 1.60 million and 1.42 million executions;
 - `staticcheck ./...` for the root and adapter modules;
 - `govulncheck ./...` for the root and adapter modules, with no reachable vulnerabilities found;
 - `go mod verify` for both modules and `go mod tidy -diff` for the root module;
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 87.8%, executor coverage at 82.8%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 87.8%, executor coverage at 83.7%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, omitted table sections nesting under cells, and malformed query escapes silently converted to absent query values.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, omitted table sections nesting under cells, malformed query escapes silently converted to absent query values, and malformed regex IR bypassing portable flag, capture, and count constraints.
 
 ## Environment-limited verification
 
@@ -184,5 +186,4 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 ## Next safe candidates
 
-- Extend regex and replacement built-in error coverage for duplicate flags, malformed counts, and empty-match behavior without changing RE2 semantics.
 - Add direct charset fallback tests for invalid HTTP metadata and fallback decoder error wrapping that remain unambiguous under the current runtime contract.
