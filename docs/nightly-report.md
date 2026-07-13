@@ -79,6 +79,7 @@ Baseline: `e5363b7`
 - Rejected duplicate output member names within each object and duplicate output member IDs across the full output tree. This prevents hand-built IR from silently overwriting result-map entries or sharing ambiguous diagnostic paths, including nested browser rows; executor statement coverage increased to 86.6%.
 - Preflighted collection cardinality bounds against the existing non-negative and effective-minimum rules. Negative minimums and maximums below `required=true`'s effective minimum now fail before HTTP transport or browser acquisition; executor statement coverage increased to 86.7%.
 - Preflighted field recovery contracts for explicit policy names, required/default conflicts, default JSON and type compatibility, nullable `null`/`warn` outputs, and `default` policy requirements. Malformed combinations now fail before source acquisition even when successful extraction would otherwise hide them; executor statement coverage is 86.6% after adding the new validation branches.
+- Preflighted collection row contracts for `fail|skip` policy values and non-empty row schemas. Unknown policies no longer silently behave as `fail`, and empty rows no longer produce empty result objects after source acquisition; executor statement coverage remains 86.6%.
 
 ## Commits
 
@@ -172,6 +173,8 @@ Baseline: `e5363b7`
 - `3b37cec` fix: preflight collection bounds
 - `f4cf624` docs: record collection bound preflight
 - `ec05a3e` fix: preflight field recovery contracts
+- `5c9c334` docs: record field recovery preflight
+- `c117e07` fix: preflight collection row contracts
 
 ## Verification results
 
@@ -194,7 +197,7 @@ Passed:
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, omitted table sections nesting under cells, malformed query escapes silently converted to absent query values, malformed regex IR bypassing portable flag, capture, and count constraints, non-ASCII UTF-8 accepted under US-ASCII, missing/negative substring and split arguments interpreted as defaults, duplicate or malformed transform arguments deferred until transform application, infinity accepted by numeric assertions through `math/big` parsing, malformed match literals deferred until field extraction, invalid transform call names or arity ignored until application, duplicate transform symbols silently overwriting runtime declarations, duplicate output identities overwriting result values or diagnostic paths, malformed collection bounds deferred until post-fetch cardinality checks, and invalid field recovery contracts hidden by successful extraction.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, omitted table sections nesting under cells, malformed query escapes silently converted to absent query values, malformed regex IR bypassing portable flag, capture, and count constraints, non-ASCII UTF-8 accepted under US-ASCII, missing/negative substring and split arguments interpreted as defaults, duplicate or malformed transform arguments deferred until transform application, infinity accepted by numeric assertions through `math/big` parsing, malformed match literals deferred until field extraction, invalid transform call names or arity ignored until application, duplicate transform symbols silently overwriting runtime declarations, duplicate output identities overwriting result values or diagnostic paths, malformed collection bounds deferred until post-fetch cardinality checks, invalid field recovery contracts hidden by successful extraction, and invalid collection row contracts silently accepted at runtime.
 
 ## Environment-limited verification
 
@@ -214,5 +217,5 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 ## Next safe candidates
 
-- Audit collection `onRowError` and empty row schemas against compiler constraints before source acquisition.
 - Audit field selection match modes and value-source structural requirements against compiler constraints before source acquisition.
+- Audit browser JavaScript value-source scope and timeout structure against existing compiler constraints before adapter acquisition.
