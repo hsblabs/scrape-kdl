@@ -141,6 +141,9 @@ func preflightSourceStructure(source ir.Source) error {
 			if typed.Kind != "input" {
 				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid input URL template segment kind %q", typed.Kind), Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
 			}
+			if typed.Name == "" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: "URL template input segment name must be non-empty", Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
+			}
 		default:
 			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown URL template segment %T", segment), Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
 		}

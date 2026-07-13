@@ -99,6 +99,11 @@ func TestResolveInputsReportsUnknownNamesDeterministically(t *testing.T) {
 	if err != nil || resolved["alpha"] != int64(1) {
 		t.Fatalf("known input = %#v, error = %v", resolved, err)
 	}
+	_, err = resolveInputs(nil, map[string]any{"": int64(1)})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_INPUT_UNKNOWN" || execution.Message != `unknown input ""` {
+		t.Fatalf("empty unknown input error = %#v", err)
+	}
 }
 
 func TestResolveInputsDefaultsAndFailures(t *testing.T) {
@@ -194,5 +199,12 @@ func TestResolveInputsRejectsMalformedDeclarations(t *testing.T) {
 				t.Fatalf("error = %#v", err)
 			}
 		})
+	}
+}
+
+func TestResolveInputsRejectsEmptyDeclarationName(t *testing.T) {
+	var execution *ExecutionError
+	if _, err := resolveInputs([]ir.Input{{Type: "string"}}, nil); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "inputs" {
+		t.Fatalf("empty input declaration error = %#v", err)
 	}
 }

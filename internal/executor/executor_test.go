@@ -769,6 +769,25 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
 		{
+			name: "empty input declaration name",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Inputs[0].Name = ""
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "empty URL template input name",
+			mutate: func(extractor *ir.Extractor) {
+				for index, segment := range extractor.Source.Fetch.URLTemplate.Segments {
+					if typed, ok := segment.(ir.InputTemplateSegment); ok {
+						typed.Name = ""
+						extractor.Source.Fetch.URLTemplate.Segments[index] = typed
+					}
+				}
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "malformed hidden input default",
 			mutate: func(extractor *ir.Extractor) {
 				value := json.RawMessage(`not-json`)

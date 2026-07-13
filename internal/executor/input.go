@@ -12,6 +12,9 @@ import (
 func resolveInputs(definitions []ir.Input, provided map[string]any) (map[string]any, error) {
 	known := make(map[string]ir.Input, len(definitions))
 	for _, definition := range definitions {
+		if definition.Name == "" {
+			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "input declaration name must be non-empty", Path: "inputs"}
+		}
 		if _, exists := known[definition.Name]; exists {
 			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate input declaration %q", definition.Name), Path: "input." + definition.Name}
 		}
@@ -33,12 +36,14 @@ func resolveInputs(definitions []ir.Input, provided map[string]any) (map[string]
 		known[definition.Name] = definition
 	}
 	unknown := ""
+	hasUnknown := false
 	for name := range provided {
-		if _, ok := known[name]; !ok && (unknown == "" || name < unknown) {
+		if _, ok := known[name]; !ok && (!hasUnknown || name < unknown) {
 			unknown = name
+			hasUnknown = true
 		}
 	}
-	if unknown != "" {
+	if hasUnknown {
 		return nil, &ExecutionError{Code: "E_INPUT_UNKNOWN", Message: fmt.Sprintf("unknown input %q", unknown), Path: "input." + unknown}
 	}
 	resolved := make(map[string]any, len(definitions))
