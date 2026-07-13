@@ -202,6 +202,40 @@ func (f *rowRecoveryBrowser) QueryAll(_ context.Context, scope BrowserElement, s
 	}
 }
 
+type readFailureBrowser struct {
+	fakeBrowser
+	operation string
+	err       error
+}
+
+func (f *readFailureBrowser) QueryAll(ctx context.Context, scope BrowserElement, selector string) ([]BrowserElement, error) {
+	if f.operation == "query" {
+		return nil, f.err
+	}
+	return f.fakeBrowser.QueryAll(ctx, scope, selector)
+}
+
+func (f *readFailureBrowser) Text(context.Context, BrowserElement) (string, error) {
+	if f.operation == "text" {
+		return "", f.err
+	}
+	return "Title", nil
+}
+
+func (f *readFailureBrowser) HTML(context.Context, BrowserElement) (string, error) {
+	if f.operation == "html" {
+		return "", f.err
+	}
+	return "<b>x</b>", nil
+}
+
+func (f *readFailureBrowser) Attribute(context.Context, BrowserElement, string) (string, bool, error) {
+	if f.operation == "attribute" {
+		return "", false, f.err
+	}
+	return "/horse/123/", true, nil
+}
+
 func TestExecuteBrowserAcquireFailure(t *testing.T) {
 	extractor, diags := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
 	if diags.HasErrors() {
@@ -480,6 +514,118 @@ func TestExecuteBrowserCollectionCardinality(t *testing.T) {
 				t.Fatalf("error = %v", err)
 			}
 		})
+	}
+}
+
+func TestExecuteBrowserValueSourceReads(t *testing.T) {
+	tests := []struct {
+		name        string
+		valueSource string
+		want        string
+	}{
+		{name: "text", valueSource: `value "text"`, want: "Title"},
+		{name: "HTML", valueSource: `value "html"`, want: "<b>x</b>"},
+		{name: "attribute", valueSource: `value "attr" name="href"`, want: "/horse/123/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := compileTestSpec(t, `extractor "browser-read" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "value" type="string" required=#true {
+    select "h1" match="one"
+    `+tt.valueSource+`
+  }
+}`)
+			extractor, diagnostics := compiler.CompileFile(path)
+			if diagnostics.HasErrors() {
+				t.Fatalf("compile diagnostics = %#v", diagnostics)
+			}
+
+			result, err := Execute(context.Background(), extractor, nil, Options{Browser: &readFailureBrowser{}})
+			if err != nil || result.Value["value"] != tt.want {
+				t.Fatalf("result = %#v, error = %v", result, err)
+			}
+		})
+	}
+}
+
+func TestExecuteBrowserValueSourceFailures(t *testing.T) {
+	tests := []struct {
+		name        string
+		valueSource string
+		operation   string
+		cause       error
+		wantCode    string
+	}{
+		{name: "query", valueSource: `value "text"`, operation: "query", cause: errors.New("query failed"), wantCode: "E_BROWSER_QUERY"},
+		{name: "query timeout", valueSource: `value "text"`, operation: "query", cause: context.DeadlineExceeded, wantCode: "E_TIMEOUT"},
+		{name: "query cancellation", valueSource: `value "text"`, operation: "query", cause: context.Canceled, wantCode: "E_BROWSER_QUERY"},
+		{name: "text", valueSource: `value "text"`, operation: "text", cause: errors.New("text failed"), wantCode: "E_BROWSER_READ"},
+		{name: "HTML timeout", valueSource: `value "html"`, operation: "html", cause: context.DeadlineExceeded, wantCode: "E_TIMEOUT"},
+		{name: "attribute", valueSource: `value "attr" name="href"`, operation: "attribute", cause: errors.New("attribute failed"), wantCode: "E_BROWSER_READ"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := compileTestSpec(t, `extractor "browser-read-failure" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "value" type="string" required=#true {
+    select "h1" match="one"
+    `+tt.valueSource+`
+  }
+}`)
+			extractor, diagnostics := compiler.CompileFile(path)
+			if diagnostics.HasErrors() {
+				t.Fatalf("compile diagnostics = %#v", diagnostics)
+			}
+
+			_, err := Execute(context.Background(), extractor, nil, Options{Browser: &readFailureBrowser{operation: tt.operation, err: tt.cause}})
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode || execution.Path != "output.value" || !errors.Is(err, tt.cause) {
+				t.Fatalf("error = %#v", err)
+			}
+		})
+	}
+}
+
+func TestExecuteBrowserRecoversQueryFailure(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-query-recovery" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "value" type="string" required=#false {
+    select "h1" match="one"
+    value "text"
+    on-error "warn"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+
+	cause := errors.New("query failed")
+	result, err := Execute(context.Background(), extractor, nil, Options{Browser: &readFailureBrowser{operation: "query", err: cause}})
+	if err != nil || result.Value["value"] != nil || !result.Partial || len(result.Warnings) != 2 || result.Warnings[0].Code != "W_ERROR_RECOVERED" || !strings.Contains(result.Warnings[0].Message, cause.Error()) {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+}
+
+func TestExecuteBrowserCollectionQueryFailure(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-collection-query" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  collection "rows" {
+    select ".rows"
+    field "value" type="string" required=#true { select ".value"; value "text" }
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+
+	cause := context.Canceled
+	_, err := Execute(context.Background(), extractor, nil, Options{Browser: &readFailureBrowser{operation: "query", err: cause}})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_BROWSER_QUERY" || execution.Path != "output.rows" || !errors.Is(err, cause) {
+		t.Fatalf("error = %#v", err)
 	}
 }
 
