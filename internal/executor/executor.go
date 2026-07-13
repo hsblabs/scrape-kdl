@@ -156,11 +156,24 @@ func preflightOutputStructure(root ir.OutputObject) error {
 					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid selection match mode %q", typed.Selection.Match), Path: typed.ID}
 				}
 				switch source := typed.ValueSource.(type) {
-				case ir.TextValueSource, ir.HTMLValueSource:
+				case ir.TextValueSource:
+					if source.Kind != "text" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid text value-source kind %q", source.Kind), Path: typed.ID}
+					}
+					if typed.Selection == nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
+					}
+				case ir.HTMLValueSource:
+					if source.Kind != "html" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid HTML value-source kind %q", source.Kind), Path: typed.ID}
+					}
 					if typed.Selection == nil {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
 					}
 				case ir.AttributeValueSource:
+					if source.Kind != "attribute" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid attribute value-source kind %q", source.Kind), Path: typed.ID}
+					}
 					if typed.Selection == nil {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
 					}
@@ -168,6 +181,9 @@ func preflightOutputStructure(root ir.OutputObject) error {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "attribute value source requires a non-empty name", Path: typed.ID}
 					}
 				case ir.JavaScriptValueSource:
+					if source.Kind != "javascript" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid JavaScript value-source kind %q", source.Kind), Path: typed.ID}
+					}
 					if !validRuntimeType(source.Returns) {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "JavaScript value source has an invalid returns type", Path: typed.ID}
 					}

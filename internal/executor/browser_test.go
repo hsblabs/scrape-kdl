@@ -394,6 +394,19 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			wantCode:        "E_IR_INVALID",
 		},
 		{
+			name: "invalid JavaScript source kind",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				field.Selection = nil
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "script", Scope: "current", Source: `() => "value"`, Returns: field.SuccessfulType}
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			allowJavaScript: true,
+			wantCode:        "E_IR_INVALID",
+		},
+		{
 			name: "non-positive JavaScript timeout",
 			mutate: func(extractor *ir.Extractor) {
 				collection := extractor.Output.Members[0].(ir.Collection)
@@ -563,6 +576,24 @@ func TestExecuteBrowserPreflightsMalformedWorkflowBeforeAcquire(t *testing.T) {
 				t.Fatalf("browser used before workflow preflight: acquired=%d released=%d calls=%v", browser.acquired, browser.released, browser.calls)
 			}
 		})
+	}
+}
+
+func TestPreflightBrowserWorkflowRejectsKindDiscriminators(t *testing.T) {
+	steps := []ir.WorkflowStep{
+		ir.WaitForStep{Kind: "wait", Selector: "#ready", State: "visible"},
+		ir.ClickStep{Kind: "tap", Selector: "#ready"},
+		ir.FillStep{Kind: "type", Selector: "#ready"},
+		ir.PressStep{Kind: "key", Selector: "#ready"},
+		ir.ScrollStep{Kind: "move"},
+		ir.NetworkIdleStep{Kind: "idle", IdleMS: 1},
+		ir.EvaluateJavaScriptStep{Kind: "script"},
+	}
+	for _, step := range steps {
+		var execution *ExecutionError
+		if err := preflightBrowserWorkflow([]ir.WorkflowStep{step}); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "source.workflow[0]" {
+			t.Fatalf("preflight error = %#v", err)
+		}
 	}
 }
 

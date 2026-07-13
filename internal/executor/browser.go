@@ -146,33 +146,54 @@ func preflightBrowserWorkflow(steps []ir.WorkflowStep) error {
 		isWait := false
 		switch typed := step.(type) {
 		case ir.WaitForStep:
+			if typed.Kind != "wait-for" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid wait-for step kind %q", typed.Kind), Path: path}
+			}
 			selector = typed.Selector
 			timeoutMS = typed.TimeoutMS
 			waitState = typed.State
 			hasSelector = true
 			isWait = true
 		case ir.ClickStep:
+			if typed.Kind != "click" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid click step kind %q", typed.Kind), Path: path}
+			}
 			selector = typed.Selector
 			timeoutMS = typed.TimeoutMS
 			hasSelector = true
 		case ir.FillStep:
+			if typed.Kind != "fill" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid fill step kind %q", typed.Kind), Path: path}
+			}
 			selector = typed.Selector
 			timeoutMS = typed.TimeoutMS
 			hasSelector = true
 		case ir.PressStep:
+			if typed.Kind != "press" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid press step kind %q", typed.Kind), Path: path}
+			}
 			selector = typed.Selector
 			timeoutMS = typed.TimeoutMS
 			hasSelector = true
 		case ir.ScrollStep:
+			if typed.Kind != "scroll" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid scroll step kind %q", typed.Kind), Path: path}
+			}
 			if math.IsNaN(typed.X) || math.IsInf(typed.X, 0) || math.IsNaN(typed.Y) || math.IsInf(typed.Y, 0) {
 				return &ExecutionError{Code: "E_IR_INVALID", Message: "scroll coordinates must be finite", Path: path}
 			}
 		case ir.NetworkIdleStep:
+			if typed.Kind != "wait-for-network-idle" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid network-idle step kind %q", typed.Kind), Path: path}
+			}
 			if typed.IdleMS < 1 {
 				return &ExecutionError{Code: "E_IR_INVALID", Message: "network idleMs must be positive", Path: path}
 			}
 			timeoutMS = typed.TimeoutMS
 		case ir.EvaluateJavaScriptStep:
+			if typed.Kind != "evaluate-js" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid evaluate-js step kind %q", typed.Kind), Path: path}
+			}
 			timeoutMS = typed.TimeoutMS
 		default:
 			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown workflow step %T", step), Path: path}

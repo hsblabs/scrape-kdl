@@ -893,6 +893,15 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
+		{
+			name: "invalid text source kind",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ValueSource = ir.TextValueSource{Kind: "content", RawType: typesys.Primitive("string")}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
 		{name: "required input", session: &Session{}, wantCode: "E_INPUT_REQUIRED"},
 		{name: "input type", inputs: map[string]any{"id": "wrong"}, session: &Session{}, wantCode: "E_INPUT_TYPE"},
 		{name: "required session", inputs: map[string]any{"id": int64(1)}, wantCode: "E_SESSION_REQUIRED"},
