@@ -1,6 +1,6 @@
 # Nightly improvement report
 
-Date: 2026-07-13  
+Date: 2026-07-13 through 2026-07-14
 Branch: `codex/nightly-quality`  
 Baseline: `e5363b7`
 
@@ -14,6 +14,14 @@ Baseline: `e5363b7`
 - Ensured temporary release staging directories are removed after successful and failed cross-builds, with regression tests for both paths.
 - Updated `VALIDATION.md` from the previous offline-only record to the current Go 1.26.5, real go-rod, Chromium E2E, fuzz, static analysis, vulnerability, and release-smoke results.
 - Recorded the security and compatibility decision required for cookie and sensitive-header CLI input in `docs/decision-needed.md` without changing the existing CLI contract.
+- Extended real Chromium coverage to current-scoped JavaScript, JavaScript failure propagation, and integer return normalization.
+- Added charset boundary tests for HTML meta declarations, the 4096-byte sniff limit, UTF-16 decoding, BOM precedence, malformed input, unsupported encodings, and fallback failures; corrected the runtime documentation to state that recognized BOMs override declared charsets.
+- Prevented already-canceled HTTP requests from reaching a custom transport, preserving the existing timeout/cancellation diagnostic mapping and cancellation cause. Added matching browser acquire, workflow, and lease-release coverage.
+- Added direct source-span, KDL AST helper, public `Program`, execution error, and cancellation contract tests.
+- Rejected malformed, non-finite, and overflowing `json.Number` JavaScript results.
+- Enforced the specified `evaluate-js returns=...` contract before transforms, including nullable and array values plus range-checked integer and float normalization for browser-provided JSON numbers.
+- Exercised successful and failing `validate`, `compile`, and offline `extract` command workflows, including file output. CLI statement coverage increased from 35.6% to 88.8%.
+- Recorded the compatibility decision required to change explicit subcommand help from exit status 2 to 0 without changing current behavior.
 
 ## Commits
 
@@ -29,6 +37,16 @@ Baseline: `e5363b7`
 - `b8209a7` fix: clean release stages on build failure
 - `21320fa` docs: refresh validation record
 - `7fb7a60` test: isolate all rod module metadata
+- `764f7ae` test: cover scoped rod JavaScript execution
+- `51a251b` test: cover HTML charset decoding boundaries
+- `6b8cfd5` fix: stop canceled HTTP fetches before transport
+- `99e951f` test: cover source spans and KDL AST helpers
+- `a05a6e4` test: cover public program API contracts
+- `dd0103c` docs: record subcommand help exit decision
+- `ea0eb0c` docs: clarify HTML BOM precedence
+- `465e9fa` fix: reject invalid JSON number results
+- `d3db672` fix: enforce JavaScript return declarations
+- `686c9b1` test: exercise CLI command workflows
 
 ## Verification results
 
@@ -45,11 +63,13 @@ Passed:
 - `govulncheck ./...` for the root and adapter modules, with no reachable vulnerabilities found;
 - `go mod verify` for both modules and `go mod tidy -diff` for the root module;
 - `actionlint` and `bash -n scripts/*.sh`;
-- Linux amd64 and macOS arm64 release archive builds and SHA-256 verification.
+- Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
+- focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
+- root statement coverage at 89.1%, CLI coverage at 88.8%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Two useful transient failures were resolved during the run: the E2E fixture's invalid JavaScript and concurrent rod verification corrupting temporary module metadata state.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, and a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first.
 
 ## Environment-limited verification
 
@@ -60,10 +80,11 @@ None. Two useful transient failures were resolved during the run: the E2E fixtur
 ## Decisions recorded
 
 - Secure CLI session input: decide whether and how to replace or deprecate direct `--cookie` and sensitive `--header` values with file or standard-input based secret handling. See `docs/decision-needed.md`.
+- Subcommand help exit status: decide when explicit `validate --help`, `compile --help`, and `extract --help` should change from status 2 to status 0. See `docs/decision-needed.md`.
 
 ## Next safe candidates
 
-- Extend Chromium E2E coverage to current-scoped JavaScript and JavaScript failure propagation.
-- Add focused charset sniffing tests for meta declarations and UTF-16 decoding.
-- Add parent-context cancellation tests for HTTP fetch and browser workflows.
-- Add direct tests for source span and KDL AST helper behavior where they improve diagnostic confidence.
+- Cover browser-mode missing-value and `on-error` recovery parity with the HTTP runtime.
+- Add focused browser collection cardinality and per-row recovery tests.
+- Exercise remaining numeric adapter representations in JavaScript return normalization without changing the language type contract.
+- Review compiler branches with low coverage for deterministic invalid-fixture cases already required by the normative specification.

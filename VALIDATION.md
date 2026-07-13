@@ -1,6 +1,6 @@
 # Validation
 
-Validated on 2026-07-13 with Go 1.26.5 on macOS arm64.
+Validated on 2026-07-14 with Go 1.26.5 on macOS arm64.
 
 ## Integrated release check
 
@@ -76,7 +76,7 @@ The environment resolved `github.com/go-rod/rod v0.116.2` and provided a downloa
 
 - `make test-rod-contract`;
 - `make test-rod` against the real dependency;
-- `make test-rod-e2e` with Chromium, including workflow interaction, document-scoped JavaScript, live-DOM reads, and collection extraction.
+- `make test-rod-e2e` with Chromium, including workflow interaction, document- and current-scoped JavaScript, JavaScript failure propagation, integer result normalization, live-DOM reads, and collection extraction.
 
 The real-dependency and browser workflows remain the CI gates for Linux before the first public tag.
 
