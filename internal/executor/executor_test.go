@@ -902,6 +902,17 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
+		{
+			name: "invalid DOM source raw type",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ValueSource = ir.TextValueSource{Kind: "text", RawType: typesys.Primitive("bool")}
+				field.SuccessfulType = typesys.Primitive("bool")
+				field.EffectiveType = typesys.Primitive("bool")
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
 		{name: "required input", session: &Session{}, wantCode: "E_INPUT_REQUIRED"},
 		{name: "input type", inputs: map[string]any{"id": "wrong"}, session: &Session{}, wantCode: "E_INPUT_TYPE"},
 		{name: "required session", inputs: map[string]any{"id": int64(1)}, wantCode: "E_SESSION_REQUIRED"},
@@ -946,6 +957,38 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			}
 			if transportCalls != 0 {
 				t.Fatalf("transport called %d times before %s", transportCalls, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestPreflightOutputStructureValidatesDOMRawTypes(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	boolType := typesys.Primitive("bool")
+	tests := []struct {
+		name    string
+		valid   ir.ValueSource
+		invalid ir.ValueSource
+	}{
+		{name: "text", valid: ir.TextValueSource{Kind: "text", RawType: stringType}, invalid: ir.TextValueSource{Kind: "text", RawType: boolType}},
+		{name: "HTML", valid: ir.HTMLValueSource{Kind: "html", RawType: stringType}, invalid: ir.HTMLValueSource{Kind: "html", RawType: boolType}},
+		{name: "attribute", valid: ir.AttributeValueSource{Kind: "attribute", Name: "href", RawType: stringType}, invalid: ir.AttributeValueSource{Kind: "attribute", Name: "href", RawType: boolType}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := func(source ir.ValueSource) ir.OutputObject {
+				return ir.OutputObject{Kind: "object", Members: []ir.OutputMember{ir.Field{
+					Kind: "field", ID: "output.value", Name: "value",
+					Selection:   &ir.FieldSelection{Selector: "#value", Match: "one"},
+					ValueSource: source, SuccessfulType: stringType, EffectiveType: stringType, OnError: "fail",
+				}}}
+			}
+			if err := preflightOutputStructure(root(tt.valid)); err != nil {
+				t.Fatalf("valid raw type error = %v", err)
+			}
+			var execution *ExecutionError
+			if err := preflightOutputStructure(root(tt.invalid)); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "output.value" {
+				t.Fatalf("invalid raw type error = %#v", err)
 			}
 		})
 	}

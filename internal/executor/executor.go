@@ -160,6 +160,9 @@ func preflightOutputStructure(root ir.OutputObject) error {
 					if source.Kind != "text" {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid text value-source kind %q", source.Kind), Path: typed.ID}
 					}
+					if !typesys.Equal(source.RawType, typesys.Primitive("string")) {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "text value-source rawType must be string", Path: typed.ID}
+					}
 					if typed.Selection == nil {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
 					}
@@ -167,12 +170,18 @@ func preflightOutputStructure(root ir.OutputObject) error {
 					if source.Kind != "html" {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid HTML value-source kind %q", source.Kind), Path: typed.ID}
 					}
+					if !typesys.Equal(source.RawType, typesys.Primitive("string")) {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "HTML value-source rawType must be string", Path: typed.ID}
+					}
 					if typed.Selection == nil {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
 					}
 				case ir.AttributeValueSource:
 					if source.Kind != "attribute" {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid attribute value-source kind %q", source.Kind), Path: typed.ID}
+					}
+					if !typesys.Equal(source.RawType, typesys.Primitive("string")) {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "attribute value-source rawType must be string", Path: typed.ID}
 					}
 					if typed.Selection == nil {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
