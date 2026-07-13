@@ -63,6 +63,9 @@ Baseline: `e5363b7`
 - Recorded the compatibility decision required to define a portable upper bound for `timeout-ms`; no overflow-limit behavior was changed implicitly.
 - Corrected HTML normalization for mixed-case start/end tag names and cascaded omitted table cell, row, and section closures across `thead`, `tbody`, and `tfoot`. Added raw-text closing-boundary and table-tree regressions plus fuzz seeds; a 20-second HTML fuzz run completed 28,788 executions without a panic. DOM statement coverage increased from 77.4% to 78.2%.
 - Exercised the normative portable selector profile across every attribute operator, empty/child/type-position pseudo-classes, positive and negative `An+B` expressions, non-matches, and selector-list de-duplication in document order. DOM statement coverage increased to 85.8%.
+- Added direct DOM node boundary coverage for nil receivers, non-element attributes, recursive text, element-only child/sibling traversal, and the distinction between empty, zero-length, whitespace, and element children. DOM statement coverage increased to 87.1%.
+- Covered missing and malformed JSON for required `coalesce` and numeric assertion arguments, including preservation of decoding causes without changing transform diagnostics. Executor statement coverage increased to 82.3%.
+- Recorded the diagnostic-contract decision required for canceling offline `ExecuteHTML` parsing and extraction; no existing operation-specific code was broadened implicitly.
 
 ## Commits
 
@@ -132,6 +135,9 @@ Baseline: `e5363b7`
 - `3734988` docs: record workflow timeout limit decision
 - `e523572` fix: recover mixed-case and table HTML
 - `51591fc` test: cover portable selector profile
+- `55d9a41` test: cover DOM node boundaries
+- `43d513f` test: cover required builtin arguments
+- `e85deee` docs: record offline cancellation decision
 
 ## Verification results
 
@@ -150,7 +156,7 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 85.8%, executor coverage at 82.0%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 87.1%, executor coverage at 82.3%, and source package coverage at 100%.
 
 ## Unresolved failures
 
@@ -170,9 +176,9 @@ None. Useful transient failures resolved during the run included the E2E fixture
 - External transform result-type diagnostics: choose the public diagnostic used when a host callback returns a value incompatible with its declared output type. See `docs/decision-needed.md`.
 - Ambient state under `session policy="none"`: define whether only explicit `Session` input is ignored or whether host-owned cookie jars and browser contexts must also be stateless. See `docs/decision-needed.md`.
 - Workflow timeout upper bound: define the portable maximum before Go `time.Duration` conversion and the behavior for larger positive values. See `docs/decision-needed.md`.
+- Offline `ExecuteHTML` cancellation: define the cancellation boundary and a structured diagnostic that is not tied to HTTP, browser, or transform operations. See `docs/decision-needed.md`.
 
 ## Next safe candidates
 
-- Add direct DOM node helper tests for nil receivers, element filtering, sibling traversal, and `:empty` text boundaries.
-- Cover malformed built-in argument wrappers that retain an underlying JSON decoding cause without changing transform diagnostics.
-- Add direct `ExecuteHTML` cancellation tests only after identifying an existing structured diagnostic whose meaning already covers offline cancellation; otherwise record a diagnostic-contract decision.
+- Extend optional-end-tag regressions for lists, descriptions, ruby annotations, and select options within the parser's documented normalization scope.
+- Cover URL built-in malformed-input and missing-result boundaries while preserving the normative return types.
