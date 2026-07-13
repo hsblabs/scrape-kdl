@@ -291,6 +291,18 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			},
 			wantCode: "E_TRANSFORM",
 		},
+		{
+			name: "duplicate nested output name",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				first := collection.Row.Members[0].(ir.Field)
+				second := first
+				second.ID = collection.ID + "[].other"
+				collection.Row.Members = append(collection.Row.Members, second)
+				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_IR_INVALID",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

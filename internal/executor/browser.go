@@ -82,6 +82,9 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	if err := transforms.preflight(); err != nil {
 		return nil, err
 	}
+	if err := preflightOutputIdentities(extractor.Output); err != nil {
+		return nil, err
+	}
 	if err := preflightBrowserWorkflow(extractor.Source.Workflow); err != nil {
 		return nil, err
 	}

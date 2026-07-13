@@ -667,6 +667,26 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
+		{
+			name: "duplicate output name",
+			mutate: func(extractor *ir.Extractor) {
+				first := extractor.Output.Members[0].(ir.Field)
+				second := first
+				second.ID = "output.other"
+				extractor.Output.Members = append(extractor.Output.Members, second)
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "duplicate output ID",
+			mutate: func(extractor *ir.Extractor) {
+				first := extractor.Output.Members[0].(ir.Field)
+				second := first
+				second.Name = "other"
+				extractor.Output.Members = append(extractor.Output.Members, second)
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
 		{name: "required input", session: &Session{}, wantCode: "E_INPUT_REQUIRED"},
 		{name: "input type", inputs: map[string]any{"id": "wrong"}, session: &Session{}, wantCode: "E_INPUT_TYPE"},
 		{name: "required session", inputs: map[string]any{"id": int64(1)}, wantCode: "E_SESSION_REQUIRED"},

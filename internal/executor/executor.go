@@ -89,6 +89,9 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 	if err := transforms.preflight(); err != nil {
 		return nil, err
 	}
+	if err := preflightOutputIdentities(extractor.Output); err != nil {
+		return nil, err
+	}
 	result := &engine{
 		ctx: ctx, extractor: extractor, options: options, transforms: transforms,
 		selectors: map[string]dom.Selector{},
@@ -97,6 +100,41 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 		return nil, err
 	}
 	return result, nil
+}
+
+func preflightOutputIdentities(root ir.OutputObject) error {
+	seenIDs := map[string]struct{}{}
+	var walk func(ir.OutputObject, string) error
+	walk = func(object ir.OutputObject, path string) error {
+		seenNames := map[string]struct{}{}
+		for _, member := range object.Members {
+			var name, id string
+			var row *ir.OutputObject
+			switch typed := member.(type) {
+			case ir.Field:
+				name, id = typed.Name, typed.ID
+			case ir.Collection:
+				name, id, row = typed.Name, typed.ID, &typed.Row
+			default:
+				continue
+			}
+			if _, exists := seenNames[name]; exists {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate output member name %q", name), Path: path}
+			}
+			seenNames[name] = struct{}{}
+			if _, exists := seenIDs[id]; exists {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate output member ID %q", id), Path: path}
+			}
+			seenIDs[id] = struct{}{}
+			if row != nil {
+				if err := walk(*row, id+"[]"); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return walk(root, "output")
 }
 
 func (e *engine) preflightOutput(object ir.OutputObject) error {
