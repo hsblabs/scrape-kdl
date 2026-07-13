@@ -172,6 +172,21 @@ func optionalIntArgument(arguments map[string]json.RawMessage, name string, fall
 	return parsed, nil
 }
 
+func optionalNonNegativeIntArgument(arguments map[string]json.RawMessage, name string, fallback int) (int, error) {
+	value, ok, err := namedArgument(arguments, name)
+	if err != nil || !ok {
+		return fallback, err
+	}
+	parsed, err := literalInt(value)
+	if err != nil {
+		return 0, fmt.Errorf("argument %q: %w", name, err)
+	}
+	if parsed < 0 {
+		return 0, fmt.Errorf("argument %q must be non-negative", name)
+	}
+	return parsed, nil
+}
+
 func optionalBoolArgument(arguments map[string]json.RawMessage, name string, fallback bool) (bool, error) {
 	value, ok, err := namedArgument(arguments, name)
 	if err != nil || !ok {
@@ -228,7 +243,7 @@ func builtinReplace(input any, arguments map[string]json.RawMessage) (any, error
 	if err != nil {
 		return nil, err
 	}
-	count, err := optionalIntArgument(arguments, "count", -1)
+	count, err := optionalNonNegativeIntArgument(arguments, "count", -1)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +266,20 @@ func compileRuntimeRegex(arguments map[string]json.RawMessage) (*regexp.Regexp, 
 		}
 	}
 	if flags != "" {
+		seen := map[rune]bool{}
+		for _, flag := range flags {
+			if flag != 'i' && flag != 'm' && flag != 's' {
+				return nil, fmt.Errorf("unsupported regex flag %q", flag)
+			}
+			if seen[flag] {
+				return nil, fmt.Errorf("duplicate regex flag %q", flag)
+			}
+			seen[flag] = true
+		}
 		pattern = "(?" + flags + ")" + pattern
+	}
+	if strings.Contains(pattern, "(?P<") || strings.Contains(pattern, "(?<") {
+		return nil, fmt.Errorf("named capture groups are outside the portable RE2 profile")
 	}
 	compiled, err := regexp.Compile(pattern)
 	if err != nil {
@@ -273,7 +301,7 @@ func builtinRegexReplace(input any, arguments map[string]json.RawMessage) (any, 
 	if err != nil {
 		return nil, err
 	}
-	count, err := optionalIntArgument(arguments, "count", -1)
+	count, err := optionalNonNegativeIntArgument(arguments, "count", -1)
 	if err != nil {
 		return nil, err
 	}
@@ -314,8 +342,11 @@ func builtinRegexCapture(input any, arguments map[string]json.RawMessage) (any, 
 	if group < 0 {
 		return nil, fmt.Errorf("argument %q must be non-negative", "group")
 	}
+	if group > compiled.NumSubexp() {
+		return nil, fmt.Errorf("capture group %d exceeds pattern capture count %d", group, compiled.NumSubexp())
+	}
 	indexes := compiled.FindStringSubmatchIndex(value)
-	if len(indexes) == 0 || group*2+1 >= len(indexes) || indexes[group*2] < 0 {
+	if len(indexes) == 0 || indexes[group*2] < 0 {
 		return nil, nil
 	}
 	return value[indexes[group*2]:indexes[group*2+1]], nil

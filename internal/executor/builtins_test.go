@@ -270,18 +270,21 @@ func TestBuiltinBooleanParsingConfiguration(t *testing.T) {
 func TestBuiltinRegexCaptureGroupBounds(t *testing.T) {
 	tests := []struct {
 		name    string
+		input   string
+		pattern string
 		group   int
 		want    any
 		wantErr bool
 	}{
-		{name: "whole match", group: 0, want: "a"},
-		{name: "capture", group: 1, want: "a"},
-		{name: "missing capture", group: 2},
-		{name: "negative", group: -1, wantErr: true},
+		{name: "whole match", input: "a", pattern: "(a)", group: 0, want: "a"},
+		{name: "capture", input: "a", pattern: "(a)", group: 1, want: "a"},
+		{name: "capture did not participate", input: "b", pattern: "(a)?b", group: 1},
+		{name: "group exceeds pattern", input: "a", pattern: "(a)", group: 2, wantErr: true},
+		{name: "negative", input: "a", pattern: "(a)", group: -1, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyBuiltinRuntime("regex-capture", "a", testCall(map[string]any{"pattern": "(a)", "group": tt.group}))
+			got, err := applyBuiltinRuntime("regex-capture", tt.input, testCall(map[string]any{"pattern": tt.pattern, "group": tt.group}))
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("regex-capture = %#v, want error", got)
@@ -290,6 +293,55 @@ func TestBuiltinRegexCaptureGroupBounds(t *testing.T) {
 			}
 			if err != nil || got != tt.want {
 				t.Fatalf("regex-capture = %#v, %v; want %#v", got, err, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuiltinReplacementAndRegexBoundaries(t *testing.T) {
+	tests := []struct {
+		name    string
+		builtin string
+		input   string
+		call    ir.TransformCall
+		want    any
+		wantErr bool
+	}{
+		{name: "literal all", builtin: "replace", input: "a-a-a", call: testCall(map[string]any{"old": "a", "new": "x"}), want: "x-x-x"},
+		{name: "literal zero", builtin: "replace", input: "a-a", call: testCall(map[string]any{"old": "a", "new": "x", "count": 0}), want: "a-a"},
+		{name: "literal empty unicode", builtin: "replace", input: "é", call: testCall(map[string]any{"old": "", "new": "x", "count": 2}), want: "xéx"},
+		{name: "literal negative count", builtin: "replace", input: "a", call: testCall(map[string]any{"old": "a", "new": "x", "count": -1}), wantErr: true},
+		{name: "regex flags", builtin: "regex-replace", input: "A\nb", call: testCall(map[string]any{"pattern": "^a.b$", "replacement": "match", "flags": "ims"}), want: "match"},
+		{name: "regex captures and dollar", builtin: "regex-replace", input: "a1", call: testCall(map[string]any{"pattern": "([a-z])([0-9])", "replacement": "$2$1$$"}), want: "1a$"},
+		{name: "regex zero", builtin: "regex-replace", input: "aaa", call: testCall(map[string]any{"pattern": "a", "replacement": "x", "count": 0}), want: "aaa"},
+		{name: "regex limited empty matches", builtin: "regex-replace", input: "ab", call: testCall(map[string]any{"pattern": "", "replacement": "x", "count": 2}), want: "xaxb"},
+		{name: "regex negative count", builtin: "regex-replace", input: "a", call: testCall(map[string]any{"pattern": "a", "replacement": "x", "count": -1}), wantErr: true},
+		{name: "regex duplicate flag", builtin: "regex-replace", input: "a", call: testCall(map[string]any{"pattern": "a", "replacement": "x", "flags": "ii"}), wantErr: true},
+		{name: "regex unsupported flag", builtin: "regex-replace", input: "a", call: testCall(map[string]any{"pattern": "a", "replacement": "x", "flags": "x"}), wantErr: true},
+		{name: "regex named capture", builtin: "regex-capture", input: "a", call: testCall(map[string]any{"pattern": "(?P<value>a)"}), wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := applyBuiltinRuntime(tt.builtin, tt.input, tt.call)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("result = %#v, want error", got)
+				}
+				return
+			}
+			if err != nil || !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("result = %#v, error = %v, want %#v", got, err, tt.want)
+			}
+		})
+	}
+
+	for _, builtin := range []string{"replace", "regex-replace"} {
+		t.Run(builtin+" malformed count", func(t *testing.T) {
+			call := testCall(map[string]any{"old": "a", "new": "x", "pattern": "a", "replacement": "x"})
+			call.NamedArguments = append(call.NamedArguments, ir.NamedArgument{Name: "count", Value: json.RawMessage(`not-json`)})
+			_, err := applyBuiltinRuntime(builtin, "a", call)
+			if err == nil || !strings.Contains(err.Error(), "decode IR literal") {
+				t.Fatalf("malformed count error = %#v", err)
 			}
 		})
 	}
