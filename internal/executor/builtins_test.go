@@ -158,6 +158,100 @@ func TestBuiltinToStringNumericBoundaries(t *testing.T) {
 	}
 }
 
+func TestBuiltinNumericParsingBoundaries(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		input string
+		call  ir.TransformCall
+		want  any
+	}{
+		{name: "signed plus", input: "+42", call: testCall(map[string]any{"as": "int"}), want: int64(42)},
+		{name: "signed minimum", input: "-128", call: testCall(map[string]any{"as": "i8"}), want: int8(-128)},
+		{name: "unsigned maximum", input: "18446744073709551615", call: testCall(map[string]any{"as": "u64"}), want: uint64(math.MaxUint64)},
+		{name: "radix", input: "ff", call: testCall(map[string]any{"as": "u16", "radix": 16}), want: uint16(255)},
+	} {
+		t.Run("parse-int "+tt.name, func(t *testing.T) {
+			got, err := applyBuiltinRuntime("parse-int", tt.input, tt.call)
+			if err != nil || !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("parse-int = %#v, %v", got, err)
+			}
+		})
+	}
+	for _, tt := range []struct {
+		name  string
+		input string
+		call  ir.TransformCall
+	}{
+		{name: "empty", input: "", call: testCall(map[string]any{"as": "int"})},
+		{name: "underscore", input: "1_000", call: testCall(map[string]any{"as": "int"})},
+		{name: "negative unsigned", input: "-1", call: testCall(map[string]any{"as": "u8"})},
+		{name: "overflow", input: "128", call: testCall(map[string]any{"as": "i8"})},
+		{name: "invalid radix", input: "1", call: testCall(map[string]any{"as": "int", "radix": 1})},
+		{name: "unsupported target", input: "1", call: testCall(map[string]any{"as": "i128"})},
+		{name: "whitespace", input: " 1", call: testCall(map[string]any{"as": "int"})},
+	} {
+		t.Run("parse-int "+tt.name, func(t *testing.T) {
+			if _, err := applyBuiltinRuntime("parse-int", tt.input, tt.call); err == nil {
+				t.Fatal("parse-int succeeded")
+			}
+		})
+	}
+
+	for _, tt := range []struct {
+		name  string
+		input string
+		call  ir.TransformCall
+		want  any
+	}{
+		{name: "exponent", input: "1.25e2", call: testCall(map[string]any{"as": "f64"}), want: float64(125)},
+		{name: "float alias", input: "-0.5", call: testCall(map[string]any{"as": "float"}), want: float64(-0.5)},
+		{name: "f32", input: "1.25", call: testCall(map[string]any{"as": "f32"}), want: float32(1.25)},
+	} {
+		t.Run("parse-float "+tt.name, func(t *testing.T) {
+			got, err := applyBuiltinRuntime("parse-float", tt.input, tt.call)
+			if err != nil || !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("parse-float = %#v, %v", got, err)
+			}
+		})
+	}
+	for _, tt := range []struct {
+		name  string
+		input string
+		as    string
+	}{
+		{name: "whitespace", input: " 1", as: "f64"},
+		{name: "hex", input: "0x1p2", as: "f64"},
+		{name: "infinity", input: "Inf", as: "f64"},
+		{name: "overflow", input: "1e1000", as: "f64"},
+		{name: "trailing", input: "1x", as: "f64"},
+		{name: "unsupported target", input: "1", as: "f16"},
+	} {
+		t.Run("parse-float "+tt.name, func(t *testing.T) {
+			if _, err := applyBuiltinRuntime("parse-float", tt.input, testCall(map[string]any{"as": tt.as})); err == nil {
+				t.Fatal("parse-float succeeded")
+			}
+		})
+	}
+}
+
+func TestBuiltinBooleanParsingConfiguration(t *testing.T) {
+	call := testCall(map[string]any{"true": "yes", "false": "no"})
+	for input, want := range map[string]bool{"YES": true, "no": false} {
+		got, err := applyBuiltinRuntime("parse-bool", input, call)
+		if err != nil || got != want {
+			t.Fatalf("parse-bool(%q) = %#v, %v", input, got, err)
+		}
+	}
+	caseSensitive := testCall(map[string]any{"true": "yes", "false": "no", "case-sensitive": true})
+	if _, err := applyBuiltinRuntime("parse-bool", "YES", caseSensitive); err == nil {
+		t.Fatal("case-sensitive parse-bool succeeded")
+	}
+	invalidFlag := testCall(map[string]any{"case-sensitive": "true"})
+	if _, err := applyBuiltinRuntime("parse-bool", "true", invalidFlag); err == nil {
+		t.Fatal("parse-bool accepted non-boolean case-sensitive")
+	}
+}
+
 func TestBuiltinFailures(t *testing.T) {
 	tests := []struct {
 		name  string
