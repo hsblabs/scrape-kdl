@@ -39,6 +39,9 @@ Baseline: `e5363b7`
 - Made external-transform preflight diagnostics deterministic by preserving declaration order instead of iterating a map. Added repeated-order, partial-registry, nested-recursion, call-stack cleanup, callback-cause, and malformed-IR tests.
 - Documented and tested session header and cookie propagation across HTTP redirects. Sensitive headers remain on the same domain and its subdomains under Go's default redirect policy, are not forwarded to a different domain, and custom non-sensitive headers continue to follow redirects.
 - Re-ran core, race, real go-rod, Chromium E2E, and release gates concurrently after the runtime safety changes; executor statement coverage increased to 75.8%.
+- Added an HTTP preflight boundary matrix proving that missing external transforms, invalid selectors, browser-only value sources, missing or mistyped inputs, required sessions, and invalid expanded URLs all fail before the transport is called, with a successful request as the control.
+- Hardened malformed built-in arguments: negative `regex-capture` groups now return an error instead of indexing a negative slice offset, and non-string `parse-bool` `true`/`false` values no longer collapse to empty strings. Removed the now-unnecessary `unicode/utf8` sentinel.
+- Re-ran core, race, real go-rod, Chromium E2E, and release gates concurrently after the HTTP preflight and built-in hardening changes; executor statement coverage increased to 76.6%.
 
 ## Commits
 
@@ -82,6 +85,8 @@ Baseline: `e5363b7`
 - `ec3293c` test: cover browser preflight ordering
 - `3410810` fix: stabilize transform preflight order
 - `ae0c0d8` test: cover session redirect boundaries
+- `6a511aa` test: enforce HTTP preflight boundary
+- `1eab03f` fix: harden malformed builtin arguments
 
 ## Verification results
 
@@ -100,11 +105,11 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 75.8%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 76.6%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, and an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, and a malformed negative `regex-capture` group that reached a negative slice index.
 
 ## Environment-limited verification
 
@@ -122,6 +127,6 @@ None. Useful transient failures resolved during the run included the E2E fixture
 ## Next safe candidates
 
 - Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
-- Exercise HTTP preflight ordering for malformed selectors, missing external transforms, and invalid template input before any transport activity.
-- Audit browser lease cleanup across adapter panics is out of scope, but additional ordinary error and cancellation interleavings can be tested without changing the public adapter contract.
+- Extend browser lease cleanup tests across ordinary adapter errors and cancellation interleavings without changing the public adapter contract.
 - Add deterministic tests for cookie-jar scope and a custom `CheckRedirect` that removes sensitive headers, preserving standard `net/http` ownership of redirect behavior.
+- Add a bounded fuzz target for malformed built-in transform calls to find panic-only failures without changing valid KDL semantics.
