@@ -89,7 +89,7 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 	if err := transforms.preflight(); err != nil {
 		return nil, err
 	}
-	if err := preflightOutputIdentities(extractor.Output); err != nil {
+	if err := preflightOutputStructure(extractor.Output); err != nil {
 		return nil, err
 	}
 	result := &engine{
@@ -102,7 +102,7 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 	return result, nil
 }
 
-func preflightOutputIdentities(root ir.OutputObject) error {
+func preflightOutputStructure(root ir.OutputObject) error {
 	seenIDs := map[string]struct{}{}
 	var walk func(ir.OutputObject, string) error
 	walk = func(object ir.OutputObject, path string) error {
@@ -115,6 +115,16 @@ func preflightOutputIdentities(root ir.OutputObject) error {
 				name, id = typed.Name, typed.ID
 			case ir.Collection:
 				name, id, row = typed.Name, typed.ID, &typed.Row
+				if typed.MinItems < 0 {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "collection minItems must be non-negative", Path: typed.ID}
+				}
+				effectiveMinimum := typed.MinItems
+				if typed.Required && effectiveMinimum < 1 {
+					effectiveMinimum = 1
+				}
+				if typed.MaxItems != nil && *typed.MaxItems < effectiveMinimum {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("collection maxItems %d is less than effective minItems %d", *typed.MaxItems, effectiveMinimum), Path: typed.ID}
+				}
 			default:
 				continue
 			}

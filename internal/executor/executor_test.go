@@ -687,6 +687,18 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
+		{
+			name: "negative collection minimum",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ID, field.Name = "output.rows[].title", "title"
+				extractor.Output.Members = append(extractor.Output.Members, ir.Collection{
+					Kind: "collection", ID: "output.rows", Name: "rows", Selector: "h1", MinItems: -1,
+					OnRowError: "fail", Row: ir.OutputObject{Kind: "object", Members: []ir.OutputMember{field}},
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
 		{name: "required input", session: &Session{}, wantCode: "E_INPUT_REQUIRED"},
 		{name: "input type", inputs: map[string]any{"id": "wrong"}, session: &Session{}, wantCode: "E_INPUT_TYPE"},
 		{name: "required session", inputs: map[string]any{"id": int64(1)}, wantCode: "E_SESSION_REQUIRED"},

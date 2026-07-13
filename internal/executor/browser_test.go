@@ -303,6 +303,18 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			},
 			wantCode: "E_IR_INVALID",
 		},
+		{
+			name: "collection maximum below required minimum",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				maximum := 0
+				collection.Required = true
+				collection.MinItems = 0
+				collection.MaxItems = &maximum
+				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_IR_INVALID",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
