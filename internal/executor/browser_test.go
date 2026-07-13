@@ -208,6 +208,61 @@ type readFailureBrowser struct {
 	err       error
 }
 
+type workflowFailureBrowser struct {
+	fakeBrowser
+	operation string
+	cause     error
+}
+
+func (f *workflowFailureBrowser) WaitFor(ctx context.Context, selector, state string, timeout time.Duration) error {
+	if f.operation == "wait-for" {
+		return f.cause
+	}
+	return f.fakeBrowser.WaitFor(ctx, selector, state, timeout)
+}
+
+func (f *workflowFailureBrowser) Click(ctx context.Context, selector string, timeout time.Duration) error {
+	if f.operation == "click" {
+		return f.cause
+	}
+	return f.fakeBrowser.Click(ctx, selector, timeout)
+}
+
+func (f *workflowFailureBrowser) Fill(ctx context.Context, selector, value string, timeout time.Duration) error {
+	if f.operation == "fill" {
+		return f.cause
+	}
+	return f.fakeBrowser.Fill(ctx, selector, value, timeout)
+}
+
+func (f *workflowFailureBrowser) Press(ctx context.Context, selector, key string, timeout time.Duration) error {
+	if f.operation == "press" {
+		return f.cause
+	}
+	return f.fakeBrowser.Press(ctx, selector, key, timeout)
+}
+
+func (f *workflowFailureBrowser) Scroll(ctx context.Context, x, y float64) error {
+	if f.operation == "scroll" {
+		return f.cause
+	}
+	return f.fakeBrowser.Scroll(ctx, x, y)
+}
+
+func (f *workflowFailureBrowser) WaitForNetworkIdle(ctx context.Context, idle, timeout time.Duration) error {
+	if f.operation == "network-idle" {
+		return f.cause
+	}
+	return f.fakeBrowser.WaitForNetworkIdle(ctx, idle, timeout)
+}
+
+func (f *workflowFailureBrowser) Evaluate(ctx context.Context, source string, options BrowserEvaluateOptions) (any, error) {
+	if f.operation == "evaluate-js" {
+		return nil, f.cause
+	}
+	return f.fakeBrowser.Evaluate(ctx, source, options)
+}
+
 func (f *readFailureBrowser) QueryAll(ctx context.Context, scope BrowserElement, selector string) ([]BrowserElement, error) {
 	if f.operation == "query" {
 		return nil, f.err
@@ -667,6 +722,87 @@ func TestExecuteBrowserWorkflowTimeoutUsesStableCode(t *testing.T) {
 	var execution *ExecutionError
 	if !errors.As(err, &execution) || execution.Code != "E_TIMEOUT" {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestExecuteBrowserWorkflowOperations(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-workflow" version=1 {
+  source "html" {
+    fetch mode="browser" url="https://example.invalid/"
+    workflow {
+      wait-for "#ready" state="attached" timeout-ms=100
+      click "button" timeout-ms=200
+      fill "input" "value" timeout-ms=300
+      press "input" "Enter" timeout-ms=400
+      scroll 1.5 -2
+      wait-for-network-idle idle-ms=250 timeout-ms=500
+      evaluate-js "() => null" timeout-ms=600
+    }
+  }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	browser := &workflowFailureBrowser{}
+	result, err := Execute(context.Background(), extractor, nil, Options{Browser: browser, AllowJavaScript: true})
+	if err != nil || result.Value["title"] != "Title" {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	wantCalls := []string{
+		"navigate:https://example.invalid/", "wait:#ready:attached", "click:button", "fill:input:value",
+		"press:input:Enter", "scroll", "idle", "js",
+	}
+	if !reflect.DeepEqual(browser.calls, wantCalls) {
+		t.Fatalf("calls = %v, want %v", browser.calls, wantCalls)
+	}
+}
+
+func TestExecuteBrowserWorkflowOperationFailures(t *testing.T) {
+	operations := []struct {
+		name string
+		step string
+	}{
+		{name: "wait-for", step: `wait-for "#ready"`},
+		{name: "click", step: `click "button"`},
+		{name: "fill", step: `fill "input" "value"`},
+		{name: "press", step: `press "input" "Enter"`},
+		{name: "scroll", step: `scroll 1.5 -2`},
+		{name: "network-idle", step: `wait-for-network-idle idle-ms=250`},
+		{name: "evaluate-js", step: `evaluate-js "() => null"`},
+	}
+	causes := []struct {
+		name     string
+		cause    error
+		wantCode string
+	}{
+		{name: "failure", cause: errors.New("workflow failed"), wantCode: "E_BROWSER_WORKFLOW"},
+		{name: "timeout", cause: context.DeadlineExceeded, wantCode: "E_TIMEOUT"},
+		{name: "cancellation", cause: context.Canceled, wantCode: "E_BROWSER_WORKFLOW"},
+	}
+	for _, operation := range operations {
+		for _, failure := range causes {
+			t.Run(operation.name+"/"+failure.name, func(t *testing.T) {
+				path := compileTestSpec(t, `extractor "browser-workflow-failure" version=1 {
+  source "html" {
+    fetch mode="browser" url="https://example.invalid/"
+    workflow { `+operation.step+` }
+  }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+				extractor, diagnostics := compiler.CompileFile(path)
+				if diagnostics.HasErrors() {
+					t.Fatalf("compile diagnostics = %#v", diagnostics)
+				}
+				browser := &workflowFailureBrowser{operation: operation.name, cause: failure.cause}
+				_, err := Execute(context.Background(), extractor, nil, Options{Browser: browser, AllowJavaScript: true})
+				var execution *ExecutionError
+				if !errors.As(err, &execution) || execution.Code != failure.wantCode || execution.Path != "source.workflow[0]" || !errors.Is(err, failure.cause) {
+					t.Fatalf("error = %#v", err)
+				}
+			})
+		}
 	}
 }
 
