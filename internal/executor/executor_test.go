@@ -561,6 +561,18 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_EXTERNAL_TRANSFORM_MISSING",
 		},
 		{
+			name: "non-scalar match transform",
+			mutate: func(extractor *ir.Extractor) {
+				stringType := typesys.Primitive("string")
+				extractor.Transforms = append(extractor.Transforms, ir.MatchTransform{
+					Kind:          "match",
+					TransformBase: ir.TransformBase{SymbolID: "match", Name: "match", Input: typesys.Array(stringType), Output: stringType},
+					Default:       json.RawMessage(`"fallback"`),
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "invalid selector",
 			mutate: func(extractor *ir.Extractor) {
 				field := extractor.Output.Members[0].(ir.Field)

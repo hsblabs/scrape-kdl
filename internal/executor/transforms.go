@@ -107,27 +107,40 @@ func preflightTransformTypes(input, output typesys.Type, path string) error {
 }
 
 func preflightMatchTransform(match ir.MatchTransform) error {
-	validate := func(raw json.RawMessage, expected typesys.Type, description string) error {
+	if !typesys.IsScalar(match.Input) || !typesys.IsScalar(match.Output) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: "match transform input and output must be scalar or nullable scalar", Path: match.Name}
+	}
+	validate := func(raw json.RawMessage, expected typesys.Type, description string) (any, error) {
 		value, err := decodeJSON(raw)
 		if err != nil {
 			cause := fmt.Errorf("invalid %s: %w", description, err)
-			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: match.Name, Cause: cause}
+			return nil, &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: match.Name, Cause: cause}
 		}
-		if _, ok := normalizeJSONResult(value, expected); !ok {
+		normalized, ok := normalizeJSONResult(value, expected)
+		if !ok {
 			cause := fmt.Errorf("%s of type %T is not assignable to %s", description, value, expected.String())
-			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: match.Name, Cause: cause}
+			return nil, &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: match.Name, Cause: cause}
 		}
-		return nil
+		return normalized, nil
 	}
+	seen := make([]any, 0, len(match.Cases))
 	for index, item := range match.Cases {
-		if err := validate(item.When, match.Input, fmt.Sprintf("match case %d input", index)); err != nil {
+		when, err := validate(item.When, match.Input, fmt.Sprintf("match case %d input", index))
+		if err != nil {
 			return err
 		}
-		if err := validate(item.Then, match.Output, fmt.Sprintf("match case %d result", index)); err != nil {
+		for _, previous := range seen {
+			if equalScalar(previous, when) {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate match case input at index %d", index), Path: match.Name}
+			}
+		}
+		seen = append(seen, when)
+		if _, err := validate(item.Then, match.Output, fmt.Sprintf("match case %d result", index)); err != nil {
 			return err
 		}
 	}
-	return validate(match.Default, match.Output, "match default")
+	_, err := validate(match.Default, match.Output, "match default")
+	return err
 }
 
 func (runtime *transformRuntime) preflightOutputCalls(object ir.OutputObject) error {

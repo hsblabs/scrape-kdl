@@ -382,6 +382,37 @@ func TestTransformPreflightValidatesMatchLiterals(t *testing.T) {
 	}
 }
 
+func TestTransformPreflightValidatesMatchStructure(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	valid := ir.MatchTransform{
+		Kind:          "match",
+		TransformBase: ir.TransformBase{SymbolID: "transform:match", Name: "match", Input: stringType, Output: stringType},
+		Cases:         []ir.MatchCase{{When: json.RawMessage(`"input"`), Then: json.RawMessage(`"output"`)}},
+		Default:       json.RawMessage(`"fallback"`),
+	}
+	tests := []struct {
+		name   string
+		mutate func(*ir.MatchTransform)
+	}{
+		{name: "array input", mutate: func(match *ir.MatchTransform) { match.Input = typesys.Array(stringType) }},
+		{name: "object output", mutate: func(match *ir.MatchTransform) { match.Output = typesys.Primitive("object") }},
+		{name: "duplicate case", mutate: func(match *ir.MatchTransform) {
+			match.Cases = append(match.Cases, ir.MatchCase{When: json.RawMessage(`"input"`), Then: json.RawMessage(`"other"`)})
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			match := valid
+			match.Cases = append([]ir.MatchCase(nil), valid.Cases...)
+			tt.mutate(&match)
+			var execution *ExecutionError
+			if err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{match}}, nil).preflight(); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "match" {
+				t.Fatalf("match structure preflight error = %#v", err)
+			}
+		})
+	}
+}
+
 func TestTransformRuntimeDetectsRecursion(t *testing.T) {
 	stringType := typesys.Primitive("string")
 	const symbol = "transform:recursive"
