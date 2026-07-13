@@ -372,6 +372,55 @@ func TestSessionNoneIsIgnored(t *testing.T) {
 	}
 }
 
+func TestExecuteHTTPSessionConstructionIsDeterministic(t *testing.T) {
+	path := compileTestSpec(t, `extractor "session-order" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/"; session policy="optional" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	wantHeaders := []string{"upper", "lower-one", "lower-two"}
+	wantCookies := []string{"first", "second"}
+	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if got := request.Header.Values("X-Order"); !reflect.DeepEqual(got, wantHeaders) {
+			t.Fatalf("header value order = %v", got)
+		}
+		cookies := request.Cookies()
+		gotCookies := make([]string, 0, len(cookies))
+		for _, cookie := range cookies {
+			if cookie.Name == "duplicate" {
+				gotCookies = append(gotCookies, cookie.Value)
+			}
+		}
+		if !reflect.DeepEqual(gotCookies, wantCookies) {
+			t.Fatalf("cookie value order = %v", gotCookies)
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header),
+			Body: io.NopCloser(strings.NewReader(`<h1>ok</h1>`)), Request: request,
+		}, nil
+	})}
+	session := &Session{
+		Headers: http.Header{
+			"x-order": []string{"lower-one", "lower-two"},
+			"X-Order": []string{"upper"},
+		},
+		Cookies: []*http.Cookie{
+			nil,
+			{Name: "duplicate", Value: "first"},
+			{Name: "duplicate", Value: "second"},
+		},
+	}
+	for range 100 {
+		result, err := Execute(context.Background(), extractor, nil, Options{HTTPClient: client, Session: session})
+		if err != nil || result.Value["title"] != "ok" {
+			t.Fatalf("result = %#v, error = %v", result, err)
+		}
+	}
+}
+
 func TestRequiredInputFailsBeforeFetch(t *testing.T) {
 	requested := false
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {

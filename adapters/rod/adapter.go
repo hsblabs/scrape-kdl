@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -440,12 +441,7 @@ func setHeaders(page *rod.Page, headers http.Header) (func(), error) {
 	if len(headers) == 0 {
 		return nil, nil
 	}
-	flat := make([]string, 0, len(headers)*2)
-	for name, values := range headers {
-		for _, value := range values {
-			flat = append(flat, name, value)
-		}
-	}
+	flat := flattenHeaders(headers)
 	cleanup, err := page.SetExtraHeaders(flat)
 	if err != nil {
 		return nil, fmt.Errorf("set extra headers: %w", err)
@@ -453,13 +449,43 @@ func setHeaders(page *rod.Page, headers http.Header) (func(), error) {
 	return cleanup, nil
 }
 
+func flattenHeaders(headers http.Header) []string {
+	names := make([]string, 0, len(headers))
+	for name := range headers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	flat := make([]string, 0, len(headers)*2)
+	for _, name := range names {
+		values := headers[name]
+		for _, value := range values {
+			flat = append(flat, name, value)
+		}
+	}
+	return flat
+}
+
 func setCookies(page *rod.Page, target string, cookies []*http.Cookie) error {
 	if len(cookies) == 0 {
 		return nil
 	}
+	params, err := cookieParams(target, cookies)
+	if err != nil {
+		return err
+	}
+	if len(params) == 0 {
+		return nil
+	}
+	if err := page.SetCookies(params); err != nil {
+		return fmt.Errorf("set cookies: %w", err)
+	}
+	return nil
+}
+
+func cookieParams(target string, cookies []*http.Cookie) ([]*proto.NetworkCookieParam, error) {
 	targetURL, err := url.Parse(target)
 	if err != nil {
-		return fmt.Errorf("parse cookie target: %w", err)
+		return nil, fmt.Errorf("parse cookie target: %w", err)
 	}
 	params := make([]*proto.NetworkCookieParam, 0, len(cookies))
 	for _, cookie := range cookies {
@@ -490,13 +516,7 @@ func setCookies(page *rod.Page, target string, cookies []*http.Cookie) error {
 		}
 		params = append(params, param)
 	}
-	if len(params) == 0 {
-		return nil
-	}
-	if err := page.SetCookies(params); err != nil {
-		return fmt.Errorf("set cookies: %w", err)
-	}
-	return nil
+	return params, nil
 }
 
 func normalizeTimeout(value time.Duration) time.Duration {

@@ -3,6 +3,8 @@ package rodadapter
 import (
 	"context"
 	"errors"
+	"net/http"
+	"reflect"
 	"testing"
 	"time"
 
@@ -39,6 +41,34 @@ func TestResolveKey(t *testing.T) {
 
 	if _, err := resolveKey("NotAKey"); err == nil {
 		t.Fatal("resolveKey accepted an unsupported key")
+	}
+}
+
+func TestSessionValuesPreserveDeterministicOrder(t *testing.T) {
+	headers := http.Header{
+		"x-order": []string{"lower-one", "lower-two"},
+		"X-Order": []string{"upper"},
+	}
+	wantHeaders := []string{"X-Order", "upper", "x-order", "lower-one", "x-order", "lower-two"}
+	for range 100 {
+		if got := flattenHeaders(headers); !reflect.DeepEqual(got, wantHeaders) {
+			t.Fatalf("flattened headers = %v", got)
+		}
+	}
+
+	params, err := cookieParams("https://example.invalid/path", []*http.Cookie{
+		nil,
+		{Name: "duplicate", Value: "first"},
+		{Name: "duplicate", Value: "second"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(params) != 2 || params[0].Name != "duplicate" || params[0].Value != "first" || params[1].Name != "duplicate" || params[1].Value != "second" {
+		t.Fatalf("cookie parameter order = %#v", params)
+	}
+	if _, err := cookieParams("://invalid", []*http.Cookie{{Name: "value"}}); err == nil {
+		t.Fatal("cookieParams accepted an invalid target URL")
 	}
 }
 
