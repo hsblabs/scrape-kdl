@@ -133,6 +133,9 @@ func preflightOutputStructure(root ir.OutputObject) error {
 	seenIDs := map[string]struct{}{}
 	var walk func(ir.OutputObject, string) error
 	walk = func(object ir.OutputObject, path string) error {
+		if object.Kind != "object" {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid output object kind %q", object.Kind), Path: path}
+		}
 		seenNames := map[string]struct{}{}
 		for _, member := range object.Members {
 			var name, id string
@@ -140,6 +143,9 @@ func preflightOutputStructure(root ir.OutputObject) error {
 			switch typed := member.(type) {
 			case ir.Field:
 				name, id = typed.Name, typed.ID
+				if typed.Kind != "field" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid field kind %q", typed.Kind), Path: typed.ID}
+				}
 				if !validRuntimeType(typed.SuccessfulType) {
 					return &ExecutionError{Code: "E_IR_INVALID", Message: "field has an invalid successful type", Path: typed.ID}
 				}
@@ -201,6 +207,9 @@ func preflightOutputStructure(root ir.OutputObject) error {
 				}
 			case ir.Collection:
 				name, id, row = typed.Name, typed.ID, &typed.Row
+				if typed.Kind != "collection" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid collection kind %q", typed.Kind), Path: typed.ID}
+				}
 				if typed.MinItems < 0 {
 					return &ExecutionError{Code: "E_IR_INVALID", Message: "collection minItems must be non-negative", Path: typed.ID}
 				}

@@ -226,6 +226,24 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			wantCode: "E_SELECTOR_INVALID",
 		},
 		{
+			name: "invalid collection kind",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				collection.Kind = "list"
+				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid nested output object kind",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				collection.Row.Kind = "map"
+				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "unknown output member",
 			mutate: func(extractor *ir.Extractor) {
 				extractor.Output.Members = []ir.OutputMember{nil}
