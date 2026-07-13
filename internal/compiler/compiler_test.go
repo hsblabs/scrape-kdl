@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -231,5 +232,95 @@ func TestCompileRejectsInvalidDefaults(t *testing.T) {
 		if !slices.Contains(codes, code) {
 			t.Fatalf("diagnostics %v do not contain %q", codes, code)
 		}
+	}
+}
+
+func TestCompileTokenizesEscapedURLTemplate(t *testing.T) {
+	extractor, codes := compileText(t, `extractor "escaped-template" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/{{literal}}/{id}" }
+  input "id" type="string" required=#true
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	if extractor == nil {
+		t.Fatalf("compile diagnostics = %v", codes)
+	}
+	template := extractor.Source.Fetch.URLTemplate
+	if template.Raw != "https://example.invalid/{{literal}}/{id}" || len(template.Segments) != 2 {
+		t.Fatalf("template = %#v", template)
+	}
+	literal, literalOK := template.Segments[0].(ir.LiteralTemplateSegment)
+	input, inputOK := template.Segments[1].(ir.InputTemplateSegment)
+	if !literalOK || literal.Value != "https://example.invalid/{literal}/" || !inputOK || input.Name != "id" {
+		t.Fatalf("segments = %#v", template.Segments)
+	}
+
+	extractor, codes = compileText(t, `extractor "literal-placeholder" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/{{id}}" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	if extractor == nil || len(extractor.Source.Fetch.URLTemplate.Segments) != 1 {
+		t.Fatalf("escaped placeholder compile = %#v, diagnostics = %v", extractor, codes)
+	}
+}
+
+func TestCompileRejectsInvalidURLTemplates(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		input    string
+		wantCode string
+	}{
+		{name: "unmatched open", url: "https://example.invalid/{id", input: `input "id" type="string" required=#true`, wantCode: "E_TEMPLATE_INVALID"},
+		{name: "unmatched close", url: "https://example.invalid/id}", wantCode: "E_TEMPLATE_INVALID"},
+		{name: "invalid placeholder", url: "https://example.invalid/{bad-name}", wantCode: "E_TEMPLATE_INVALID"},
+		{name: "undeclared input", url: "https://example.invalid/{missing}", wantCode: "E_INPUT_UNDECLARED"},
+		{name: "optional input", url: "https://example.invalid/{id}", input: `input "id" type="string" required=#false`, wantCode: "E_TEMPLATE_OPTIONAL_INPUT"},
+		{name: "relative", url: "/path", wantCode: "E_TEMPLATE_INVALID"},
+		{name: "unsupported scheme", url: "ftp://example.invalid/path", wantCode: "E_TEMPLATE_INVALID"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, codes := compileText(t, fmt.Sprintf(`extractor "invalid-template" version=1 {
+  source "html" { fetch mode="http" url=%q }
+  %s
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`, tt.url, tt.input))
+			if !slices.Contains(codes, tt.wantCode) {
+				t.Fatalf("diagnostics %v do not contain %q", codes, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestCompileClassifiesPortableSelectors(t *testing.T) {
+	compileSelector := func(t *testing.T, selector string) (*ir.Extractor, []string) {
+		t.Helper()
+		return compileText(t, fmt.Sprintf(`extractor "selector" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "value" type="string" required=#true { select %q match="one"; value "text" }
+}`, selector))
+	}
+	supported := `ul.items > li:nth-child(2n+1):not(.disabled) a[href^="https"]`
+	if extractor, codes := compileSelector(t, supported); extractor == nil {
+		t.Fatalf("supported selector diagnostics = %v", codes)
+	}
+
+	for _, tt := range []struct {
+		name     string
+		selector string
+		wantCode string
+	}{
+		{name: "empty", selector: "", wantCode: "E_SELECTOR_INVALID"},
+		{name: "malformed attribute", selector: "[", wantCode: "E_SELECTOR_INVALID"},
+		{name: "unsupported pseudo", selector: "a:hover", wantCode: "E_SELECTOR_UNSUPPORTED"},
+		{name: "pseudo element", selector: "a::before", wantCode: "E_SELECTOR_UNSUPPORTED"},
+		{name: "attribute flag", selector: `a[href="x" i]`, wantCode: "E_SELECTOR_UNSUPPORTED"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, codes := compileSelector(t, tt.selector)
+			if !slices.Contains(codes, tt.wantCode) {
+				t.Fatalf("diagnostics %v do not contain %q", codes, tt.wantCode)
+			}
+		})
 	}
 }
