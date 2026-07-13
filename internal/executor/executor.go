@@ -128,6 +128,19 @@ func preflightOutputStructure(root ir.OutputObject) error {
 					if source.Name == "" {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "attribute value source requires a non-empty name", Path: typed.ID}
 					}
+				case ir.JavaScriptValueSource:
+					if source.Scope != "document" && source.Scope != "current" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid JavaScript scope %q", source.Scope), Path: typed.ID}
+					}
+					if source.TimeoutMS != nil && *source.TimeoutMS < 1 {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "JavaScript timeoutMs must be positive", Path: typed.ID}
+					}
+					if source.Scope == "document" && typed.Selection != nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "document-scoped JavaScript forbids a selection", Path: typed.ID}
+					}
+					if source.Scope == "current" && typed.Selection == nil && !strings.Contains(path, "[]") {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "top-level current-scoped JavaScript requires a selection", Path: typed.ID}
+					}
 				}
 				if typed.Required && typed.Default != nil {
 					return &ExecutionError{Code: "E_IR_INVALID", Message: "required field must not declare a default", Path: typed.ID}

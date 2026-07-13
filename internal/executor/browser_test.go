@@ -208,9 +208,10 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
   collection "rows" { select ".rows"; field "value" type="string" required=#true { select ".value"; value "text" } }
 }`
 	tests := []struct {
-		name     string
-		mutate   func(*ir.Extractor)
-		wantCode string
+		name            string
+		mutate          func(*ir.Extractor)
+		allowJavaScript bool
+		wantCode        string
 	}{
 		{name: "success"},
 		{
@@ -348,6 +349,58 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			},
 			wantCode: "E_IR_INVALID",
 		},
+		{
+			name: "invalid JavaScript scope",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				field.Selection = nil
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: "global", Source: `() => "value"`, Returns: field.SuccessfulType}
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			allowJavaScript: true,
+			wantCode:        "E_IR_INVALID",
+		},
+		{
+			name: "non-positive JavaScript timeout",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				timeoutMS := 0
+				field.Selection = nil
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: "current", Source: `() => "value"`, Returns: field.SuccessfulType, TimeoutMS: &timeoutMS}
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			allowJavaScript: true,
+			wantCode:        "E_IR_INVALID",
+		},
+		{
+			name: "document JavaScript with selection",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: "document", Source: `() => "value"`, Returns: field.SuccessfulType}
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			allowJavaScript: true,
+			wantCode:        "E_IR_INVALID",
+		},
+		{
+			name: "top-level current JavaScript without selection",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				field.ID, field.Name = "output.value", "value"
+				field.Selection = nil
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: "current", Source: `() => "value"`, Returns: field.SuccessfulType}
+				extractor.Output.Members = []ir.OutputMember{field}
+			},
+			allowJavaScript: true,
+			wantCode:        "E_IR_INVALID",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -360,7 +413,7 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 				tt.mutate(extractor)
 			}
 			browser := &leasedFakeBrowser{}
-			result, err := Execute(context.Background(), extractor, nil, Options{Browser: browser})
+			result, err := Execute(context.Background(), extractor, nil, Options{Browser: browser, AllowJavaScript: tt.allowJavaScript})
 			if tt.wantCode == "" {
 				if err != nil || !reflect.DeepEqual(result.Value["rows"], []any{}) || browser.acquired != 1 || browser.released != 1 {
 					t.Fatalf("result=%#v error=%v acquired=%d released=%d", result, err, browser.acquired, browser.released)

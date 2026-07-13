@@ -573,7 +573,8 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			name: "browser value source",
 			mutate: func(extractor *ir.Extractor) {
 				field := extractor.Output.Members[0].(ir.Field)
-				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Returns: field.SuccessfulType}
+				field.Selection = nil
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: "document", Source: `() => "value"`, Returns: field.SuccessfulType}
 				extractor.Output.Members[0] = field
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_BROWSER_RUNTIME_MISSING",
