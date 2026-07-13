@@ -55,6 +55,9 @@ func (runtime *transformRuntime) preflight() error {
 		if external.Kind != "external" {
 			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid external transform kind %q", external.Kind), Path: external.Name}
 		}
+		if external.Symbol == "" {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: "external transform symbol must be non-empty", Path: external.Name}
+		}
 		if _, exists := runtime.external[external.Symbol]; !exists {
 			return &ExecutionError{Code: "E_EXTERNAL_TRANSFORM_MISSING", Message: fmt.Sprintf("external transform symbol %q is not registered", external.Symbol), Path: external.Name}
 		}

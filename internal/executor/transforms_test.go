@@ -101,6 +101,25 @@ func TestTransformPreflightRejectsInvalidKindDiscriminators(t *testing.T) {
 	}
 }
 
+func TestTransformPreflightRejectsEmptyExternalSymbol(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	valid := ir.ExternalTransform{
+		Kind:          "external",
+		TransformBase: ir.TransformBase{SymbolID: "transform:external", Name: "external", Input: stringType, Output: stringType},
+		Symbol:        "external",
+	}
+	callback := func(context.Context, any) (any, error) { return "value", nil }
+	if err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{valid}}, map[string]ExternalTransform{"external": callback}).preflight(); err != nil {
+		t.Fatalf("valid external preflight error = %v", err)
+	}
+	invalid := valid
+	invalid.Symbol = ""
+	var execution *ExecutionError
+	if err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{invalid}}, map[string]ExternalTransform{"": callback}).preflight(); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "external" {
+		t.Fatalf("empty external symbol preflight error = %#v", err)
+	}
+}
+
 func TestTransformPreflightValidatesPipelineContinuity(t *testing.T) {
 	stringType := typesys.Primitive("string")
 	boolType := typesys.Primitive("bool")
