@@ -84,6 +84,23 @@ func TestTransformPreflightRejectsMalformedDeclarationTypes(t *testing.T) {
 	}
 }
 
+func TestTransformPreflightRejectsInvalidKindDiscriminators(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	validCall := ir.TransformCall{Target: ir.BuiltinTarget{Kind: "builtin", Name: "trim"}, Input: stringType, Output: stringType}
+	tests := []ir.Transform{
+		ir.PipelineTransform{Kind: "sequence", TransformBase: ir.TransformBase{SymbolID: "transform:pipeline", Name: "pipeline", Input: stringType, Output: stringType}, Calls: []ir.TransformCall{validCall}},
+		ir.MatchTransform{Kind: "switch", TransformBase: ir.TransformBase{SymbolID: "transform:match", Name: "match", Input: stringType, Output: stringType}, Default: json.RawMessage(`"fallback"`)},
+		ir.ExternalTransform{Kind: "host", TransformBase: ir.TransformBase{SymbolID: "transform:external", Name: "external", Input: stringType, Output: stringType}, Symbol: "external"},
+	}
+	for _, transform := range tests {
+		external := map[string]ExternalTransform{"external": func(context.Context, any) (any, error) { return "value", nil }}
+		var execution *ExecutionError
+		if err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{transform}}, external).preflight(); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" {
+			t.Fatalf("preflight error = %#v", err)
+		}
+	}
+}
+
 func TestTransformPreflightValidatesPipelineContinuity(t *testing.T) {
 	stringType := typesys.Primitive("string")
 	boolType := typesys.Primitive("bool")
@@ -141,7 +158,9 @@ func TestTransformPreflightValidatesCalls(t *testing.T) {
 	}{
 		{name: "nil target", wantCode: "E_TRANSFORM"},
 		{name: "unknown builtin", target: ir.BuiltinTarget{Kind: "builtin", Name: "missing"}, wantCode: "E_TRANSFORM"},
+		{name: "invalid builtin kind", target: ir.BuiltinTarget{Kind: "native", Name: "trim"}, wantCode: "E_IR_INVALID"},
 		{name: "missing declared", target: ir.DeclaredTarget{Kind: "declared", SymbolID: "transform:missing"}, wantCode: "E_TRANSFORM_MISSING"},
+		{name: "invalid declared kind", target: ir.DeclaredTarget{Kind: "symbol", SymbolID: "transform:missing"}, wantCode: "E_IR_INVALID"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

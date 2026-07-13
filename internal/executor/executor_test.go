@@ -646,6 +646,18 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
 		{
+			name: "invalid transform target kind",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				stringType := typesys.Primitive("string")
+				field.Transforms = []ir.TransformCall{{
+					Target: ir.BuiltinTarget{Kind: "native", Name: "trim"}, Input: stringType, Output: stringType,
+				}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "malformed match literal",
 			mutate: func(extractor *ir.Extractor) {
 				stringType := typesys.Primitive("string")

@@ -52,6 +52,9 @@ func (runtime *transformRuntime) preflight() error {
 		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate declared transform symbol %q", runtime.duplicateID), Path: "transforms"}
 	}
 	for _, external := range runtime.externalDecls {
+		if external.Kind != "external" {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid external transform kind %q", external.Kind), Path: external.Name}
+		}
 		if _, exists := runtime.external[external.Symbol]; !exists {
 			return &ExecutionError{Code: "E_EXTERNAL_TRANSFORM_MISSING", Message: fmt.Sprintf("external transform symbol %q is not registered", external.Symbol), Path: external.Name}
 		}
@@ -59,6 +62,9 @@ func (runtime *transformRuntime) preflight() error {
 	for _, transform := range runtime.extractor.Transforms {
 		switch typed := transform.(type) {
 		case ir.PipelineTransform:
+			if typed.Kind != "pipeline" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid pipeline transform kind %q", typed.Kind), Path: typed.Name}
+			}
 			if err := preflightTransformTypes(typed.Input, typed.Output, typed.Name); err != nil {
 				return err
 			}
@@ -72,6 +78,9 @@ func (runtime *transformRuntime) preflight() error {
 				return err
 			}
 		case ir.MatchTransform:
+			if typed.Kind != "match" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid match transform kind %q", typed.Kind), Path: typed.Name}
+			}
 			if err := preflightTransformTypes(typed.Input, typed.Output, typed.Name); err != nil {
 				return err
 			}
@@ -178,11 +187,17 @@ func (runtime *transformRuntime) preflightCalls(calls []ir.TransformCall, path s
 	for _, call := range calls {
 		switch target := call.Target.(type) {
 		case ir.BuiltinTarget:
+			if target.Kind != "builtin" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid built-in target kind %q", target.Kind), Path: path}
+			}
 			if !isKnownBuiltinRuntime(target.Name) {
 				cause := fmt.Errorf("unknown built-in %q", target.Name)
 				return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
 			}
 		case ir.DeclaredTarget:
+			if target.Kind != "declared" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid declared target kind %q", target.Kind), Path: path}
+			}
 			if _, ok := runtime.declared[target.SymbolID]; !ok {
 				return &ExecutionError{Code: "E_TRANSFORM_MISSING", Message: fmt.Sprintf("declared transform %q is missing from IR", target.SymbolID), Path: path}
 			}
