@@ -818,6 +818,24 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
 		{
+			name: "malformed field successful type",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.SuccessfulType = typesys.Type{Kind: typesys.KindArray}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "malformed field effective type",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.EffectiveType = typesys.Type{Kind: typesys.KindNullable}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "text source without selection",
 			mutate: func(extractor *ir.Extractor) {
 				field := extractor.Output.Members[0].(ir.Field)

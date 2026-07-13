@@ -111,8 +111,14 @@ func (t Type) String() string {
 	case KindPrimitive:
 		return t.Name
 	case KindArray:
+		if t.Element == nil {
+			return "<invalid>"
+		}
 		return t.Element.String() + "[]"
 	case KindNullable:
+		if t.Inner == nil {
+			return "<invalid>"
+		}
 		return t.Inner.String() + "?"
 	default:
 		return "<invalid>"

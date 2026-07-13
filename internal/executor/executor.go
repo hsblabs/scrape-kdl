@@ -140,6 +140,12 @@ func preflightOutputStructure(root ir.OutputObject) error {
 			switch typed := member.(type) {
 			case ir.Field:
 				name, id = typed.Name, typed.ID
+				if !validRuntimeType(typed.SuccessfulType) {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "field has an invalid successful type", Path: typed.ID}
+				}
+				if !validRuntimeType(typed.EffectiveType) {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "field has an invalid effective type", Path: typed.ID}
+				}
 				if typed.Selection != nil && typed.Selection.Match != "one" && typed.Selection.Match != "first" {
 					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid selection match mode %q", typed.Selection.Match), Path: typed.ID}
 				}
@@ -156,6 +162,9 @@ func preflightOutputStructure(root ir.OutputObject) error {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "attribute value source requires a non-empty name", Path: typed.ID}
 					}
 				case ir.JavaScriptValueSource:
+					if !validRuntimeType(source.Returns) {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "JavaScript value source has an invalid returns type", Path: typed.ID}
+					}
 					if source.Scope != "document" && source.Scope != "current" {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid JavaScript scope %q", source.Scope), Path: typed.ID}
 					}
@@ -228,6 +237,11 @@ func preflightOutputStructure(root ir.OutputObject) error {
 		return nil
 	}
 	return walk(root, "output")
+}
+
+func validRuntimeType(value typesys.Type) bool {
+	parsed, err := typesys.Parse(value.String())
+	return err == nil && typesys.Equal(parsed, value)
 }
 
 func (e *engine) preflightOutput(object ir.OutputObject) error {

@@ -363,6 +363,19 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			wantCode:        "E_IR_INVALID",
 		},
 		{
+			name: "invalid JavaScript returns type",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				field.Selection = nil
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: "current", Source: `() => "value"`, Returns: typesys.Type{Kind: typesys.KindArray}}
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			allowJavaScript: true,
+			wantCode:        "E_IR_INVALID",
+		},
+		{
 			name: "non-positive JavaScript timeout",
 			mutate: func(extractor *ir.Extractor) {
 				collection := extractor.Output.Members[0].(ir.Collection)

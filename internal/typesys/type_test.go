@@ -105,3 +105,15 @@ func TestTypeClassifiers(t *testing.T) {
 		t.Fatal("IsScalar misclassified a type")
 	}
 }
+
+func TestMalformedTypeStringDoesNotPanic(t *testing.T) {
+	for _, malformed := range []Type{
+		{Kind: KindArray},
+		{Kind: KindNullable},
+		{Kind: KindArray, Element: &Type{Kind: KindNullable}},
+	} {
+		if got := malformed.String(); got == "" {
+			t.Fatalf("String() returned an empty value for %#v", malformed)
+		}
+	}
+}
