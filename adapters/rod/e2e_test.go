@@ -4,6 +4,7 @@ package rodadapter
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -49,6 +50,12 @@ func TestBrowserExtractionE2E(t *testing.T) {
 			select "li"
 			field "id" type="string" required=#true { select ".id" match="one"; value "attr" name="data-id" }
 			field "text" type="string" required=#true { select ".label" match="one"; value "text" }
+			field "dataset" type="object" required=#true {
+				select ".id" match="one"
+				evaluate-js #"""
+					(element) => ({ id: element.dataset.id })
+					"""# scope="current" returns="object"
+			}
 		}
 	}`
 	if err := os.WriteFile(spec, []byte(content), 0o600); err != nil {
@@ -89,5 +96,33 @@ func TestBrowserExtractionE2E(t *testing.T) {
 	first, ok := items[0].(map[string]any)
 	if !ok || first["id"] != "1" || first["text"] != "A" {
 		t.Fatalf("items[0] = %#v", items[0])
+	}
+	dataset, ok := first["dataset"].(map[string]any)
+	if !ok || dataset["id"] != "1" {
+		t.Fatalf("items[0].dataset = %#v", first["dataset"])
+	}
+
+	failureContent := `extractor "rod-js-failure" version=1 {
+		source "html" { fetch mode="browser" url="` + server.URL + `" }
+		field "failure" type="string" required=#true {
+			evaluate-js #"""
+				() => { throw new Error("expected test failure") }
+				"""# scope="document" returns="string"
+		}
+	}`
+	if err := os.WriteFile(spec, []byte(failureContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	failureProgram, failureDiagnostics := scrapekdl.CompileFile(spec)
+	if failureDiagnostics.HasErrors() {
+		t.Fatalf("failure compile diagnostics: %+v", failureDiagnostics)
+	}
+	_, err = failureProgram.Extract(context.Background(), nil, scrapekdl.Options{
+		Browser:         adapter,
+		AllowJavaScript: true,
+	})
+	var executionError *scrapekdl.ExecutionError
+	if !errors.As(err, &executionError) || executionError.Code != "E_JAVASCRIPT_EVALUATION" || executionError.Path != "output.failure" {
+		t.Fatalf("JavaScript failure = %v", err)
 	}
 }
