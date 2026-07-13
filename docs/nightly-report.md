@@ -50,6 +50,7 @@ Baseline: `e5363b7`
 - Added direct HTTP client wrapper tests proving nil-policy identity, non-nil-policy clone isolation, preservation of transport/jar/timeout, caller callback ordering, and policy rejection before the caller-owned redirect callback.
 - Added browser output-IR preflight before input resolution and adapter acquisition. Nested malformed selectors, unknown output members, and unknown value sources now fail with existing structured codes before browser activity; valid extraction remains unchanged. Updated browser runtime execution-order documentation. Executor statement coverage increased to 77.1%.
 - Added browser workflow-IR preflight for known step kinds and selector-bearing steps. Malformed workflow selectors and unknown steps now fail at a stable workflow path before adapter acquisition, while valid workflow order is preserved. Updated browser runtime documentation; executor statement coverage increased to 77.4%.
+- Added direct URL-policy tests for nil and allowing policies, invalid URL rejection before callback invocation, structured policy rejection, `url.Error` wrapping from `http.Client`, cause preservation, and non-conversion of unrelated transport errors. Executor statement coverage increased to 77.5%.
 
 ## Commits
 
@@ -105,6 +106,7 @@ Baseline: `e5363b7`
 - `e66744f` docs: clarify browser preflight order
 - `20465ba` fix: preflight browser workflow IR
 - `4786118` docs: include workflow preflight
+- `f4b4c9f` test: cover URL policy error mapping
 
 ## Verification results
 
@@ -123,7 +125,7 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 77.4%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 77.5%, and source package coverage at 100%.
 
 ## Unresolved failures
 
@@ -147,6 +149,6 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 - Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
 - Exercise malformed selector and transform IR through `ExecuteHTML`, which should fail before parsing the supplied document.
-- Add direct policy error conversion tests for wrapped errors and unrelated fetch failures without changing diagnostic mappings.
 - Add malformed workflow timeout and state tests only where the existing compiler contract gives an unambiguous `E_IR_INVALID` runtime result.
 - Audit duplicate session header and cookie handling for deterministic request construction without logging values.
+- Add direct tests for `ExecuteHTML` cancellation and malformed default recovery without changing its documented offline boundary.
