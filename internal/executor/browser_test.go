@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/url"
 	"reflect"
@@ -209,6 +210,45 @@ func TestExecuteBrowserRejectsNonJSONJavaScriptResult(t *testing.T) {
 	var execution *ExecutionError
 	if !errors.As(err, &execution) || execution.Code != "E_JAVASCRIPT_RESULT_TYPE" {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestExecuteBrowserValidatesJSONNumberResult(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-number" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "value" type="unknown" required=#true {
+    evaluate-js "() => 1" scope="document" returns="unknown"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+
+	tests := []struct {
+		name    string
+		value   json.Number
+		wantErr bool
+	}{
+		{name: "finite", value: json.Number("1.25")},
+		{name: "not a number", value: json.Number("NaN"), wantErr: true},
+		{name: "infinite exponent", value: json.Number("1e1000"), wantErr: true},
+		{name: "invalid JSON lexeme", value: json.Number("01"), wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := Execute(context.Background(), extractor, nil, Options{Browser: &fakeBrowser{js: tt.value}, AllowJavaScript: true})
+			if !tt.wantErr {
+				if err != nil || result.Value["value"] != tt.value {
+					t.Fatalf("result = %#v, error = %v", result, err)
+				}
+				return
+			}
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != "E_JAVASCRIPT_RESULT_TYPE" {
+				t.Fatalf("error = %v", err)
+			}
+		})
 	}
 }
 

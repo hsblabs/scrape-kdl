@@ -397,8 +397,14 @@ func float32IsInvalid(value float32) bool {
 
 func isJSONCompatible(value any) bool {
 	switch typed := value.(type) {
-	case nil, string, bool, json.Number, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+	case nil, string, bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return true
+	case json.Number:
+		if _, err := json.Marshal(typed); err != nil {
+			return false
+		}
+		number, err := typed.Float64()
+		return err == nil && !math.IsNaN(number) && !math.IsInf(number, 0)
 	case float32:
 		return !float32IsInvalid(typed)
 	case float64:
