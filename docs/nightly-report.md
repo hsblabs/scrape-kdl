@@ -26,6 +26,12 @@ Baseline: `e5363b7`
 - Added browser collection row-skip, warning order, row index, partial-result, and minimum/maximum cardinality coverage.
 - Covered all browser workflow lowering forms and invalid selector, state, numeric, timeout, and unknown-step diagnostics. Added success and failure coverage for all four input default types; compiler statement coverage increased from 63.1% to 70.0%.
 - Recorded the public adapter decision required to define concrete Go representations for JSON-compatible JavaScript results, without broadening the runtime contract implicitly.
+- Covered browser text, HTML, attribute, field-query, and collection-query success and failure paths, including deadline mapping, cancellation causes, and warning recovery.
+- Normalized numeric `match` results and `coalesce` literals to their resolved output types, and rejected non-finite `float32` values in `to-string`. Added malformed-IR failure coverage.
+- Added join, integer/float conversion, radix, overflow, finite-number, and configurable boolean parsing boundaries; executor statement coverage increased to 73.9%.
+- Corrected attribute selector case-sensitivity flags from malformed-selector classification to the specification-required unsupported-selector diagnostic.
+- Added deterministic URL-template tokenization, escaped-brace, scalar percent-encoding, invalid-target, optional/undeclared-input, and portable selector classification tests; compiler statement coverage increased to 72.0%.
+- Fixed a fuzz-discovered raw-text parser panic where Unicode lowercasing expanded invalid UTF-8 bytes and invalidated source offsets. Preserved the minimized corpus input and verified the fix with race tests and an additional 20-second HTML fuzz run.
 
 ## Commits
 
@@ -56,6 +62,12 @@ Baseline: `e5363b7`
 - `6ce917e` docs: record browser result representation decision
 - `88c5bb5` test: cover browser workflow compilation
 - `e8f4cdf` test: cover compiler default values
+- `91a5bb3` test: cover browser adapter read failures
+- `ea4da6c` fix: normalize scalar transform literals
+- `1608ce9` test: cover numeric conversion boundaries
+- `27a76b8` fix: classify unsupported selector flags
+- `16b8936` test: cover templates and selector diagnostics
+- `3f39a34` fix: preserve raw-text offsets for invalid UTF-8
 
 ## Verification results
 
@@ -67,18 +79,18 @@ Passed:
 - `make release-check`;
 - concurrent execution of all four gates above;
 - `go test -shuffle=on -count=10 ./...`;
-- 10-second fuzz runs for KDL parsing, selector parsing, and HTML parsing;
+- 10-second fuzz runs for KDL and selector parsing, plus a post-fix 20-second HTML parser run covering approximately 1.64 million executions;
 - `staticcheck ./...` for the root and adapter modules;
 - `govulncheck ./...` for the root and adapter modules, with no reachable vulnerabilities found;
 - `go mod verify` for both modules and `go mod tidy -diff` for the root module;
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 70.0%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 73.9%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, and a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, and an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8.
 
 ## Environment-limited verification
 
@@ -94,7 +106,7 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 ## Next safe candidates
 
-- Cover browser adapter read/query failures and their structured error/cancellation propagation.
-- Add focused built-in edge tests for array joining, numeric `to-string`, and invalid argument combinations already defined by the built-in specification.
-- Add deterministic compiler tests for URL-template escaping and unsupported selector diagnostics.
-- Re-run static analysis, vulnerability checks, shuffle repetitions, and fuzz smoke after the next substantive runtime change.
+- Cover each browser workflow adapter operation's timeout and cancellation mapping.
+- Validate external-transform result types between declared transform calls so downstream built-ins cannot receive mismatched host values.
+- Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
+- Review HTTP redirect and response-body cleanup paths for cancellation and resource-release tests.

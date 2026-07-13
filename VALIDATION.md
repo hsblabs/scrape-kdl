@@ -32,10 +32,10 @@ go test ./internal/kdl -run=^$ \
 go test ./internal/dom -run=^$ \
   -fuzz=FuzzParseSelectorNeverPanics -fuzztime=10s
 go test ./internal/dom -run=^$ \
-  -fuzz=FuzzParseHTMLNeverPanics -fuzztime=10s
+  -fuzz=FuzzParseHTMLNeverPanics -fuzztime=20s
 ```
 
-No crash or hang was found. Scheduled CI runs each target for two minutes.
+The HTML run first found an invalid-UTF-8 raw-text offset panic; the minimized input is now a committed fuzz corpus entry. After the fix, the 20-second rerun completed approximately 1.64 million executions without a crash or hang. Scheduled CI runs each target for two minutes.
 
 ## Release archive smoke
 
@@ -66,9 +66,11 @@ Passed:
 
 - `go mod verify` and `go mod tidy -diff` for the root module;
 - `go mod verify` for the go-rod adapter through an isolated local workspace;
-- `staticcheck ./...` for the root module and go-rod adapter;
-- `govulncheck ./...` for the root module and go-rod adapter, with no reachable vulnerabilities found;
+- `staticcheck` from `honnef.co/go/tools v0.7.0` for the root module and go-rod adapter;
+- `govulncheck` from `golang.org/x/vuln v1.6.0` for the root module and go-rod adapter, with no reachable vulnerabilities found;
 - ten shuffled repetitions of the root test suite.
+
+The scan tools were run through temporary `go install ...@latest` binaries. Adapter scans used a temporary source copy with a local root-module replacement so the committed release-clean `adapters/rod/go.mod` and `go.sum` remained unchanged.
 
 ## External adapter and browser checks
 
