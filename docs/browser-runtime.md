@@ -14,7 +14,7 @@ Browser-mode extractors run through an application-supplied `BrowserAdapter`. Th
 8. JavaScript result validation and transform execution;
 9. lease release on success or failure.
 
-External-transform availability, portable output selectors, output member kinds, and value-source kinds are checked before the adapter lease is acquired or navigation begins.
+External-transform availability, workflow step kinds and selectors, portable output selectors, output member kinds, and value-source kinds are checked before the adapter lease is acquired or navigation begins.
 
 JavaScript is disabled by default. Trusted specs must opt in with `AllowJavaScript: true`.
 
