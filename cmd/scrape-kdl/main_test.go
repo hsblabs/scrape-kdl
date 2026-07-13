@@ -1,14 +1,161 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"math"
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
+
+func captureRun(t *testing.T, args ...string) (int, string, string) {
+	t.Helper()
+	stdoutReader, stdoutWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stderrReader, stderrWriter, err := os.Pipe()
+	if err != nil {
+		stdoutReader.Close()
+		stdoutWriter.Close()
+		t.Fatal(err)
+	}
+	originalStdout, originalStderr := os.Stdout, os.Stderr
+	os.Stdout, os.Stderr = stdoutWriter, stderrWriter
+	defer func() {
+		os.Stdout, os.Stderr = originalStdout, originalStderr
+	}()
+
+	code := run(args)
+	if err := stdoutWriter.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := stderrWriter.Close(); err != nil {
+		t.Fatal(err)
+	}
+	stdout, err := io.ReadAll(stdoutReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stderr, err := io.ReadAll(stderrReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := stdoutReader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := stderrReader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return code, string(stdout), string(stderr)
+}
+
+func TestRunTopLevelCommands(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		wantCode   int
+		wantStdout string
+		wantStderr string
+	}{
+		{name: "missing command", wantCode: 2, wantStderr: "usage: scrape-kdl"},
+		{name: "help", args: []string{"--help"}, wantCode: 0, wantStdout: "usage: scrape-kdl"},
+		{name: "version", args: []string{"version"}, wantCode: 0, wantStdout: "scrape-kdl dev"},
+		{name: "unknown", args: []string{"missing"}, wantCode: 2, wantStderr: `unknown command "missing"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code, stdout, stderr := captureRun(t, tt.args...)
+			if code != tt.wantCode || !strings.Contains(stdout, tt.wantStdout) || !strings.Contains(stderr, tt.wantStderr) {
+				t.Fatalf("run(%q) = code %d, stdout %q, stderr %q", tt.args, code, stdout, stderr)
+			}
+		})
+	}
+}
+
+func TestRunValidate(t *testing.T) {
+	valid := filepath.Join("..", "..", "fixtures", "valid", "basic-http.kdl")
+	invalid := filepath.Join("..", "..", "fixtures", "invalid", "duplicate-property.kdl")
+
+	code, stdout, stderr := captureRun(t, "validate", valid)
+	if code != 0 || stdout != "valid: "+valid+"\n" || stderr != "" {
+		t.Fatalf("validate success = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = captureRun(t, "validate", valid, "--json")
+	if code != 0 || strings.TrimSpace(stdout) != "null" || stderr != "" {
+		t.Fatalf("validate JSON = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, _, stderr = captureRun(t, "validate", invalid)
+	if code != 1 || !strings.Contains(stderr, "E_DUPLICATE_PROPERTY") {
+		t.Fatalf("validate failure = code %d, stderr %q", code, stderr)
+	}
+	code, _, stderr = captureRun(t, "validate")
+	if code != 2 || !strings.Contains(stderr, "scrape-kdl validate") {
+		t.Fatalf("validate usage = code %d, stderr %q", code, stderr)
+	}
+}
+
+func TestRunCompile(t *testing.T) {
+	valid := filepath.Join("..", "..", "fixtures", "valid", "basic-http.kdl")
+	invalid := filepath.Join("..", "..", "fixtures", "invalid", "duplicate-property.kdl")
+
+	code, stdout, stderr := captureRun(t, "compile", valid)
+	var compiled map[string]any
+	if code != 0 || stderr != "" || json.Unmarshal([]byte(stdout), &compiled) != nil || compiled["name"] != "basic-http" {
+		t.Fatalf("compile success = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	outPath := filepath.Join(t.TempDir(), "program.json")
+	code, stdout, stderr = captureRun(t, "compile", valid, "--out", outPath)
+	if code != 0 || stdout != "wrote: "+outPath+"\n" || stderr != "" {
+		t.Fatalf("compile output = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	if data, err := os.ReadFile(outPath); err != nil || json.Unmarshal(data, &compiled) != nil {
+		t.Fatalf("compiled file = %q, %v", data, err)
+	}
+	code, _, stderr = captureRun(t, "compile", invalid)
+	if code != 1 || !strings.Contains(stderr, "E_DUPLICATE_PROPERTY") {
+		t.Fatalf("compile failure = code %d, stderr %q", code, stderr)
+	}
+	code, _, stderr = captureRun(t, "compile", valid, "--out", t.TempDir())
+	if code != 1 || !strings.Contains(stderr, "write IR:") {
+		t.Fatalf("compile write failure = code %d, stderr %q", code, stderr)
+	}
+}
+
+func TestRunExtractOffline(t *testing.T) {
+	valid := filepath.Join("..", "..", "fixtures", "valid", "basic-http.kdl")
+	html := filepath.Join("..", "..", "fixtures", "html", "basic-http.html")
+
+	code, stdout, stderr := captureRun(t, "extract", valid, "--html", html, "--input", "id=offline")
+	var result struct {
+		Value map[string]any `json:"value"`
+	}
+	if code != 0 || stderr != "" || json.Unmarshal([]byte(stdout), &result) != nil || result.Value["title"] != "Scraping KDL Runtime" {
+		t.Fatalf("extract success = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	outPath := filepath.Join(t.TempDir(), "result.json")
+	code, stdout, stderr = captureRun(t, "extract", "--html", html, "--out", outPath, valid)
+	if code != 0 || stdout != "wrote: "+outPath+"\n" || stderr != "" {
+		t.Fatalf("extract output = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	if data, err := os.ReadFile(outPath); err != nil || json.Unmarshal(data, &result) != nil {
+		t.Fatalf("result file = %q, %v", data, err)
+	}
+	code, _, stderr = captureRun(t, "extract", valid, "--html", filepath.Join(t.TempDir(), "missing.html"))
+	if code != 1 || !strings.Contains(stderr, "read HTML:") {
+		t.Fatalf("extract read failure = code %d, stderr %q", code, stderr)
+	}
+	code, _, stderr = captureRun(t, "extract", valid, "--html", html, "--input", "missing=value")
+	if code != 2 || !strings.Contains(stderr, `unknown input "missing"`) {
+		t.Fatalf("extract input failure = code %d, stderr %q", code, stderr)
+	}
+}
 
 func TestParseValidateArgs(t *testing.T) {
 	for _, args := range [][]string{{"example.kdl", "--json"}, {"--json", "example.kdl"}} {
