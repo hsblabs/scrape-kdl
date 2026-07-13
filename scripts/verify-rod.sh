@@ -17,35 +17,27 @@ fi
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 module="$root/adapters/rod"
-backup="$(mktemp -d)"
-had_sum=false
-
-cp "$module/go.mod" "$backup/go.mod"
-if [[ -f "$module/go.sum" ]]; then
-  cp "$module/go.sum" "$backup/go.sum"
-  had_sum=true
-fi
+workspace="$(mktemp -d)"
 
 restore() {
-  cp "$backup/go.mod" "$module/go.mod"
-  if [[ "$had_sum" == true ]]; then
-    cp "$backup/go.sum" "$module/go.sum"
-  else
-    rm -f "$module/go.sum"
-  fi
-  rm -rf "$backup"
+  rm -rf "$workspace"
 }
 trap restore EXIT
 
 (
-  cd "$module"
-  GOWORK=off GOTOOLCHAIN=local go mod edit \
+  cd "$workspace"
+  GOWORK=off GOTOOLCHAIN=local go work init "$module"
+  GOWORK="$workspace/go.work" GOTOOLCHAIN=local go work edit \
     -replace "github.com/hsblabs/scrape-kdl=$root"
+)
+
+(
+  cd "$module"
 
   if [[ "$mode" == "--e2e" ]]; then
-    GOWORK=off GOTOOLCHAIN=local go test -tags=e2e -timeout=15m ./...
+    GOWORK="$workspace/go.work" GOTOOLCHAIN=local go test -tags=e2e -timeout=15m ./...
   else
-    GOWORK=off GOTOOLCHAIN=local go test ./...
-    GOWORK=off GOTOOLCHAIN=local go vet ./...
+    GOWORK="$workspace/go.work" GOTOOLCHAIN=local go test ./...
+    GOWORK="$workspace/go.work" GOTOOLCHAIN=local go vet ./...
   fi
 )
