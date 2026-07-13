@@ -231,13 +231,24 @@ func (e *engine) handleMissing(field ir.Field, path, message string) (any, error
 		return nil, &ExecutionError{Code: "E_REQUIRED_VALUE_MISSING", Message: message, Path: path}
 	}
 	if field.Default != nil {
-		value, err := decodeJSON(*field.Default)
-		if err != nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
-		}
-		return value, nil
+		return decodeFieldDefault(field, path)
 	}
 	return nil, nil
+}
+
+func decodeFieldDefault(field ir.Field, path string) (any, error) {
+	if field.Default == nil {
+		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "on-error default requires a field default", Path: path}
+	}
+	value, err := decodeJSON(*field.Default)
+	if err != nil {
+		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
+	}
+	normalized, ok := normalizeJSONResult(value, field.SuccessfulType)
+	if !ok {
+		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("field default of type %T is not assignable to %s", value, field.SuccessfulType.String()), Path: path}
+	}
+	return normalized, nil
 }
 
 func (e *engine) recoverField(field ir.Field, path string, cause error) (any, error) {
@@ -263,12 +274,9 @@ func (e *engine) recoverField(field ir.Field, path string, cause error) (any, er
 		e.warnings = append(e.warnings, Warning{Code: "W_ERROR_RECOVERED", Message: cause.Error(), Path: path})
 		return nil, nil
 	case "default":
-		if field.Default == nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "on-error default requires a field default", Path: path}
-		}
-		value, err := decodeJSON(*field.Default)
+		value, err := decodeFieldDefault(field, path)
 		if err != nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
+			return nil, err
 		}
 		e.partial = true
 		return value, nil

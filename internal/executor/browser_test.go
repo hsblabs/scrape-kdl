@@ -734,6 +734,36 @@ func TestExecuteBrowserMissingAndFieldRecovery(t *testing.T) {
 	}
 }
 
+func TestExecuteBrowserNormalizesNumericFieldDefaults(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-numeric-defaults" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "missing_count" type="int" required=#false default=7 {
+    select ".missing"; value "text"; apply "parse-int" as="int"; on-error "default"
+  }
+  field "recovered_count" type="int" required=#false default=8 {
+    evaluate-js "bad" scope="document" returns="string"; apply "parse-int" as="int"; on-error "default"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := Execute(context.Background(), extractor, nil, Options{Browser: &fakeBrowser{}, AllowJavaScript: true})
+	if err != nil || result.Value["missing_count"] != int64(7) || result.Value["recovered_count"] != int64(8) || !result.Partial {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+
+	field := extractor.Output.Members[1].(ir.Field)
+	outOfRange := json.RawMessage(`9223372036854775808`)
+	field.Default = &outOfRange
+	extractor.Output.Members[1] = field
+	_, err = Execute(context.Background(), extractor, nil, Options{Browser: &fakeBrowser{}, AllowJavaScript: true})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "output.recovered_count" {
+		t.Fatalf("malformed default error = %#v", err)
+	}
+}
+
 func TestExecuteBrowserRequiredMissingIsNotRecovered(t *testing.T) {
 	path := compileTestSpec(t, `extractor "browser-required-missing" version=1 {
   source "html" { fetch mode="browser" url="https://example.invalid/" }

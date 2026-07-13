@@ -169,6 +169,36 @@ func TestExecuteFieldWarningAndExternalTransform(t *testing.T) {
 	}
 }
 
+func TestExecuteHTMLNormalizesNumericFieldDefaults(t *testing.T) {
+	path := compileTestSpec(t, `extractor "numeric-defaults" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "missing_count" type="int" required=#false default=7 {
+    select ".missing"; value "text"; apply "parse-int" as="int"; on-error "default"
+  }
+  field "recovered_count" type="int" required=#false default=8 {
+    select ".bad"; value "text"; apply "parse-int" as="int"; on-error "default"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := ExecuteHTML(context.Background(), extractor, `<span class="bad">invalid</span>`, Options{})
+	if err != nil || result.Value["missing_count"] != int64(7) || result.Value["recovered_count"] != int64(8) || !result.Partial {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+
+	field := extractor.Output.Members[1].(ir.Field)
+	outOfRange := json.RawMessage(`9223372036854775808`)
+	field.Default = &outOfRange
+	extractor.Output.Members[1] = field
+	_, err = ExecuteHTML(context.Background(), extractor, `<span class="bad">invalid</span>`, Options{})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "output.recovered_count" {
+		t.Fatalf("malformed default error = %#v", err)
+	}
+}
+
 func TestExecuteNormalizesNumericTransformLiterals(t *testing.T) {
 	path := compileTestSpec(t, `extractor "numeric-literals" version=1 {
   source "html" { fetch mode="http" url="https://example.invalid/" }

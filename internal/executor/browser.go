@@ -544,11 +544,7 @@ func (e *browserEngine) handleMissing(field ir.Field, path, message string) (any
 		return nil, &ExecutionError{Code: "E_REQUIRED_VALUE_MISSING", Message: message, Path: path}
 	}
 	if field.Default != nil {
-		v, err := decodeJSON(*field.Default)
-		if err != nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
-		}
-		return v, nil
+		return decodeFieldDefault(field, path)
 	}
 	return nil, nil
 }
@@ -576,12 +572,9 @@ func (e *browserEngine) recoverField(field ir.Field, path string, cause error) (
 		e.warnings = append(e.warnings, Warning{Code: "W_ERROR_RECOVERED", Message: cause.Error(), Path: path})
 		return nil, nil
 	case "default":
-		if field.Default == nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "on-error default requires a field default", Path: path}
-		}
-		v, err := decodeJSON(*field.Default)
+		v, err := decodeFieldDefault(field, path)
 		if err != nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
+			return nil, err
 		}
 		e.partial = true
 		return v, nil
