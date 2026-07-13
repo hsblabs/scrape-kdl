@@ -607,6 +607,24 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM_MISSING",
 		},
 		{
+			name: "declared transform output mismatch",
+			mutate: func(extractor *ir.Extractor) {
+				stringType := typesys.Primitive("string")
+				boolType := typesys.Primitive("bool")
+				extractor.Transforms = []ir.Transform{ir.MatchTransform{
+					Kind:          "match",
+					TransformBase: ir.TransformBase{SymbolID: "transform:declared", Name: "declared", Input: stringType, Output: boolType},
+					Default:       json.RawMessage(`true`),
+				}}
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{
+					Target: ir.DeclaredTarget{Kind: "declared", SymbolID: "transform:declared"}, Input: stringType, Output: stringType,
+				}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "duplicate transform argument",
 			mutate: func(extractor *ir.Extractor) {
 				field := extractor.Output.Members[0].(ir.Field)

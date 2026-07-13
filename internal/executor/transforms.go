@@ -185,6 +185,8 @@ func preflightCallContinuity(calls []ir.TransformCall, initial, expected typesys
 
 func (runtime *transformRuntime) preflightCalls(calls []ir.TransformCall, path string) error {
 	for _, call := range calls {
+		var declaredInput, declaredOutput typesys.Type
+		hasDeclaredTarget := false
 		switch target := call.Target.(type) {
 		case ir.BuiltinTarget:
 			if target.Kind != "builtin" {
@@ -198,9 +200,11 @@ func (runtime *transformRuntime) preflightCalls(calls []ir.TransformCall, path s
 			if target.Kind != "declared" {
 				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid declared target kind %q", target.Kind), Path: path}
 			}
-			if _, ok := runtime.declared[target.SymbolID]; !ok {
+			declared, ok := runtime.declared[target.SymbolID]
+			if !ok {
 				return &ExecutionError{Code: "E_TRANSFORM_MISSING", Message: fmt.Sprintf("declared transform %q is missing from IR", target.SymbolID), Path: path}
 			}
+			declaredInput, declaredOutput, _, hasDeclaredTarget = transformSignature(declared)
 			if len(call.PositionalArguments) > 0 || len(call.NamedArguments) > 0 {
 				cause := fmt.Errorf("declared transform %q accepts no arguments", target.SymbolID)
 				return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
@@ -223,8 +227,29 @@ func (runtime *transformRuntime) preflightCalls(calls []ir.TransformCall, path s
 		if !validRuntimeType(call.Output) {
 			return &ExecutionError{Code: "E_IR_INVALID", Message: "transform call has an invalid output type", Path: path}
 		}
+		if hasDeclaredTarget {
+			if !typesys.IsAssignable(call.Input, declaredInput) {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("transform call input %s is not assignable to declared input %s", call.Input.String(), declaredInput.String()), Path: path}
+			}
+			if !typesys.Equal(call.Output, declaredOutput) {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("transform call output %s does not match declared output %s", call.Output.String(), declaredOutput.String()), Path: path}
+			}
+		}
 	}
 	return nil
+}
+
+func transformSignature(transform ir.Transform) (typesys.Type, typesys.Type, string, bool) {
+	switch typed := transform.(type) {
+	case ir.PipelineTransform:
+		return typed.Input, typed.Output, typed.Name, true
+	case ir.MatchTransform:
+		return typed.Input, typed.Output, typed.Name, true
+	case ir.ExternalTransform:
+		return typed.Input, typed.Output, typed.Name, true
+	default:
+		return typesys.Type{}, typesys.Type{}, "", false
+	}
 }
 
 func preflightBuiltinCallSignature(name string, call ir.TransformCall, path string) error {

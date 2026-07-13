@@ -137,6 +137,43 @@ func TestTransformPreflightValidatesPipelineContinuity(t *testing.T) {
 	}
 }
 
+func TestTransformPreflightValidatesDeclaredCallTypes(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	boolType := typesys.Primitive("bool")
+	declaration := ir.MatchTransform{
+		Kind:          "match",
+		TransformBase: ir.TransformBase{SymbolID: "transform:declared", Name: "declared", Input: stringType, Output: boolType},
+		Default:       json.RawMessage(`true`),
+	}
+	newCaller := func(input, output typesys.Type) ir.PipelineTransform {
+		return ir.PipelineTransform{
+			Kind:          "pipeline",
+			TransformBase: ir.TransformBase{SymbolID: "transform:caller", Name: "caller", Input: input, Output: output},
+			Calls: []ir.TransformCall{{
+				Target: ir.DeclaredTarget{Kind: "declared", SymbolID: declaration.SymbolID}, Input: input, Output: output,
+			}},
+		}
+	}
+	if err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{newCaller(stringType, boolType), declaration}}, nil).preflight(); err != nil {
+		t.Fatalf("valid declared call preflight error = %v", err)
+	}
+	for _, tt := range []struct {
+		name          string
+		input, output typesys.Type
+	}{
+		{name: "input", input: boolType, output: boolType},
+		{name: "output", input: stringType, output: stringType},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var execution *ExecutionError
+			err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{newCaller(tt.input, tt.output), declaration}}, nil).preflight()
+			if !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "caller" {
+				t.Fatalf("declared call preflight error = %#v", err)
+			}
+		})
+	}
+}
+
 func TestTransformPreflightValidatesCalls(t *testing.T) {
 	stringType := typesys.Primitive("string")
 	validCall := ir.TransformCall{
