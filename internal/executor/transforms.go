@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
@@ -109,6 +110,10 @@ func (runtime *transformRuntime) preflightCalls(calls []ir.TransformCall, path s
 			if _, ok := runtime.declared[target.SymbolID]; !ok {
 				return &ExecutionError{Code: "E_TRANSFORM_MISSING", Message: fmt.Sprintf("declared transform %q is missing from IR", target.SymbolID), Path: path}
 			}
+			if len(call.PositionalArguments) > 0 || len(call.NamedArguments) > 0 {
+				cause := fmt.Errorf("declared transform %q accepts no arguments", target.SymbolID)
+				return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
+			}
 		default:
 			cause := fmt.Errorf("unknown transform target %T", call.Target)
 			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
@@ -116,8 +121,50 @@ func (runtime *transformRuntime) preflightCalls(calls []ir.TransformCall, path s
 		if err := preflightCallArguments(call, path); err != nil {
 			return err
 		}
+		if target, ok := call.Target.(ir.BuiltinTarget); ok {
+			if err := preflightBuiltinCallSignature(target.Name, call, path); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
+}
+
+func preflightBuiltinCallSignature(name string, call ir.TransformCall, path string) error {
+	signature := builtinRuntimeSignatures[name]
+	if len(call.PositionalArguments) < signature.minPositional || (signature.maxPositional >= 0 && len(call.PositionalArguments) > signature.maxPositional) {
+		var cause error
+		if signature.maxPositional < 0 {
+			cause = fmt.Errorf("built-in %q requires at least %d positional arguments, got %d", name, signature.minPositional, len(call.PositionalArguments))
+		} else {
+			cause = fmt.Errorf("built-in %q accepts %d..%d positional arguments, got %d", name, signature.minPositional, signature.maxPositional, len(call.PositionalArguments))
+		}
+		return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
+	}
+	present := make(map[string]struct{}, len(call.NamedArguments))
+	for _, argument := range call.NamedArguments {
+		present[argument.Name] = struct{}{}
+		if !argumentNameListed(signature.allowed, argument.Name) {
+			cause := fmt.Errorf("argument %q is not allowed on built-in %q", argument.Name, name)
+			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
+		}
+	}
+	for _, required := range strings.Fields(signature.required) {
+		if _, ok := present[required]; !ok {
+			cause := fmt.Errorf("built-in %q requires argument %q", name, required)
+			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
+		}
+	}
+	return nil
+}
+
+func argumentNameListed(names, name string) bool {
+	for _, candidate := range strings.Fields(names) {
+		if candidate == name {
+			return true
+		}
+	}
+	return false
 }
 
 func preflightCallArguments(call ir.TransformCall, path string) error {

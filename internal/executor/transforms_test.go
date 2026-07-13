@@ -126,6 +126,32 @@ func TestTransformPreflightValidatesCalls(t *testing.T) {
 			},
 			wantMessage: `invalid transform argument "value"`,
 		},
+		{
+			name: "unknown named argument",
+			call: ir.TransformCall{
+				Target:         ir.BuiltinTarget{Kind: "builtin", Name: "trim"},
+				NamedArguments: []ir.NamedArgument{{Name: "unknown", Value: json.RawMessage(`true`)}},
+			},
+			wantMessage: `argument "unknown" is not allowed`,
+		},
+		{
+			name:        "missing required argument",
+			call:        ir.TransformCall{Target: ir.BuiltinTarget{Kind: "builtin", Name: "prepend"}},
+			wantMessage: `requires argument "value"`,
+		},
+		{
+			name: "disallowed positional argument",
+			call: ir.TransformCall{
+				Target:              ir.BuiltinTarget{Kind: "builtin", Name: "trim"},
+				PositionalArguments: []json.RawMessage{json.RawMessage(`"value"`)},
+			},
+			wantMessage: "accepts 0..0 positional arguments",
+		},
+		{
+			name:        "missing enum value",
+			call:        ir.TransformCall{Target: ir.BuiltinTarget{Kind: "builtin", Name: "assert-enum"}},
+			wantMessage: "requires at least 1 positional arguments",
+		},
 	}
 	for _, tt := range argumentTests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -147,12 +173,30 @@ func TestTransformPreflightValidatesCalls(t *testing.T) {
 		})
 	}
 
+	declared := ir.PipelineTransform{
+		Kind:          "pipeline",
+		TransformBase: ir.TransformBase{SymbolID: "transform:declared", Name: "declared", Input: stringType, Output: stringType},
+	}
+	extractor := newExtractor()
+	extractor.Transforms = []ir.Transform{declared}
+	field := extractor.Output.Members[0].(ir.Field)
+	field.Transforms[0] = ir.TransformCall{
+		Target:              ir.DeclaredTarget{Kind: "declared", SymbolID: declared.SymbolID},
+		PositionalArguments: []json.RawMessage{json.RawMessage(`"value"`)},
+	}
+	extractor.Output.Members[0] = field
+	err := newTransformRuntime(context.Background(), extractor, nil).preflight()
+	var argumentExecution *ExecutionError
+	if !errors.As(err, &argumentExecution) || argumentExecution.Code != "E_TRANSFORM" || argumentExecution.Path != "output.value" || !strings.Contains(argumentExecution.Message, "accepts no arguments") {
+		t.Fatalf("declared argument preflight error = %#v", err)
+	}
+
 	pipeline := ir.PipelineTransform{
 		Kind:          "pipeline",
 		TransformBase: ir.TransformBase{SymbolID: "transform:pipeline", Name: "pipeline", Input: stringType, Output: stringType},
 		Calls:         []ir.TransformCall{{Target: ir.DeclaredTarget{Kind: "declared", SymbolID: "transform:missing"}}},
 	}
-	err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{pipeline}}, nil).preflight()
+	err = newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{pipeline}}, nil).preflight()
 	var execution *ExecutionError
 	if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM_MISSING" || execution.Path != "pipeline" {
 		t.Fatalf("pipeline preflight error = %#v", err)
