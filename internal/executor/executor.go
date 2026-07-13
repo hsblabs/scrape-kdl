@@ -307,13 +307,6 @@ func (e *engine) executeCollection(scope *dom.Node, collection ir.Collection, pa
 	return result, nil
 }
 
-func executionCode(err error, fallback string) string {
-	if execution, ok := err.(*ExecutionError); ok && execution.Code != "" {
-		return execution.Code
-	}
-	return fallback
-}
-
 func matchesRuntimeType(value any, target typesys.Type) bool {
 	if target.Kind == typesys.KindNullable {
 		if value == nil {

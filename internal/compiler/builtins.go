@@ -11,11 +11,6 @@ import (
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
-type builtinSpec struct {
-	name  string
-	apply func(input typesys.Type, node *kdl.Node) (typesys.Type, error)
-}
-
 var builtinNames = map[string]struct{}{
 	"trim": {}, "normalize-whitespace": {}, "lowercase": {}, "uppercase": {},
 	"replace": {}, "regex-replace": {}, "regex-capture": {}, "substring": {},
