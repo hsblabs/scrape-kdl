@@ -83,6 +83,31 @@ func (runtime *transformRuntime) preflightCalls(calls []ir.TransformCall, path s
 			cause := fmt.Errorf("unknown transform target %T", call.Target)
 			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
 		}
+		if err := preflightCallArguments(call, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func preflightCallArguments(call ir.TransformCall, path string) error {
+	for index, raw := range call.PositionalArguments {
+		if _, err := decodeJSON(raw); err != nil {
+			cause := fmt.Errorf("invalid positional transform argument %d: %w", index, err)
+			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
+		}
+	}
+	seen := make(map[string]struct{}, len(call.NamedArguments))
+	for _, argument := range call.NamedArguments {
+		if _, exists := seen[argument.Name]; exists {
+			cause := fmt.Errorf("duplicate transform argument %q", argument.Name)
+			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
+		}
+		seen[argument.Name] = struct{}{}
+		if _, err := decodeJSON(argument.Value); err != nil {
+			cause := fmt.Errorf("invalid transform argument %q: %w", argument.Name, err)
+			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
+		}
 	}
 	return nil
 }

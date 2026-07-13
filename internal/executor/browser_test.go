@@ -263,6 +263,20 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			},
 			wantCode: "E_TRANSFORM_MISSING",
 		},
+		{
+			name: "malformed transform argument",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{
+					Target:         ir.BuiltinTarget{Kind: "builtin", Name: "prepend"},
+					NamedArguments: []ir.NamedArgument{{Name: "value", Value: json.RawMessage(`not-json`)}},
+				}}
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_TRANSFORM",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

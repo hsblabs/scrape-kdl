@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
@@ -79,6 +80,68 @@ func TestTransformPreflightValidatesCalls(t *testing.T) {
 			err := newTransformRuntime(context.Background(), extractor, nil).preflight()
 			var execution *ExecutionError
 			if !errors.As(err, &execution) || execution.Code != tt.wantCode || execution.Path != "output.value" {
+				t.Fatalf("preflight error = %#v", err)
+			}
+		})
+	}
+
+	argumentTests := []struct {
+		name        string
+		call        ir.TransformCall
+		wantMessage string
+	}{
+		{
+			name: "valid arguments",
+			call: ir.TransformCall{
+				Target:              ir.BuiltinTarget{Kind: "builtin", Name: "assert-enum"},
+				PositionalArguments: []json.RawMessage{json.RawMessage(`"allowed"`)},
+			},
+		},
+		{
+			name: "invalid positional JSON",
+			call: ir.TransformCall{
+				Target:              ir.BuiltinTarget{Kind: "builtin", Name: "assert-enum"},
+				PositionalArguments: []json.RawMessage{json.RawMessage(`"allowed" trailing`)},
+			},
+			wantMessage: "invalid positional transform argument 0",
+		},
+		{
+			name: "duplicate named argument",
+			call: ir.TransformCall{
+				Target: ir.BuiltinTarget{Kind: "builtin", Name: "prepend"},
+				NamedArguments: []ir.NamedArgument{
+					{Name: "value", Value: json.RawMessage(`"first"`)},
+					{Name: "value", Value: json.RawMessage(`"second"`)},
+				},
+			},
+			wantMessage: `duplicate transform argument "value"`,
+		},
+		{
+			name: "invalid named JSON",
+			call: ir.TransformCall{
+				Target: ir.BuiltinTarget{Kind: "builtin", Name: "prepend"},
+				NamedArguments: []ir.NamedArgument{
+					{Name: "value", Value: json.RawMessage(`not-json`)},
+				},
+			},
+			wantMessage: `invalid transform argument "value"`,
+		},
+	}
+	for _, tt := range argumentTests {
+		t.Run(tt.name, func(t *testing.T) {
+			extractor := newExtractor()
+			field := extractor.Output.Members[0].(ir.Field)
+			field.Transforms[0] = tt.call
+			extractor.Output.Members[0] = field
+			err := newTransformRuntime(context.Background(), extractor, nil).preflight()
+			if tt.wantMessage == "" {
+				if err != nil {
+					t.Fatalf("preflight error = %v", err)
+				}
+				return
+			}
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM" || execution.Path != "output.value" || execution.Cause == nil || !strings.Contains(execution.Message, tt.wantMessage) {
 				t.Fatalf("preflight error = %#v", err)
 			}
 		})
