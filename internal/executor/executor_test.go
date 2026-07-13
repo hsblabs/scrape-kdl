@@ -403,3 +403,40 @@ func TestExecuteHTTPTimeoutUsesStableCode(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (function roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return function(request)
+}
+
+func TestExecuteHTTPPreservesParentCancellation(t *testing.T) {
+	spec := `extractor "canceled" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`
+	path := compileTestSpec(t, spec)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatal("compile failed")
+	}
+	transportCalled := false
+	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		transportCalled = true
+		return nil, request.Context().Err()
+	})}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := Execute(ctx, extractor, nil, Options{HTTPClient: client})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_HTTP_FETCH" {
+		t.Fatalf("error = %v", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error does not preserve context cancellation: %v", err)
+	}
+	if transportCalled {
+		t.Fatal("HTTP transport was called after parent context cancellation")
+	}
+}

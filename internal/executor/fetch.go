@@ -11,6 +11,9 @@ import (
 )
 
 func fetchDocument(ctx context.Context, targetURL string, options Options) (*dom.Node, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, &ExecutionError{Code: operationErrorCode("E_HTTP_FETCH", err), Message: err.Error(), Cause: err}
+	}
 	requestContext, cancel := context.WithTimeout(ctx, options.RequestTimeout)
 	defer cancel()
 

@@ -194,6 +194,9 @@ func TestExecuteBrowserAcquireFailure(t *testing.T) {
 	if !errors.As(err, &execution) || execution.Code != "E_BROWSER_ACQUIRE" {
 		t.Fatalf("err=%v", err)
 	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("acquire error does not preserve context cancellation: %v", err)
+	}
 }
 
 func TestExecuteBrowserRejectsNonJSONJavaScriptResult(t *testing.T) {
@@ -247,5 +250,33 @@ func TestExecuteBrowserWorkflowTimeoutUsesStableCode(t *testing.T) {
 	var execution *ExecutionError
 	if !errors.As(err, &execution) || execution.Code != "E_TIMEOUT" {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+type canceledWorkflowBrowser struct{ leasedFakeBrowser }
+
+func (f *canceledWorkflowBrowser) WaitFor(ctx context.Context, _ string, _ string, _ time.Duration) error {
+	return ctx.Err()
+}
+
+func TestExecuteBrowserWorkflowPreservesParentCancellation(t *testing.T) {
+	extractor, diagnostics := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
+	if diagnostics.HasErrors() {
+		t.Fatal("compile failed")
+	}
+	browser := &canceledWorkflowBrowser{leasedFakeBrowser: leasedFakeBrowser{fakeBrowser: fakeBrowser{js: map[string]any{"id": "race"}}}}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := Execute(ctx, extractor, map[string]any{"race_id": "42"}, Options{Browser: browser, AllowJavaScript: true})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_BROWSER_WORKFLOW" {
+		t.Fatalf("error = %v", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("workflow error does not preserve context cancellation: %v", err)
+	}
+	if browser.released != 1 {
+		t.Fatalf("release count = %d, want 1", browser.released)
 	}
 }
