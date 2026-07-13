@@ -164,3 +164,37 @@ Documenting the current behavior preserves the public Go and adapter APIs but me
 - `internal/executor/fetch.go`
 - `internal/executor/browser.go`
 - `internal/executor/types.go`
+
+## Workflow timeout upper bound
+
+### Decision
+
+Define the maximum supported `timeout-ms` value and the behavior when a larger positive integer is compiled or loaded from Validated IR.
+
+### Background
+
+The language specification and IR schema require workflow timeouts to be positive integers but do not define an upper bound. The Go runtime converts milliseconds to `time.Duration`; sufficiently large positive `int` values overflow that nanosecond-based representation and can become zero or negative before reaching a browser adapter. Rejecting, clamping, or representing those values differently would each add an externally observable rule that is not currently normative.
+
+### Options
+
+1. Define a maximum of `math.MaxInt64 / time.Millisecond` milliseconds and reject larger values during compilation and IR validation.
+2. Clamp larger values to the maximum representable `time.Duration`.
+3. Change the adapter timeout representation to preserve a wider millisecond range.
+4. Leave the specification unbounded and require each runtime to document its representable limit.
+
+### Recommendation
+
+Define the portable maximum explicitly and reject larger values with the existing type/range validation path before emitting Validated IR. Runtime preflight should defensively reject out-of-range hand-built IR using `E_IR_INVALID`.
+
+### Compatibility and safety impact
+
+An explicit maximum prevents overflow from turning a long timeout into an immediate or otherwise incorrect timeout and gives adapters a deterministic contract. Rejecting values that currently compile is a compatibility change, although those values cannot execute with their stated semantics in the Go reference runtime. Clamping avoids failure but silently changes requested behavior. A wider adapter representation would be a breaking public API change.
+
+### Related files
+
+- `docs/spec/language-v0.1.md`
+- `docs/ir/schema.json`
+- `internal/compiler/source.go`
+- `internal/executor/browser.go`
+- `internal/executor/browser_test.go`
+- `internal/executor/types.go`
