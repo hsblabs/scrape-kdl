@@ -62,6 +62,28 @@ func TestTransformPreflightRejectsDuplicateSymbols(t *testing.T) {
 	}
 }
 
+func TestTransformPreflightRejectsMalformedDeclarationTypes(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	tests := []ir.Transform{
+		ir.PipelineTransform{
+			Kind:          "pipeline",
+			TransformBase: ir.TransformBase{SymbolID: "transform:pipeline", Name: "pipeline", Input: typesys.Type{Kind: typesys.KindArray}, Output: stringType},
+		},
+		ir.MatchTransform{
+			Kind:          "match",
+			TransformBase: ir.TransformBase{SymbolID: "transform:match", Name: "match", Input: stringType, Output: typesys.Type{Kind: typesys.KindNullable}},
+			Default:       json.RawMessage(`"fallback"`),
+		},
+	}
+	for _, transform := range tests {
+		runtime := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{transform}}, nil)
+		var execution *ExecutionError
+		if err := runtime.preflight(); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" {
+			t.Fatalf("preflight error = %#v", err)
+		}
+	}
+}
+
 func TestTransformPreflightValidatesCalls(t *testing.T) {
 	stringType := typesys.Primitive("string")
 	validCall := ir.TransformCall{
@@ -171,7 +193,9 @@ func TestTransformPreflightValidatesCalls(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			extractor := newExtractor()
 			field := extractor.Output.Members[0].(ir.Field)
-			field.Transforms[0] = tt.call
+			call := tt.call
+			call.Input, call.Output = stringType, stringType
+			field.Transforms[0] = call
 			extractor.Output.Members[0] = field
 			err := newTransformRuntime(context.Background(), extractor, nil).preflight()
 			if tt.wantMessage == "" {
@@ -187,19 +211,29 @@ func TestTransformPreflightValidatesCalls(t *testing.T) {
 		})
 	}
 
+	extractor := newExtractor()
+	field := extractor.Output.Members[0].(ir.Field)
+	field.Transforms[0] = ir.TransformCall{Target: ir.BuiltinTarget{Kind: "builtin", Name: "trim"}, Output: stringType}
+	extractor.Output.Members[0] = field
+	err := newTransformRuntime(context.Background(), extractor, nil).preflight()
+	var typeExecution *ExecutionError
+	if !errors.As(err, &typeExecution) || typeExecution.Code != "E_IR_INVALID" || typeExecution.Path != "output.value" {
+		t.Fatalf("call type preflight error = %#v", err)
+	}
+
 	declared := ir.PipelineTransform{
 		Kind:          "pipeline",
 		TransformBase: ir.TransformBase{SymbolID: "transform:declared", Name: "declared", Input: stringType, Output: stringType},
 	}
-	extractor := newExtractor()
+	extractor = newExtractor()
 	extractor.Transforms = []ir.Transform{declared}
-	field := extractor.Output.Members[0].(ir.Field)
+	field = extractor.Output.Members[0].(ir.Field)
 	field.Transforms[0] = ir.TransformCall{
 		Target:              ir.DeclaredTarget{Kind: "declared", SymbolID: declared.SymbolID},
 		PositionalArguments: []json.RawMessage{json.RawMessage(`"value"`)},
 	}
 	extractor.Output.Members[0] = field
-	err := newTransformRuntime(context.Background(), extractor, nil).preflight()
+	err = newTransformRuntime(context.Background(), extractor, nil).preflight()
 	var argumentExecution *ExecutionError
 	if !errors.As(err, &argumentExecution) || argumentExecution.Code != "E_TRANSFORM" || argumentExecution.Path != "output.value" || !strings.Contains(argumentExecution.Message, "accepts no arguments") {
 		t.Fatalf("declared argument preflight error = %#v", err)

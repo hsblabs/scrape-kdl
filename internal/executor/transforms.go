@@ -59,16 +59,36 @@ func (runtime *transformRuntime) preflight() error {
 	for _, transform := range runtime.extractor.Transforms {
 		switch typed := transform.(type) {
 		case ir.PipelineTransform:
+			if err := preflightTransformTypes(typed.Input, typed.Output, typed.Name); err != nil {
+				return err
+			}
 			if err := runtime.preflightCalls(typed.Calls, typed.Name); err != nil {
 				return err
 			}
 		case ir.MatchTransform:
+			if err := preflightTransformTypes(typed.Input, typed.Output, typed.Name); err != nil {
+				return err
+			}
 			if err := preflightMatchTransform(typed); err != nil {
+				return err
+			}
+		case ir.ExternalTransform:
+			if err := preflightTransformTypes(typed.Input, typed.Output, typed.Name); err != nil {
 				return err
 			}
 		}
 	}
 	return runtime.preflightOutputCalls(runtime.extractor.Output)
+}
+
+func preflightTransformTypes(input, output typesys.Type, path string) error {
+	if !validRuntimeType(input) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: "transform has an invalid input type", Path: path}
+	}
+	if !validRuntimeType(output) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: "transform has an invalid output type", Path: path}
+	}
+	return nil
 }
 
 func preflightMatchTransform(match ir.MatchTransform) error {
@@ -138,6 +158,12 @@ func (runtime *transformRuntime) preflightCalls(calls []ir.TransformCall, path s
 			if err := preflightBuiltinCallSignature(target.Name, call, path); err != nil {
 				return err
 			}
+		}
+		if !validRuntimeType(call.Input) {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: "transform call has an invalid input type", Path: path}
+		}
+		if !validRuntimeType(call.Output) {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: "transform call has an invalid output type", Path: path}
 		}
 	}
 	return nil
