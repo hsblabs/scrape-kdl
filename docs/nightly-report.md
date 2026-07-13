@@ -43,6 +43,7 @@ Baseline: `e5363b7`
 - Hardened malformed built-in arguments: negative `regex-capture` groups now return an error instead of indexing a negative slice offset, and non-string `parse-bool` `true`/`false` values no longer collapse to empty strings. Removed the now-unnecessary `unicode/utf8` sentinel.
 - Re-ran core, race, real go-rod, Chromium E2E, and release gates concurrently after the HTTP preflight and built-in hardening changes; executor statement coverage increased to 76.6%.
 - Added a bounded malformed-argument fuzz target across regex capture/replacement, substring, split, boolean parsing, URL queries and paths, numeric assertions, and coalescing. A 20-second run completed approximately 1.60 million executions without finding another panic.
+- Verified that the wrapped HTTP client preserves cookie-jar scope and custom redirect mutation: host-only cookies do not reach subdomains, domain cookies do, and a supplied `CheckRedirect` can remove session headers and cookies without runtime reinjection. Executor statement coverage increased to 76.8%.
 
 ## Commits
 
@@ -89,6 +90,7 @@ Baseline: `e5363b7`
 - `6a511aa` test: enforce HTTP preflight boundary
 - `1eab03f` fix: harden malformed builtin arguments
 - `0c5081d` test: fuzz malformed builtin arguments
+- `9f682d1` test: verify redirect client ownership
 
 ## Verification results
 
@@ -107,7 +109,7 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 76.6%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 76.8%, and source package coverage at 100%.
 
 ## Unresolved failures
 
@@ -130,5 +132,5 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 - Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
 - Extend browser lease cleanup tests across ordinary adapter errors and cancellation interleavings without changing the public adapter contract.
-- Add deterministic tests for cookie-jar scope and a custom `CheckRedirect` that removes sensitive headers, preserving standard `net/http` ownership of redirect behavior.
 - Exercise malformed selector and transform IR through `ExecuteHTML`, which should fail before parsing the supplied document.
+- Audit response `Set-Cookie` updates across redirects with a supplied jar, recording names and scope only rather than secret values.
