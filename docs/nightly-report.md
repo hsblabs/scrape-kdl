@@ -48,6 +48,7 @@ Baseline: `e5363b7`
 - Recorded the required compatibility and security decision for ambient `http.Client` jar or browser-context state under `session policy="none"`; current behavior was intentionally left unchanged.
 - Verified response-cookie lifecycle through a supplied jar: redirect responses persist host-only and domain cookies with their proper scope, only the domain cookie reaches a subdomain, and final-response cookies are retained. Tests record cookie names only, never values.
 - Added direct HTTP client wrapper tests proving nil-policy identity, non-nil-policy clone isolation, preservation of transport/jar/timeout, caller callback ordering, and policy rejection before the caller-owned redirect callback.
+- Added browser output-IR preflight before input resolution and adapter acquisition. Nested malformed selectors, unknown output members, and unknown value sources now fail with existing structured codes before browser activity; valid extraction remains unchanged. Updated browser runtime execution-order documentation. Executor statement coverage increased to 77.1%.
 
 ## Commits
 
@@ -99,6 +100,8 @@ Baseline: `e5363b7`
 - `a7b0a44` docs: record ambient session state decision
 - `422f5e8` test: cover response cookie lifecycle
 - `c0d6a22` test: verify HTTP client clone isolation
+- `270b01a` fix: preflight browser output IR
+- `e66744f` docs: clarify browser preflight order
 
 ## Verification results
 
@@ -117,7 +120,7 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 77.0%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 77.1%, and source package coverage at 100%.
 
 ## Unresolved failures
 
@@ -141,5 +144,5 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 - Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
 - Exercise malformed selector and transform IR through `ExecuteHTML`, which should fail before parsing the supplied document.
-- Extend browser runtime malformed-IR preflight coverage to unknown output members and nested invalid selectors before adapter acquisition.
 - Add direct policy error conversion tests for wrapped errors and unrelated fetch failures without changing diagnostic mappings.
+- Preflight malformed browser workflow step kinds before adapter acquisition while preserving valid workflow ordering.
