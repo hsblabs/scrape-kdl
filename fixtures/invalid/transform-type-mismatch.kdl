@@ -1,0 +1,18 @@
+extractor "invalid-transform" version=1 {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/"
+  }
+
+  transform "bad" input="string" output="string?" {
+    pipeline {
+      apply "regex-capture" pattern=#"([a-z]+)"# group=1
+      apply "empty-to-null"
+    }
+  }
+
+  field "value" type="string?" {
+    select ".value"
+    value "text"
+    apply "bad"
+  }
+}

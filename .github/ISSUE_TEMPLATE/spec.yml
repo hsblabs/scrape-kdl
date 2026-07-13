@@ -1,0 +1,30 @@
+name: Language specification proposal
+description: Propose a Scraping KDL grammar or semantic change
+title: "spec: "
+labels: [specification]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+    validations:
+      required: true
+  - type: textarea
+    id: syntax
+    attributes:
+      label: Proposed KDL syntax
+      render: kdl
+    validations:
+      required: true
+  - type: textarea
+    id: semantics
+    attributes:
+      label: Validation and execution semantics
+    validations:
+      required: true
+  - type: textarea
+    id: portability
+    attributes:
+      label: Go, TypeScript, HTTP, and browser portability
+    validations:
+      required: true

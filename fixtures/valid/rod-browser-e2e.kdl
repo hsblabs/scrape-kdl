@@ -1,0 +1,32 @@
+extractor "rod-e2e" version=1 {
+  source "html" {
+    fetch mode="browser" url="http://127.0.0.1:18080"
+    workflow {
+      click "#load"
+      wait-for "#value" state="visible"
+    }
+  }
+
+  field "value" type="string" required=#true {
+    select "#value" match="one"
+    value "text"
+  }
+
+  field "title" type="string" required=#true {
+    evaluate-js #"""
+      () => document.title || "untitled"
+      """# scope="document" returns="string"
+  }
+
+  collection "items" on-row-error="fail" {
+    select "li"
+    field "id" type="string" required=#true {
+      select ".id" match="one"
+      value "attr" name="data-id"
+    }
+    field "text" type="string" required=#true {
+      select ".label" match="one"
+      value "text"
+    }
+  }
+}

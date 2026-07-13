@@ -1,0 +1,9 @@
+extractor "duplicate-property" version=1 version=2 {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/"
+  }
+  field "title" type="string" required=#true {
+    select "h1"
+    value "text"
+  }
+}

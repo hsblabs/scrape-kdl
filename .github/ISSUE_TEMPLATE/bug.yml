@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible compiler or runtime defect
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, cookies, authorization headers, or private HTML.
+  - type: input
+    id: version
+    attributes:
+      label: scrape-kdl version
+      placeholder: v0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: go
+    attributes:
+      label: Go version, supported OS, and architecture
+      description: Linux and macOS are supported. Windows-only reports are out of scope.
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Fetch mode
+      options: [http, browser, compile-only]
+    validations:
+      required: true
+  - type: textarea
+    id: spec
+    attributes:
+      label: Minimal sanitized KDL and fixture
+      render: kdl
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior and diagnostics
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true

@@ -1,0 +1,26 @@
+name: Browser E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 18 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-e2e
+  cancel-in-progress: false
+
+jobs:
+  rod-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-go@v6.5.0
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: adapters/rod/go.mod
+      - working-directory: adapters/rod
+        run: go test -tags=e2e -timeout=15m ./...

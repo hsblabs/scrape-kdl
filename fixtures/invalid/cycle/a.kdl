@@ -1,0 +1,6 @@
+import "./b.kdl" as="b"
+module "a" version=1 {
+  transform "a_value" input="string" output="string" {
+    pipeline { apply "trim" }
+  }
+}

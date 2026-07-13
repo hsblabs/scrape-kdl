@@ -1,0 +1,67 @@
+import "./modules/common.kdl" as="common"
+
+extractor "race-detail" version=1 {
+  source "html" {
+    fetch mode="browser" url="https://example.com/race/{race_id}"
+    session policy="optional"
+
+    workflow {
+      wait-for ".race-detail" state="visible" timeout-ms=5000
+      evaluate-js #"""
+        async () => {
+          if (window.appReady) await window.appReady
+        }
+        """# timeout-ms=3000
+    }
+  }
+
+  input "race_id" type="string" required=#true
+
+  field "title" type="string" required=#true {
+    select "h1" match="one"
+    value "text"
+    apply "normalize-whitespace"
+  }
+
+  field "hydrated_data" type="object?" required=#true {
+    evaluate-js #"""
+      () => window.__INITIAL_STATE__?.race ?? null
+      """# scope="document" returns="object?" timeout-ms=3000
+  }
+
+  collection "entries" min-items=1 on-row-error="skip" {
+    select "table.entries tbody tr"
+
+    field "number" type="u8" required=#true {
+      select ".number" match="one"
+      value "text"
+      apply "trim"
+      apply "parse-int" as="u8"
+    }
+
+    field "horse_name" type="string" required=#true {
+      select ".horse-name a" match="one"
+      value "text"
+      apply "normalize-whitespace"
+    }
+
+    field "horse_id" type="string?" required=#false {
+      select ".horse-name a" match="one"
+      value "attr" name="href"
+      apply "common.extract_horse_id"
+      on-error "warn"
+    }
+
+    field "sex" type="string" required=#true {
+      select ".sex" match="one"
+      value "text"
+      apply "common.normalize_sex"
+    }
+
+    field "dataset" type="object" required=#true {
+      evaluate-js #"""
+        (element) => ({ ...element.dataset })
+        """# scope="current" returns="object"
+    }
+  }
+}
