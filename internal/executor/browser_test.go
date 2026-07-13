@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -183,6 +184,22 @@ func (f *failingNavigationBrowser) Acquire(context.Context) (func(), error) {
 
 func (f *failingNavigationBrowser) Navigate(context.Context, string, BrowserNavigateOptions) error {
 	return errors.New("navigation failed")
+}
+
+type rowRecoveryBrowser struct{ fakeBrowser }
+
+func (f *rowRecoveryBrowser) QueryAll(_ context.Context, scope BrowserElement, selector string) ([]BrowserElement, error) {
+	switch selector {
+	case ".rows":
+		return []BrowserElement{fakeElement{"good-row"}, fakeElement{"bad-row"}}, nil
+	case ".value":
+		if scope == (fakeElement{"bad-row"}) {
+			return nil, nil
+		}
+		return []BrowserElement{fakeElement{"value"}}, nil
+	default:
+		return f.fakeBrowser.QueryAll(context.Background(), scope, selector)
+	}
 }
 
 func TestExecuteBrowserAcquireFailure(t *testing.T) {
@@ -388,6 +405,81 @@ func TestExecuteBrowserWrapsInvalidRecoveryDefault(t *testing.T) {
 	var execution *ExecutionError
 	if !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "output.value" || execution.Cause == nil {
 		t.Fatalf("error = %#v", err)
+	}
+}
+
+func TestExecuteBrowserCollectionRowRecovery(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-row-recovery" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  collection "rows" min-items=1 on-row-error="skip" {
+    select ".rows"
+    field "value" type="string" required=#true {
+      select ".value" match="one"
+      value "text"
+    }
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+
+	result, err := Execute(context.Background(), extractor, nil, Options{Browser: &rowRecoveryBrowser{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, ok := result.Value["rows"].([]any)
+	if !ok || len(rows) != 1 || rows[0].(map[string]any)["value"] != "Title" {
+		t.Fatalf("rows = %#v", result.Value["rows"])
+	}
+	if !result.Partial || len(result.Warnings) != 2 || result.Warnings[0].Code != "W_ROW_SKIPPED" || result.Warnings[0].Path != "output.rows" || result.Warnings[0].Row == nil || *result.Warnings[0].Row != 1 || result.Warnings[1].Code != "W_PARTIAL_EXTRACTION" {
+		t.Fatalf("recovery = partial:%v warnings:%#v", result.Partial, result.Warnings)
+	}
+}
+
+func TestExecuteBrowserCollectionCardinality(t *testing.T) {
+	tests := []struct {
+		name       string
+		collection string
+		browser    BrowserAdapter
+		wantText   string
+	}{
+		{
+			name: "required empty collection",
+			collection: `collection "rows" required=#true {
+    select ".absent"
+    field "value" type="string" required=#true { select ".value"; value "text" }
+  }`,
+			browser:  &fakeBrowser{},
+			wantText: "minimum is 1",
+		},
+		{
+			name: "maximum exceeded",
+			collection: `collection "rows" max-items=1 {
+    select "table.entries tbody tr"
+    field "value" type="string" required=#true { select ".number"; value "text" }
+  }`,
+			browser:  &fakeBrowser{},
+			wantText: "maximum is 1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := compileTestSpec(t, `extractor "browser-cardinality" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  `+tt.collection+`
+}`)
+			extractor, diagnostics := compiler.CompileFile(path)
+			if diagnostics.HasErrors() {
+				t.Fatalf("compile diagnostics = %#v", diagnostics)
+			}
+
+			_, err := Execute(context.Background(), extractor, nil, Options{Browser: tt.browser})
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != "E_COLLECTION_CARDINALITY" || execution.Path != "output.rows" || !strings.Contains(execution.Message, tt.wantText) {
+				t.Fatalf("error = %v", err)
+			}
+		})
 	}
 }
 
