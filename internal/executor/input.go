@@ -71,7 +71,7 @@ func normalizeInput(typeName string, value any) (any, error) {
 			}
 			return parsed, nil
 		case float64:
-			if math.Trunc(typed) != typed || typed < math.MinInt64 || typed > math.MaxInt64 {
+			if math.Trunc(typed) != typed || typed < math.MinInt64 || typed >= math.MaxInt64 {
 				return nil, fmt.Errorf("expected finite integer, got %v", typed)
 			}
 			return int64(typed), nil
