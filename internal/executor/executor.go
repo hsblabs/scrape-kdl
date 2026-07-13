@@ -85,6 +85,9 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 	if extractor.Source.Fetch.Mode != "http" {
 		return nil, &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: fmt.Sprintf("HTTP runtime cannot execute fetch mode %q", extractor.Source.Fetch.Mode)}
 	}
+	if err := preflightSourceStructure(extractor.Source); err != nil {
+		return nil, err
+	}
 	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
 	if err := transforms.preflight(); err != nil {
 		return nil, err
@@ -100,6 +103,30 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 		return nil, err
 	}
 	return result, nil
+}
+
+func preflightSourceStructure(source ir.Source) error {
+	if source.Kind != "html" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown source kind %q", source.Kind), Path: "source"}
+	}
+	if source.SessionPolicy != "none" && source.SessionPolicy != "optional" && source.SessionPolicy != "required" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown session policy %q", source.SessionPolicy), Path: "source.session"}
+	}
+	for index, segment := range source.Fetch.URLTemplate.Segments {
+		switch typed := segment.(type) {
+		case ir.LiteralTemplateSegment:
+			if typed.Kind != "literal" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid literal URL template segment kind %q", typed.Kind), Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
+			}
+		case ir.InputTemplateSegment:
+			if typed.Kind != "input" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid input URL template segment kind %q", typed.Kind), Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
+			}
+		default:
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown URL template segment %T", segment), Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
+		}
+	}
+	return nil
 }
 
 func preflightOutputStructure(root ir.OutputObject) error {

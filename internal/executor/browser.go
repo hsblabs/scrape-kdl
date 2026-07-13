@@ -78,6 +78,9 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	if !options.AllowJavaScript && containsJavaScript(extractor) {
 		return nil, &ExecutionError{Code: "E_JAVASCRIPT_DISABLED", Message: "extractor contains JavaScript; set AllowJavaScript=true for trusted specs"}
 	}
+	if err := preflightSourceStructure(extractor.Source); err != nil {
+		return nil, err
+	}
 	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
 	if err := transforms.preflight(); err != nil {
 		return nil, err

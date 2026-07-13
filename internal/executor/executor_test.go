@@ -685,6 +685,27 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_INPUT_DEFAULT",
 		},
 		{
+			name: "unknown source kind",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.Kind = "json"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unknown session policy",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.SessionPolicy = "ambient"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid URL literal segment kind",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.Fetch.URLTemplate.Segments[0] = ir.LiteralTemplateSegment{Kind: "text", Value: "https://example.invalid/"}
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "duplicate output name",
 			mutate: func(extractor *ir.Extractor) {
 				first := extractor.Output.Members[0].(ir.Field)
@@ -858,6 +879,44 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			}
 			if transportCalls != 0 {
 				t.Fatalf("transport called %d times before %s", transportCalls, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestPreflightSourceStructure(t *testing.T) {
+	valid := ir.Source{
+		Kind: "html", SessionPolicy: "optional",
+		Fetch: ir.Fetch{URLTemplate: ir.Template{Segments: []ir.TemplateSegment{
+			ir.LiteralTemplateSegment{Kind: "literal", Value: "https://example.invalid/"},
+			ir.InputTemplateSegment{Kind: "input", Name: "id"},
+		}}},
+	}
+	if err := preflightSourceStructure(valid); err != nil {
+		t.Fatalf("valid source preflight error = %v", err)
+	}
+	tests := []struct {
+		name   string
+		mutate func(*ir.Source)
+	}{
+		{name: "source kind", mutate: func(source *ir.Source) { source.Kind = "json" }},
+		{name: "session policy", mutate: func(source *ir.Source) { source.SessionPolicy = "ambient" }},
+		{name: "literal discriminator", mutate: func(source *ir.Source) {
+			source.Fetch.URLTemplate.Segments[0] = ir.LiteralTemplateSegment{Kind: "text"}
+		}},
+		{name: "input discriminator", mutate: func(source *ir.Source) {
+			source.Fetch.URLTemplate.Segments[1] = ir.InputTemplateSegment{Kind: "parameter", Name: "id"}
+		}},
+		{name: "unknown segment", mutate: func(source *ir.Source) { source.Fetch.URLTemplate.Segments[1] = nil }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := valid
+			source.Fetch.URLTemplate.Segments = append([]ir.TemplateSegment(nil), valid.Fetch.URLTemplate.Segments...)
+			tt.mutate(&source)
+			var execution *ExecutionError
+			if err := preflightSourceStructure(source); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" {
+				t.Fatalf("preflight error = %#v", err)
 			}
 		})
 	}

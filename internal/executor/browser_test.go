@@ -408,6 +408,13 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			},
 			wantCode: "E_IR_INVALID",
 		},
+		{
+			name: "unknown session policy",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.SessionPolicy = "ambient"
+			},
+			wantCode: "E_IR_INVALID",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
