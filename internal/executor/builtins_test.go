@@ -346,6 +346,49 @@ func TestBuiltinRequiredArgumentErrors(t *testing.T) {
 	}
 }
 
+func TestBuiltinURLBoundaries(t *testing.T) {
+	tests := []struct {
+		name    string
+		builtin string
+		input   any
+		call    ir.TransformCall
+		want    any
+		wantErr bool
+	}{
+		{name: "resolve absolute", builtin: "url-resolve", input: "../item?q=1#part", call: testCall(map[string]any{"base": "https://example.invalid/a/b"}), want: "https://example.invalid/item?q=1#part"},
+		{name: "resolve relative base", builtin: "url-resolve", input: "item", call: testCall(map[string]any{"base": "/root/"}), wantErr: true},
+		{name: "resolve malformed reference", builtin: "url-resolve", input: "%zz", call: testCall(map[string]any{"base": "https://example.invalid/"}), wantErr: true},
+		{name: "query decoded", builtin: "url-query", input: "https://example.invalid/?q=a+b", call: testCall(map[string]any{"name": "q"}), want: "a b"},
+		{name: "query empty", builtin: "url-query", input: "https://example.invalid/?q=", call: testCall(map[string]any{"name": "q"}), want: ""},
+		{name: "query missing", builtin: "url-query", input: "https://example.invalid/", call: testCall(map[string]any{"name": "q"}), want: nil},
+		{name: "query out of range", builtin: "url-query", input: "https://example.invalid/?q=one", call: testCall(map[string]any{"name": "q", "index": 1}), want: nil},
+		{name: "query negative index", builtin: "url-query", input: "https://example.invalid/?q=one", call: testCall(map[string]any{"name": "q", "index": -1}), wantErr: true},
+		{name: "query malformed URL", builtin: "url-query", input: "https://example.invalid/?q=%zz", call: testCall(map[string]any{"name": "q"}), wantErr: true},
+		{name: "decoded path", builtin: "url-path", input: "https://example.invalid/a%20b/%2F", call: testCall(nil), want: "/a b//"},
+		{name: "malformed path", builtin: "url-path", input: "https://example.invalid/%zz", call: testCall(nil), wantErr: true},
+		{name: "absolute segment", builtin: "path-segment", input: "https://example.invalid/a//b/", call: testCall(map[string]any{"index": 1}), want: "b"},
+		{name: "decoded segment", builtin: "path-segment", input: "/a%2Fb/c", call: testCall(map[string]any{"index": 0}), want: "a/b"},
+		{name: "negative segment", builtin: "path-segment", input: "/a/b", call: testCall(map[string]any{"index": -2}), want: "a"},
+		{name: "segment out of range", builtin: "path-segment", input: "/a/b", call: testCall(map[string]any{"index": 2}), want: nil},
+		{name: "segment missing index", builtin: "path-segment", input: "/a/b", call: testCall(nil), wantErr: true},
+		{name: "segment malformed escape", builtin: "path-segment", input: "/a/%zz", call: testCall(map[string]any{"index": 1}), wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := applyBuiltinRuntime(tt.builtin, tt.input, tt.call)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("result = %#v, want error", got)
+				}
+				return
+			}
+			if err != nil || !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("result = %#v, error = %v, want %#v", got, err, tt.want)
+			}
+		})
+	}
+}
+
 func FuzzBuiltinMalformedArgumentsDoNotPanic(f *testing.F) {
 	f.Add(uint8(0), "a", []byte(`-1`))
 	f.Add(uint8(1), "a", []byte(`"(a)"`))

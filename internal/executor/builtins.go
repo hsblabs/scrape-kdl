@@ -145,6 +145,21 @@ func requiredStringArgument(arguments map[string]json.RawMessage, name string) (
 	return stringValue, nil
 }
 
+func requiredIntArgument(arguments map[string]json.RawMessage, name string) (int, error) {
+	value, ok, err := namedArgument(arguments, name)
+	if err != nil {
+		return 0, err
+	}
+	if !ok {
+		return 0, fmt.Errorf("argument %q is required", name)
+	}
+	parsed, err := literalInt(value)
+	if err != nil {
+		return 0, fmt.Errorf("argument %q: %w", name, err)
+	}
+	return parsed, nil
+}
+
 func optionalIntArgument(arguments map[string]json.RawMessage, name string, fallback int) (int, error) {
 	value, ok, err := namedArgument(arguments, name)
 	if err != nil || !ok {
@@ -590,12 +605,19 @@ func builtinURLQuery(input any, arguments map[string]json.RawMessage) (any, erro
 	if err != nil {
 		return nil, err
 	}
+	if index < 0 {
+		return nil, fmt.Errorf("argument %q must be non-negative", "index")
+	}
 	parsed, err := url.Parse(value)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL %q: %w", value, err)
 	}
-	values := parsed.Query()[name]
-	if index < 0 || index >= len(values) {
+	query, err := url.ParseQuery(parsed.RawQuery)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL query in %q: %w", value, err)
+	}
+	values := query[name]
+	if index >= len(values) {
 		return nil, nil
 	}
 	return values[index], nil
@@ -622,7 +644,7 @@ func builtinPathSegment(input any, arguments map[string]json.RawMessage) (any, e
 	if err != nil {
 		return nil, err
 	}
-	index, err := optionalIntArgument(arguments, "index", 0)
+	index, err := requiredIntArgument(arguments, "index")
 	if err != nil {
 		return nil, err
 	}
