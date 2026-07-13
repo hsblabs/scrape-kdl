@@ -10,14 +10,16 @@ import (
 )
 
 type transformRuntime struct {
-	ctx       context.Context
-	declared  map[string]ir.Transform
-	external  map[string]ExternalTransform
-	callStack map[string]bool
+	ctx           context.Context
+	declared      map[string]ir.Transform
+	externalDecls []ir.ExternalTransform
+	external      map[string]ExternalTransform
+	callStack     map[string]bool
 }
 
 func newTransformRuntime(ctx context.Context, extractor *ir.Extractor, external map[string]ExternalTransform) *transformRuntime {
 	declared := make(map[string]ir.Transform, len(extractor.Transforms))
+	externalDecls := make([]ir.ExternalTransform, 0)
 	for _, transform := range extractor.Transforms {
 		switch typed := transform.(type) {
 		case ir.PipelineTransform:
@@ -26,17 +28,14 @@ func newTransformRuntime(ctx context.Context, extractor *ir.Extractor, external 
 			declared[typed.SymbolID] = transform
 		case ir.ExternalTransform:
 			declared[typed.SymbolID] = transform
+			externalDecls = append(externalDecls, typed)
 		}
 	}
-	return &transformRuntime{ctx: ctx, declared: declared, external: external, callStack: map[string]bool{}}
+	return &transformRuntime{ctx: ctx, declared: declared, externalDecls: externalDecls, external: external, callStack: map[string]bool{}}
 }
 
 func (runtime *transformRuntime) preflight() error {
-	for _, transform := range runtime.declared {
-		external, ok := transform.(ir.ExternalTransform)
-		if !ok {
-			continue
-		}
+	for _, external := range runtime.externalDecls {
 		if _, exists := runtime.external[external.Symbol]; !exists {
 			return &ExecutionError{Code: "E_EXTERNAL_TRANSFORM_MISSING", Message: fmt.Sprintf("external transform symbol %q is not registered", external.Symbol), Path: external.Name}
 		}
