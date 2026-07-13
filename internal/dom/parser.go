@@ -102,15 +102,19 @@ func shouldImplicitlyClose(open, incoming string) bool {
 	case "option":
 		return incoming == "option" || incoming == "optgroup"
 	case "thead":
-		return incoming == "tbody" || incoming == "tfoot"
+		return incoming == "thead" || incoming == "tbody" || incoming == "tfoot"
 	case "tbody", "tfoot":
-		return incoming == "tbody" || incoming == "tfoot"
+		return incoming == "thead" || incoming == "tbody" || incoming == "tfoot"
 	case "tr":
-		return incoming == "tr"
+		return incoming == "tr" || isTableSection(incoming)
 	case "td", "th":
-		return incoming == "td" || incoming == "th" || incoming == "tr"
+		return incoming == "td" || incoming == "th" || incoming == "tr" || isTableSection(incoming)
 	}
 	return false
+}
+
+func isTableSection(tag string) bool {
+	return tag == "thead" || tag == "tbody" || tag == "tfoot"
 }
 
 func isParagraphClosingStart(tag string) bool {
@@ -155,8 +159,9 @@ func protectRawText(source string) string {
 			out.WriteString(source[cursor:])
 			break
 		}
-		tag, closing, selfClosing := parseTagName(source[cursor : end+1])
-		out.WriteString(source[cursor : end+1])
+		tagSource := source[cursor : end+1]
+		tag, closing, selfClosing := parseTagName(tagSource)
+		out.WriteString(normalizeTagName(tagSource))
 		cursor = end + 1
 		if closing || selfClosing || (!rawTextElements[tag] && !rcdataElements[tag]) {
 			continue
@@ -175,6 +180,34 @@ func protectRawText(source string) string {
 		cursor = closeStart
 	}
 	return out.String()
+}
+
+func normalizeTagName(tagSource string) string {
+	if len(tagSource) < 3 || tagSource[0] != '<' {
+		return tagSource
+	}
+	i := 1
+	for i < len(tagSource) && unicode.IsSpace(rune(tagSource[i])) {
+		i++
+	}
+	if i < len(tagSource) && tagSource[i] == '/' {
+		i++
+	}
+	if i >= len(tagSource) || tagSource[i] == '!' || tagSource[i] == '?' {
+		return tagSource
+	}
+	start := i
+	for i < len(tagSource) {
+		c := tagSource[i]
+		if !(c == '-' || c == ':' || c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9') {
+			break
+		}
+		i++
+	}
+	if start == i {
+		return tagSource
+	}
+	return tagSource[:start] + asciiLower(tagSource[start:i]) + tagSource[i:]
 }
 
 func asciiLower(source string) string {

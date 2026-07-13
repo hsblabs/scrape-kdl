@@ -38,6 +38,21 @@ func TestParseHTMLRawText(t *testing.T) {
 	}
 }
 
+func TestParseHTMLRawTextClosingTagBoundaries(t *testing.T) {
+	document := mustParseHTML(t, `<script>before</scriptx><b>inside</b></ScRiPt ><p>after</p>`)
+	scripts := QueryAll(document, mustSelector(t, "script"))
+	if len(scripts) != 1 || scripts[0].TextContent() != `before</scriptx><b>inside</b>` {
+		t.Fatalf("script = %#v", scripts)
+	}
+	if nested := QueryAll(document, mustSelector(t, "script b")); len(nested) != 0 {
+		t.Fatalf("raw-text markup produced elements: %#v", nested)
+	}
+	paragraphs := QueryAll(document, mustSelector(t, "p"))
+	if len(paragraphs) != 1 || paragraphs[0].TextContent() != "after" {
+		t.Fatalf("paragraphs = %#v", paragraphs)
+	}
+}
+
 func TestParseHTMLRCDATA(t *testing.T) {
 	document := mustParseHTML(t, `<title>A &amp; B < C</title><textarea>x &lt; y</textarea>`)
 	titles := QueryAll(document, mustSelector(t, "title"))
@@ -52,8 +67,9 @@ func TestParseHTMLRCDATA(t *testing.T) {
 
 func TestProtectRawTextPreservesInvalidUTF8Offsets(t *testing.T) {
 	source := "<sCript>\xd6\xd6\xd6\xd6\xd6</sCript"
-	if got := protectRawText(source); got != source {
-		t.Fatalf("protectRawText = %q, want %q", got, source)
+	want := "<script>\xd6\xd6\xd6\xd6\xd6</sCript"
+	if got := protectRawText(source); got != want || len(got) != len(source) {
+		t.Fatalf("protectRawText = %q (%d bytes), want %q (%d bytes)", got, len(got), want, len(source))
 	}
 	if got := asciiLower("A\xd6Zé"); got != "a\xd6zé" || len(got) != len("A\xd6Zé") {
 		t.Fatalf("asciiLower = %q (%d bytes)", got, len(got))
@@ -75,4 +91,27 @@ func TestParseHTMLRecoversTruncatedDocument(t *testing.T) {
 	if len(items) != 2 || items[0].TextContent() != "a" || items[1].TextContent() != "b" {
 		t.Fatalf("items = %#v", items)
 	}
+}
+
+func TestParseHTMLOptionalTableEndTags(t *testing.T) {
+	document := mustParseHTML(t, `<table><thead><tr><th>H<tbody><tr><td>A<td>B<tfoot><tr><td>F</table>`)
+	assertText := func(selector string, want ...string) {
+		t.Helper()
+		nodes := QueryAll(document, mustSelector(t, selector))
+		got := make([]string, 0, len(nodes))
+		for _, node := range nodes {
+			got = append(got, node.TextContent())
+		}
+		if len(got) != len(want) {
+			t.Fatalf("%s text = %v, want %v", selector, got, want)
+		}
+		for index := range got {
+			if got[index] != want[index] {
+				t.Fatalf("%s text = %v, want %v", selector, got, want)
+			}
+		}
+	}
+	assertText("table > thead > tr > th", "H")
+	assertText("table > tbody > tr > td", "A", "B")
+	assertText("table > tfoot > tr > td", "F")
 }
