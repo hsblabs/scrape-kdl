@@ -198,3 +198,36 @@ An explicit maximum prevents overflow from turning a long timeout into an immedi
 - `internal/executor/browser.go`
 - `internal/executor/browser_test.go`
 - `internal/executor/types.go`
+
+## Offline `ExecuteHTML` cancellation diagnostic
+
+### Decision
+
+Define whether and how `ExecuteHTML` must stop when its context is canceled before or during in-memory HTML parsing and output extraction, including the structured runtime diagnostic to return.
+
+### Background
+
+`ExecuteHTML` accepts a context and passes it to external transforms, but it does not currently check cancellation before parsing the supplied string or between output members. HTTP and browser operations map cancellation through operation-specific diagnostics such as `E_HTTP_FETCH` and `E_BROWSER_QUERY`; none of the existing runtime codes describes cancellation of offline parsing or extraction as a whole. Reusing an operation-specific code would broaden its normative meaning, while returning `context.Canceled` directly would break the structured-error convention.
+
+### Options
+
+1. Define `ExecuteHTML` cancellation only at external-transform boundaries and document that in-memory parsing and extraction are non-interruptible.
+2. Add a general execution-canceled diagnostic and check the context before parsing and between fields and collection rows.
+3. Reuse `E_HTML_PARSE` before or during parsing and `E_FIELD_EXECUTION` during output traversal.
+4. Return the raw context error without an `ExecutionError` wrapper.
+
+### Recommendation
+
+Add a general execution-canceled diagnostic at a compatibility boundary, preserve `context.Canceled` as its cause, and check at deterministic coarse-grained boundaries. Avoid operation-specific codes whose current meanings do not cover offline cancellation.
+
+### Compatibility and safety impact
+
+Explicit cancellation prevents large offline documents or outputs from continuing after callers abandon the operation. A new diagnostic expands the public compatibility surface but keeps failure classification stable. Reusing current codes avoids a registry change but makes their meanings mode-dependent. Fine-grained parser interruption would add overhead and requires a separate implementation design; coarse checks cannot interrupt one long tokenizer call.
+
+### Related files
+
+- `internal/executor/executor.go`
+- `internal/executor/types.go`
+- `internal/dom/parser.go`
+- `docs/spec/diagnostics.md`
+- `docs/http-runtime.md`
