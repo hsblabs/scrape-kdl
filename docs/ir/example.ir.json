@@ -1,0 +1,354 @@
+{
+  "kind": "extractor",
+  "irVersion": "0.1",
+  "languageVersion": "0.1",
+  "name": "basic-http",
+  "version": 1,
+  "files": [
+    {
+      "path": "fixtures/conformance/valid/basic-http/spec.kdl"
+    }
+  ],
+  "source": {
+    "kind": "html",
+    "fetch": {
+      "mode": "http",
+      "urlTemplate": {
+        "raw": "https://example.invalid/{id}",
+        "segments": [
+          {
+            "kind": "literal",
+            "value": "https://example.invalid/"
+          },
+          {
+            "kind": "input",
+            "name": "id"
+          }
+        ]
+      },
+      "span": {
+        "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+        "start": {
+          "offset": 0,
+          "line": 3,
+          "column": 1
+        },
+        "end": {
+          "offset": 1,
+          "line": 3,
+          "column": 2
+        }
+      }
+    },
+    "sessionPolicy": "none",
+    "workflow": [],
+    "span": {
+      "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+      "start": {
+        "offset": 0,
+        "line": 2,
+        "column": 1
+      },
+      "end": {
+        "offset": 1,
+        "line": 2,
+        "column": 2
+      }
+    }
+  },
+  "inputs": [
+    {
+      "name": "id",
+      "type": "string",
+      "required": true,
+      "span": {
+        "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+        "start": {
+          "offset": 0,
+          "line": 6,
+          "column": 1
+        },
+        "end": {
+          "offset": 1,
+          "line": 6,
+          "column": 2
+        }
+      }
+    }
+  ],
+  "transforms": [],
+  "output": {
+    "kind": "object",
+    "members": [
+      {
+        "kind": "field",
+        "id": "output.title",
+        "name": "title",
+        "successfulType": {
+          "kind": "primitive",
+          "name": "string"
+        },
+        "effectiveType": {
+          "kind": "primitive",
+          "name": "string"
+        },
+        "required": true,
+        "selection": {
+          "selector": "h1",
+          "match": "one",
+          "span": {
+            "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+            "start": {
+              "offset": 0,
+              "line": 9,
+              "column": 1
+            },
+            "end": {
+              "offset": 1,
+              "line": 9,
+              "column": 2
+            }
+          }
+        },
+        "valueSource": {
+          "kind": "text",
+          "rawType": {
+            "kind": "primitive",
+            "name": "string"
+          },
+          "span": {
+            "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+            "start": {
+              "offset": 0,
+              "line": 10,
+              "column": 1
+            },
+            "end": {
+              "offset": 1,
+              "line": 10,
+              "column": 2
+            }
+          }
+        },
+        "transforms": [
+          {
+            "target": {
+              "kind": "builtin",
+              "name": "normalize-whitespace"
+            },
+            "positionalArguments": [],
+            "namedArguments": [],
+            "input": {
+              "kind": "primitive",
+              "name": "string"
+            },
+            "output": {
+              "kind": "primitive",
+              "name": "string"
+            },
+            "span": {
+              "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+              "start": {
+                "offset": 0,
+                "line": 11,
+                "column": 1
+              },
+              "end": {
+                "offset": 1,
+                "line": 11,
+                "column": 2
+              }
+            }
+          }
+        ],
+        "onError": "fail",
+        "span": {
+          "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+          "start": {
+            "offset": 0,
+            "line": 8,
+            "column": 1
+          },
+          "end": {
+            "offset": 1,
+            "line": 8,
+            "column": 2
+          }
+        }
+      },
+      {
+        "kind": "collection",
+        "id": "output.items",
+        "name": "items",
+        "selector": "ul.items > li",
+        "required": false,
+        "minItems": 1,
+        "onRowError": "fail",
+        "row": {
+          "kind": "object",
+          "members": [
+            {
+              "kind": "field",
+              "id": "output.items[].value",
+              "name": "value",
+              "successfulType": {
+                "kind": "primitive",
+                "name": "u8"
+              },
+              "effectiveType": {
+                "kind": "primitive",
+                "name": "u8"
+              },
+              "required": true,
+              "selection": {
+                "selector": ".value",
+                "match": "one",
+                "span": {
+                  "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+                  "start": {
+                    "offset": 0,
+                    "line": 16,
+                    "column": 1
+                  },
+                  "end": {
+                    "offset": 1,
+                    "line": 16,
+                    "column": 2
+                  }
+                }
+              },
+              "valueSource": {
+                "kind": "text",
+                "rawType": {
+                  "kind": "primitive",
+                  "name": "string"
+                },
+                "span": {
+                  "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+                  "start": {
+                    "offset": 0,
+                    "line": 17,
+                    "column": 1
+                  },
+                  "end": {
+                    "offset": 1,
+                    "line": 17,
+                    "column": 2
+                  }
+                }
+              },
+              "transforms": [
+                {
+                  "target": {
+                    "kind": "builtin",
+                    "name": "trim"
+                  },
+                  "positionalArguments": [],
+                  "namedArguments": [],
+                  "input": {
+                    "kind": "primitive",
+                    "name": "string"
+                  },
+                  "output": {
+                    "kind": "primitive",
+                    "name": "string"
+                  },
+                  "span": {
+                    "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+                    "start": {
+                      "offset": 0,
+                      "line": 18,
+                      "column": 1
+                    },
+                    "end": {
+                      "offset": 1,
+                      "line": 18,
+                      "column": 2
+                    }
+                  }
+                },
+                {
+                  "target": {
+                    "kind": "builtin",
+                    "name": "parse-int"
+                  },
+                  "positionalArguments": [],
+                  "namedArguments": [
+                    {
+                      "name": "as",
+                      "value": "u8"
+                    }
+                  ],
+                  "input": {
+                    "kind": "primitive",
+                    "name": "string"
+                  },
+                  "output": {
+                    "kind": "primitive",
+                    "name": "u8"
+                  },
+                  "span": {
+                    "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+                    "start": {
+                      "offset": 0,
+                      "line": 19,
+                      "column": 1
+                    },
+                    "end": {
+                      "offset": 1,
+                      "line": 19,
+                      "column": 2
+                    }
+                  }
+                }
+              ],
+              "onError": "fail",
+              "span": {
+                "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+                "start": {
+                  "offset": 0,
+                  "line": 15,
+                  "column": 1
+                },
+                "end": {
+                  "offset": 1,
+                  "line": 15,
+                  "column": 2
+                }
+              }
+            }
+          ]
+        },
+        "span": {
+          "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+          "start": {
+            "offset": 0,
+            "line": 13,
+            "column": 1
+          },
+          "end": {
+            "offset": 1,
+            "line": 13,
+            "column": 2
+          }
+        }
+      }
+    ]
+  },
+  "capabilities": [
+    "http.fetch"
+  ],
+  "span": {
+    "file": "fixtures/conformance/valid/basic-http/spec.kdl",
+    "start": {
+      "offset": 0,
+      "line": 1,
+      "column": 1
+    },
+    "end": {
+      "offset": 1,
+      "line": 1,
+      "column": 2
+    }
+  }
+}

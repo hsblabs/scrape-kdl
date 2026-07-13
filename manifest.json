@@ -1,0 +1,37 @@
+{
+  "name": "scrape-kdl",
+  "organization": "hsblabs",
+  "milestone": "M5",
+  "artifact": "scrape-kdl-m5-linux-macos-agents.zip",
+  "features": [
+    "KDL parser, semantic validation, and Validated IR",
+    "HTTP interpreter and hardened internal HTML normalization",
+    "browser runtime abstraction and trusted JavaScript execution",
+    "go-rod BrowserAdapter with extraction-wide lease",
+    "host URL policy for initial targets and HTTP redirects",
+    "stable runtime warnings and partial extraction summary",
+    "KDL, CSS selector, and HTML parser fuzz tests",
+    "CI, scheduled browser E2E, scheduled fuzzing, and release workflows",
+    "Apache-2.0 project governance and security documentation",
+    "Linux and macOS only; Windows is explicitly unsupported",
+    "Repository guidance for coding agents via AGENTS.md and CLAUDE.md"
+  ],
+  "validation": {
+    "root_go_test": true,
+    "root_go_vet": true,
+    "root_go_race": true,
+    "parser_fuzz_smoke": true,
+    "diagnostic_contract": true,
+    "rod_contract_stub": true,
+    "release_archives": true,
+    "workflow_yaml_parse": true,
+    "rod_real_dependency": false,
+    "chromium_e2e": false,
+    "reason": "The build environment cannot resolve an external Go module proxy; real dependency and Chromium verification are configured in GitHub Actions.",
+    "release_archive_smoke_linux_amd64": true,
+    "full_release_target_matrix": false,
+    "source_zip_post_extract_test": true,
+    "release_archive_smoke_darwin_amd64": true,
+    "windows_explicitly_unsupported": true
+  }
+}

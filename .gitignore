@@ -1,0 +1,8 @@
+/bin/
+*.tmp
+.DS_Store
+/dist/
+/scrape-kdl
+/scrape-kdl.exe
+/scrape-kdl-rod
+/scrape-kdl-rod.exe

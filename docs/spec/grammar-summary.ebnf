@@ -1,0 +1,93 @@
+(* Semantic grammar over an already-parsed KDL 2.0 document. *)
+
+document             = { import }, (extractor | module) ;
+import               = node("import", string, prop("as", identifier)) ;
+
+extractor            = node("extractor", extractor_name,
+                            prop("version", positive_int), extractor_child*) ;
+extractor_child      = source | input | transform | field | collection ;
+
+module               = node("module", module_name,
+                            prop("version", positive_int), transform*) ;
+
+source               = node("source", "html", source_child*) ;
+source_child         = fetch | session | workflow ;
+fetch                = node("fetch",
+                            prop("mode", "http" | "browser"),
+                            prop("url", string)) ;
+session              = node("session",
+                            prop("policy", "none" | "optional" | "required")) ;
+
+input                = node("input", identifier,
+                            prop("type", input_type),
+                            [ prop("required", boolean) ],
+                            [ prop("default", scalar) ]) ;
+
+workflow             = node("workflow", workflow_step*) ;
+workflow_step        = wait_for | click | fill | press | scroll
+                     | wait_for_network_idle | workflow_evaluate_js ;
+wait_for             = node("wait-for", selector,
+                            [ prop("state", wait_state) ],
+                            [ prop("timeout-ms", positive_int) ]) ;
+click                = node("click", selector,
+                            [ prop("timeout-ms", positive_int) ]) ;
+fill                 = node("fill", selector, string,
+                            [ prop("timeout-ms", positive_int) ]) ;
+press                = node("press", selector, string,
+                            [ prop("timeout-ms", positive_int) ]) ;
+scroll               = node("scroll", number, number) ;
+wait_for_network_idle = node("wait-for-network-idle",
+                             [ prop("idle-ms", positive_int) ],
+                             [ prop("timeout-ms", positive_int) ]) ;
+workflow_evaluate_js = node("evaluate-js", javascript_source,
+                            [ prop("timeout-ms", positive_int) ]) ;
+
+field                = node("field", identifier,
+                            prop("type", type_expr),
+                            [ prop("required", boolean) ],
+                            [ prop("default", scalar) ],
+                            field_child*) ;
+field_child          = select | value | field_evaluate_js | apply | on_error ;
+
+collection           = node("collection", identifier,
+                            [ prop("required", boolean) ],
+                            [ prop("min-items", non_negative_int) ],
+                            [ prop("max-items", non_negative_int) ],
+                            [ prop("on-row-error", "fail" | "skip") ],
+                            collection_child*) ;
+collection_child     = select | field | collection ;
+
+select               = node("select", selector,
+                            [ prop("match", "one" | "first") ]) ;
+value                = node("value", "text" | "html")
+                     | node("value", "attr", prop("name", non_empty_string)) ;
+field_evaluate_js    = node("evaluate-js", javascript_source,
+                            prop("scope", "document" | "current"),
+                            prop("returns", type_expr),
+                            [ prop("timeout-ms", positive_int) ]) ;
+apply                = node("apply", transform_reference, scalar*, property*) ;
+on_error             = node("on-error", "fail" | "null" | "warn" | "default") ;
+
+transform            = node("transform", identifier,
+                            prop("input", type_expr),
+                            prop("output", type_expr),
+                            transform_body*) ;
+transform_body       = pipeline | match | external ;
+pipeline             = node("pipeline", apply, apply*) ;
+match                = node("match", match_child*) ;
+match_child          = node("case", scalar, scalar) | node("default", scalar) ;
+external             = node("external", prop("symbol", identifier)) ;
+
+type_expr            = type_primary, { type_postfix } ;
+type_primary         = primitive_type | "(", type_expr, ")" ;
+type_postfix         = "[]" | "?" ;
+primitive_type       = "string" | "bool" | "int"
+                     | "u8" | "u16" | "u32" | "u64"
+                     | "i8" | "i16" | "i32" | "i64"
+                     | "float" | "f32" | "f64"
+                     | "object" | "unknown" ;
+input_type           = "string" | "bool" | "int" | "float" ;
+identifier           = ? [a-z][a-z0-9_]* ? ;
+extractor_name       = ? [a-z][a-z0-9-]* ? ;
+module_name          = extractor_name ;
+transform_reference  = identifier | identifier, ".", identifier ;

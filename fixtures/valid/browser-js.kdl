@@ -1,0 +1,9 @@
+extractor "browser-js" version=1 {
+  source "html" {
+    fetch mode="browser" url="https://example.invalid/"
+  }
+
+  field "title" type="string" required=#true {
+    evaluate-js "() => document.title" scope="document" returns="string"
+  }
+}

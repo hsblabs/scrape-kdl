@@ -1,0 +1,1083 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/scraping-kdl/ir/0.1/schema.json",
+  "title": "Scraping KDL Validated Extractor IR 0.1",
+  "$ref": "#/$defs/extractor",
+  "$defs": {
+    "jsonScalar": {
+      "type": [
+        "string",
+        "number",
+        "boolean",
+        "null"
+      ]
+    },
+    "sourcePosition": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "offset",
+        "line",
+        "column"
+      ]
+    },
+    "sourceSpan": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start": {
+          "$ref": "#/$defs/sourcePosition"
+        },
+        "end": {
+          "$ref": "#/$defs/sourcePosition"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "start",
+        "end"
+      ]
+    },
+    "typeRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "primitive"
+            },
+            "name": {
+              "enum": [
+                "string",
+                "bool",
+                "int",
+                "u8",
+                "u16",
+                "u32",
+                "u64",
+                "i8",
+                "i16",
+                "i32",
+                "i64",
+                "float",
+                "f32",
+                "f64",
+                "object",
+                "unknown"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "name"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "array"
+            },
+            "element": {
+              "$ref": "#/$defs/typeRef"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "element"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "nullable"
+            },
+            "inner": {
+              "$ref": "#/$defs/typeRef"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "inner"
+          ]
+        }
+      ]
+    },
+    "sourceFile": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "moduleName": {
+          "type": "string"
+        },
+        "moduleVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ]
+    },
+    "templateSegment": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "literal"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "input"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "name"
+          ]
+        }
+      ]
+    },
+    "template": {
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "string"
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/templateSegment"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "segments"
+      ]
+    },
+    "fetch": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "http",
+            "browser"
+          ]
+        },
+        "urlTemplate": {
+          "$ref": "#/$defs/template"
+        },
+        "span": {
+          "$ref": "#/$defs/sourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "urlTemplate",
+        "span"
+      ]
+    },
+    "workflowStep": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "wait-for"
+            },
+            "selector": {
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "attached",
+                "visible",
+                "hidden",
+                "detached"
+              ]
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "selector",
+            "state",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "click"
+            },
+            "selector": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "selector",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "fill"
+            },
+            "selector": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "selector",
+            "value",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "press"
+            },
+            "selector": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "selector",
+            "key",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "scroll"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "x",
+            "y",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "wait-for-network-idle"
+            },
+            "idleMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "idleMs",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "evaluate-js"
+            },
+            "source": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "source",
+            "span"
+          ]
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "html"
+        },
+        "fetch": {
+          "$ref": "#/$defs/fetch"
+        },
+        "sessionPolicy": {
+          "enum": [
+            "none",
+            "optional",
+            "required"
+          ]
+        },
+        "workflow": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/workflowStep"
+          }
+        },
+        "span": {
+          "$ref": "#/$defs/sourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "fetch",
+        "sessionPolicy",
+        "workflow",
+        "span"
+      ]
+    },
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "bool",
+            "int",
+            "float"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "default": {
+          "$ref": "#/$defs/jsonScalar"
+        },
+        "span": {
+          "$ref": "#/$defs/sourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type",
+        "required",
+        "span"
+      ]
+    },
+    "fieldSelection": {
+      "type": "object",
+      "properties": {
+        "selector": {
+          "type": "string"
+        },
+        "match": {
+          "enum": [
+            "one",
+            "first"
+          ]
+        },
+        "span": {
+          "$ref": "#/$defs/sourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "selector",
+        "match",
+        "span"
+      ]
+    },
+    "valueSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "text"
+            },
+            "rawType": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "rawType",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "html"
+            },
+            "rawType": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "rawType",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "attribute"
+            },
+            "name": {
+              "type": "string"
+            },
+            "rawType": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "name",
+            "rawType",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "javascript"
+            },
+            "scope": {
+              "enum": [
+                "document",
+                "current"
+              ]
+            },
+            "source": {
+              "type": "string"
+            },
+            "returns": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "scope",
+            "source",
+            "returns",
+            "span"
+          ]
+        }
+      ]
+    },
+    "transformTarget": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "builtin"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "name"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "declared"
+            },
+            "symbolId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "symbolId"
+          ]
+        }
+      ]
+    },
+    "namedArgument": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/jsonScalar"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "value"
+      ]
+    },
+    "transformCall": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/transformTarget"
+        },
+        "positionalArguments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jsonScalar"
+          }
+        },
+        "namedArguments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/namedArgument"
+          }
+        },
+        "input": {
+          "$ref": "#/$defs/typeRef"
+        },
+        "output": {
+          "$ref": "#/$defs/typeRef"
+        },
+        "span": {
+          "$ref": "#/$defs/sourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "positionalArguments",
+        "namedArguments",
+        "input",
+        "output",
+        "span"
+      ]
+    },
+    "matchCase": {
+      "type": "object",
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/jsonScalar"
+        },
+        "then": {
+          "$ref": "#/$defs/jsonScalar"
+        },
+        "span": {
+          "$ref": "#/$defs/sourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "when",
+        "then",
+        "span"
+      ]
+    },
+    "transform": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "pipeline"
+            },
+            "symbolId": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "enum": [
+                "local",
+                "imported"
+              ]
+            },
+            "input": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "output": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            },
+            "calls": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/transformCall"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "symbolId",
+            "name",
+            "origin",
+            "input",
+            "output",
+            "calls",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "match"
+            },
+            "symbolId": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "enum": [
+                "local",
+                "imported"
+              ]
+            },
+            "input": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "output": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            },
+            "cases": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/matchCase"
+              }
+            },
+            "default": {
+              "$ref": "#/$defs/jsonScalar"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "symbolId",
+            "name",
+            "origin",
+            "input",
+            "output",
+            "cases",
+            "default",
+            "span"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "external"
+            },
+            "symbolId": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "enum": [
+                "local",
+                "imported"
+              ]
+            },
+            "input": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "output": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "span": {
+              "$ref": "#/$defs/sourceSpan"
+            },
+            "symbol": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "symbolId",
+            "name",
+            "origin",
+            "input",
+            "output",
+            "symbol",
+            "span"
+          ]
+        }
+      ]
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "field"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "successfulType": {
+          "$ref": "#/$defs/typeRef"
+        },
+        "effectiveType": {
+          "$ref": "#/$defs/typeRef"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "default": {
+          "$ref": "#/$defs/jsonScalar"
+        },
+        "selection": {
+          "$ref": "#/$defs/fieldSelection"
+        },
+        "valueSource": {
+          "$ref": "#/$defs/valueSource"
+        },
+        "transforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transformCall"
+          }
+        },
+        "onError": {
+          "enum": [
+            "fail",
+            "null",
+            "warn",
+            "default"
+          ]
+        },
+        "span": {
+          "$ref": "#/$defs/sourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "name",
+        "successfulType",
+        "effectiveType",
+        "required",
+        "valueSource",
+        "transforms",
+        "onError",
+        "span"
+      ]
+    },
+    "outputObject": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "object"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/outputMember"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "members"
+      ]
+    },
+    "collection": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "collection"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "selector": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "minItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "onRowError": {
+          "enum": [
+            "fail",
+            "skip"
+          ]
+        },
+        "row": {
+          "$ref": "#/$defs/outputObject"
+        },
+        "span": {
+          "$ref": "#/$defs/sourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "name",
+        "selector",
+        "required",
+        "minItems",
+        "onRowError",
+        "row",
+        "span"
+      ]
+    },
+    "outputMember": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/field"
+        },
+        {
+          "$ref": "#/$defs/collection"
+        }
+      ]
+    },
+    "extractor": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "extractor"
+        },
+        "irVersion": {
+          "const": "0.1"
+        },
+        "languageVersion": {
+          "const": "0.1"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sourceFile"
+          }
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/input"
+          }
+        },
+        "transforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transform"
+          }
+        },
+        "output": {
+          "$ref": "#/$defs/outputObject"
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "span": {
+          "$ref": "#/$defs/sourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "irVersion",
+        "languageVersion",
+        "name",
+        "version",
+        "files",
+        "source",
+        "inputs",
+        "transforms",
+        "output",
+        "capabilities",
+        "span"
+      ]
+    }
+  }
+}

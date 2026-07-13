@@ -13,4 +13,195 @@ KDL source
   -> structured extraction result
 ```
 
-The full source tree is being initialized from the M5 release-hardening bundle.
+## Implemented
+
+- extractor and transform-module documents;
+- relative imports with aliases and cycle detection;
+- stable diagnostics and Validated IR JSON;
+- declared transforms, built-ins, match transforms, and external transforms;
+- HTTP fetch, sessions, charset decoding, response limits, and offline HTML fixtures;
+- portable CSS selector profile;
+- browser workflow and live-DOM extraction;
+- trusted-spec JavaScript evaluation with explicit opt-in;
+- dependency-neutral `BrowserAdapter` contract;
+- optional go-rod adapter in `adapters/rod`;
+- KDL slashdash suppression and common KDL 2 integer forms;
+- release, CI, scheduled fuzzing, security, and contribution scaffolding;
+- host URL policy for initial targets and HTTP redirects;
+- hardened common-HTML parsing for raw-text and truncated documents.
+
+## Install
+
+After the first tagged release:
+
+```bash
+go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@latest
+```
+
+For source development:
+
+```bash
+git clone https://github.com/hsblabs/scrape-kdl.git
+cd scrape-kdl
+make verify
+```
+
+## CLI
+
+Validate a specification:
+
+```bash
+scrape-kdl validate ./fixtures/valid/basic-http.kdl
+```
+
+Emit Validated IR:
+
+```bash
+scrape-kdl compile ./fixtures/valid/basic-http.kdl --emit-ir
+```
+
+Extract from a saved HTML fixture:
+
+```bash
+scrape-kdl extract ./fixtures/valid/basic-http.kdl \
+  --html ./fixtures/html/basic-http.html
+```
+
+Extract over HTTP:
+
+```bash
+scrape-kdl extract ./extractor.kdl \
+  --input item_id=123 \
+  --header 'Accept-Language: ja' \
+  --cookie session=example
+```
+
+Print build metadata:
+
+```bash
+scrape-kdl version
+```
+
+## Go API
+
+```go
+program, diagnostics := scrapekdl.CompileFile("extractor.kdl")
+if diagnostics.HasErrors() {
+    // Render diagnostics and stop before network or browser activity.
+}
+
+result, err := program.Extract(ctx, map[string]any{
+    "item_id": "123",
+}, scrapekdl.Options{
+    RequestTimeout: 15 * time.Second,
+    URLPolicy: func(ctx context.Context, target *url.URL) error {
+        // Reject private networks or hosts outside an application allowlist.
+        return allowTarget(target)
+    },
+})
+if err != nil {
+    // Inspect *scrapekdl.ExecutionError.Code.
+}
+```
+
+The public API includes:
+
+- `CompileFile` and `ValidateFile`;
+- `Program.IRJSON`;
+- `Program.Extract` and `Program.ExtractHTML`;
+- HTTP client and session injection;
+- external transform registry;
+- custom charset decoding;
+- initial-target and HTTP-redirect URL policy hooks;
+- browser adapter injection.
+
+## Browser mode
+
+Browser mode uses an application-supplied adapter. JavaScript is disabled by default.
+
+```go
+result, err := program.Extract(ctx, inputs, scrapekdl.Options{
+    Browser:         adapter,
+    AllowJavaScript: true, // trusted specs only
+})
+```
+
+The go-rod implementation is a separate module:
+
+```bash
+go get github.com/hsblabs/scrape-kdl/adapters/rod@latest
+```
+
+An adapter wrapping one mutable page can implement `BrowserAdapterLease`. The runtime acquires it for the complete extraction, preventing navigation, workflow, and reads from interleaving across concurrent calls. The go-rod adapter implements this automatically.
+
+See `docs/browser-runtime.md` and `adapters/rod/README.md`.
+
+## Security
+
+KDL is executable configuration. A browser spec containing `evaluate-js` is equivalent to code executed in the target page context. Only execute trusted specs and apply outbound-network, process-isolation, timeout, and secret-handling controls appropriate to the host application.
+
+See `SECURITY.md` and `docs/security-model.md`.
+
+## Supported platforms
+
+- Linux: supported; release artifacts are provided for amd64 and arm64.
+- macOS: supported; release artifacts are provided for amd64 and arm64.
+- Windows: explicitly unsupported. No CI coverage, release artifact, compatibility guarantee, or Windows-specific bug support is provided. Incidental compilation does not make Windows supported.
+
+## Compatibility and known limits
+
+- Supported operating systems: Linux and macOS only. Windows is out of scope.
+- Minimum Go version: 1.23.
+- CI targets Go 1.23 and Go 1.26 on Linux and macOS.
+- The language is built on the KDL 2 data model but the reference parser intentionally supports the subset required by Scraping KDL v0.1.
+- The HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
+- Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
+- TypeScript runtime, code generation, language server, inspector UI, and browser extension are future milestones.
+
+See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
+
+## Development
+
+Offline verification:
+
+```bash
+make verify
+```
+
+Real go-rod dependency verification:
+
+```bash
+make test-rod
+```
+
+Chromium E2E:
+
+```bash
+make test-rod-e2e
+```
+
+Release preparation:
+
+```bash
+make release-check
+```
+
+## Coding agents
+
+- `AGENTS.md`: shared repository instructions for coding agents
+- `CLAUDE.md`: Claude Code entrypoint importing `AGENTS.md`
+
+## Documentation
+
+- `docs/spec/language-v0.1.md`
+- `docs/spec/builtins-v0.1.md`
+- `docs/spec/selectors-v0.1.md`
+- `docs/compiler-pipeline.md`
+- `docs/http-runtime.md`
+- `docs/browser-runtime.md`
+- `docs/versioning.md`
+- `docs/releasing.md`
+
+## License
+
+Apache-2.0. See `LICENSE` and `NOTICE`.

@@ -1,0 +1,8 @@
+import "./cycle/a.kdl" as="a"
+extractor "import-cycle" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "title" type="string" required=#true {
+    select "h1"
+    value "text"
+  }
+}

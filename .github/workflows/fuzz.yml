@@ -1,0 +1,27 @@
+name: Scheduled fuzzing
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "43 18 * * 2"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-fuzzing
+  cancel-in-progress: false
+
+jobs:
+  parser-fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-go@v6.5.0
+        with:
+          go-version: "1.26.x"
+          cache: false
+      - run: go test ./internal/kdl -run=^$ -fuzz=FuzzParseNeverPanics -fuzztime=2m
+      - run: go test ./internal/dom -run=^$ -fuzz=FuzzParseSelectorNeverPanics -fuzztime=2m
+      - run: go test ./internal/dom -run=^$ -fuzz=FuzzParseHTMLNeverPanics -fuzztime=2m

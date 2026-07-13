@@ -1,0 +1,16 @@
+module "netkeiba-common" version=1 {
+  transform "extract_horse_id" input="string" output="string?" {
+    pipeline {
+      apply "regex-capture" pattern=#"/horse/([^/?#]+)"# group=1
+    }
+  }
+
+  transform "normalize_sex" input="string" output="string" {
+    match {
+      case "牡" "male"
+      case "牝" "female"
+      case "セ" "gelding"
+      default "unknown"
+    }
+  }
+}
