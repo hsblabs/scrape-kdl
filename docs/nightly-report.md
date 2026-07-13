@@ -22,6 +22,10 @@ Baseline: `e5363b7`
 - Enforced the specified `evaluate-js returns=...` contract before transforms, including nullable and array values plus range-checked integer and float normalization for browser-provided JSON numbers.
 - Exercised successful and failing `validate`, `compile`, and offline `extract` command workflows, including file output. CLI statement coverage increased from 35.6% to 88.8%.
 - Recorded the compatibility decision required to change explicit subcommand help from exit status 2 to 0 without changing current behavior.
+- Aligned browser-mode missing/default/warn/fail recovery coverage with the HTTP runtime and wrapped malformed recovery defaults in the same structured `E_IR_INVALID` error.
+- Added browser collection row-skip, warning order, row index, partial-result, and minimum/maximum cardinality coverage.
+- Covered all browser workflow lowering forms and invalid selector, state, numeric, timeout, and unknown-step diagnostics. Added success and failure coverage for all four input default types; compiler statement coverage increased from 63.1% to 70.0%.
+- Recorded the public adapter decision required to define concrete Go representations for JSON-compatible JavaScript results, without broadening the runtime contract implicitly.
 
 ## Commits
 
@@ -47,6 +51,11 @@ Baseline: `e5363b7`
 - `465e9fa` fix: reject invalid JSON number results
 - `d3db672` fix: enforce JavaScript return declarations
 - `686c9b1` test: exercise CLI command workflows
+- `626a019` test: align browser field recovery coverage
+- `66a947f` test: cover browser collection recovery
+- `6ce917e` docs: record browser result representation decision
+- `88c5bb5` test: cover browser workflow compilation
+- `e8f4cdf` test: cover compiler default values
 
 ## Verification results
 
@@ -65,7 +74,7 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 70.0%, and source package coverage at 100%.
 
 ## Unresolved failures
 
@@ -81,10 +90,11 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 - Secure CLI session input: decide whether and how to replace or deprecate direct `--cookie` and sensitive `--header` values with file or standard-input based secret handling. See `docs/decision-needed.md`.
 - Subcommand help exit status: decide when explicit `validate --help`, `compile --help`, and `extract --help` should change from status 2 to status 0. See `docs/decision-needed.md`.
+- Go representation of browser JavaScript results: define the concrete adapter result types accepted for logical JSON arrays, objects, and numbers. See `docs/decision-needed.md`.
 
 ## Next safe candidates
 
-- Cover browser-mode missing-value and `on-error` recovery parity with the HTTP runtime.
-- Add focused browser collection cardinality and per-row recovery tests.
-- Exercise remaining numeric adapter representations in JavaScript return normalization without changing the language type contract.
-- Review compiler branches with low coverage for deterministic invalid-fixture cases already required by the normative specification.
+- Cover browser adapter read/query failures and their structured error/cancellation propagation.
+- Add focused built-in edge tests for array joining, numeric `to-string`, and invalid argument combinations already defined by the built-in specification.
+- Add deterministic compiler tests for URL-template escaping and unsupported selector diagnostics.
+- Re-run static analysis, vulnerability checks, shuffle repetitions, and fuzz smoke after the next substantive runtime change.
