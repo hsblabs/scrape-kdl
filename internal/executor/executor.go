@@ -113,6 +113,27 @@ func preflightOutputStructure(root ir.OutputObject) error {
 			switch typed := member.(type) {
 			case ir.Field:
 				name, id = typed.Name, typed.ID
+				if typed.Required && typed.Default != nil {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "required field must not declare a default", Path: typed.ID}
+				}
+				if typed.Default != nil {
+					value, err := decodeJSON(*typed.Default)
+					if err != nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: typed.ID, Cause: err}
+					}
+					if _, ok := normalizeJSONResult(value, typed.SuccessfulType); !ok {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("field default of type %T is not assignable to %s", value, typed.SuccessfulType.String()), Path: typed.ID}
+					}
+				}
+				if typed.OnError != "" && typed.OnError != "fail" && typed.OnError != "null" && typed.OnError != "warn" && typed.OnError != "default" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown on-error policy %q", typed.OnError), Path: typed.ID}
+				}
+				if (typed.OnError == "null" || typed.OnError == "warn") && !typesys.IsNullable(typed.EffectiveType) {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: typed.OnError + " requires nullable effective type", Path: typed.ID}
+				}
+				if typed.OnError == "default" && typed.Default == nil {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "default policy requires a field default", Path: typed.ID}
+				}
 			case ir.Collection:
 				name, id, row = typed.Name, typed.ID, &typed.Row
 				if typed.MinItems < 0 {
