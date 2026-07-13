@@ -391,6 +391,99 @@ func TestExecuteURLPolicyRejectsBeforeFetch(t *testing.T) {
 	}
 }
 
+func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
+	const spec = `extractor "http-preflight" version=1 {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/{id}"
+    session policy="required"
+  }
+  input "id" type="int" required=#true
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`
+	tests := []struct {
+		name     string
+		mutate   func(*ir.Extractor)
+		inputs   map[string]any
+		session  *Session
+		wantCode string
+	}{
+		{name: "success", inputs: map[string]any{"id": int64(1)}, session: &Session{}},
+		{
+			name: "external transform",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Transforms = append(extractor.Transforms, ir.ExternalTransform{
+					Kind: "external", TransformBase: ir.TransformBase{SymbolID: "external", Name: "external"}, Symbol: "missing",
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_EXTERNAL_TRANSFORM_MISSING",
+		},
+		{
+			name: "invalid selector",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Selection.Selector = "["
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_SELECTOR_INVALID",
+		},
+		{
+			name: "browser value source",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Returns: field.SuccessfulType}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_BROWSER_RUNTIME_MISSING",
+		},
+		{name: "required input", session: &Session{}, wantCode: "E_INPUT_REQUIRED"},
+		{name: "input type", inputs: map[string]any{"id": "wrong"}, session: &Session{}, wantCode: "E_INPUT_TYPE"},
+		{name: "required session", inputs: map[string]any{"id": int64(1)}, wantCode: "E_SESSION_REQUIRED"},
+		{
+			name: "expanded URL",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.Fetch.URLTemplate = ir.Template{Segments: []ir.TemplateSegment{
+					ir.LiteralTemplateSegment{Kind: "literal", Value: "ftp://example.invalid/"},
+				}}
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_URL_INVALID",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := compileTestSpec(t, spec)
+			extractor, diagnostics := compiler.CompileFile(path)
+			if diagnostics.HasErrors() {
+				t.Fatalf("compile diagnostics = %#v", diagnostics)
+			}
+			if tt.mutate != nil {
+				tt.mutate(extractor)
+			}
+			transportCalls := 0
+			client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				transportCalls++
+				return &http.Response{
+					StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header),
+					Body: io.NopCloser(strings.NewReader(`<h1>ready</h1>`)), Request: request,
+				}, nil
+			})}
+			result, err := Execute(context.Background(), extractor, tt.inputs, Options{HTTPClient: client, Session: tt.session})
+			if tt.wantCode == "" {
+				if err != nil || result.Value["title"] != "ready" || transportCalls != 1 {
+					t.Fatalf("result = %#v, error = %v, transport calls = %d", result, err, transportCalls)
+				}
+				return
+			}
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode {
+				t.Fatalf("error = %#v", err)
+			}
+			if transportCalls != 0 {
+				t.Fatalf("transport called %d times before %s", transportCalls, tt.wantCode)
+			}
+		})
+	}
+}
+
 func TestExecuteURLPolicyChecksRedirects(t *testing.T) {
 	var requests []string
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
