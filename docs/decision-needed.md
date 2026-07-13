@@ -128,3 +128,39 @@ Immediate validation prevents mismatched host values from reaching downstream tr
 - `internal/executor/types.go`
 - `docs/spec/diagnostics.md`
 - `docs/spec/language-v0.1.md`
+
+## Ambient client state under `session policy="none"`
+
+### Decision
+
+Define whether `session policy="none"` ignores only the explicitly supplied runtime `Session`, or must also suppress ambient authentication state already held by an `http.Client` cookie jar or browser context.
+
+### Background
+
+The language specification says that `none` ignores runtime session input, but does not define whether host-owned client or browser state is part of that input. The HTTP runtime currently clears `Options.Session` while preserving the supplied `http.Client`; a non-nil client jar can therefore add cookies to requests and persist response `Set-Cookie` updates. Browser execution similarly passes a nil `Session`, but the adapter may use a browser context that already contains cookies or storage. Suppressing only the HTTP jar would make the two runtimes inconsistent, while clearing browser state cannot be expressed through the current `BrowserAdapter` contract.
+
+### Options
+
+1. Define runtime session input as the explicit `Session` value only, preserve ambient client and browser state, and document that hosts must supply isolated stateless clients or contexts when stronger separation is required.
+2. Clone the HTTP client with `Jar=nil` for `none`, while leaving browser ambient state unchanged.
+3. Expand the runtime and browser adapter contracts so `none` requires an isolated or cleared execution context across both modes.
+4. Reject stateful HTTP clients or browser adapters for `none`, which would also require a reliable capability check and a documented diagnostic.
+
+### Recommendation
+
+For v0.1, define `none` as ignoring only the explicit `Session` and document ambient-state isolation as a host responsibility. Consider an explicit stateless execution capability at a future compatibility boundary if the language contract is intended to guarantee credential-free execution rather than only the absence of supplied session input.
+
+### Compatibility and safety impact
+
+Documenting the current behavior preserves the public Go and adapter APIs but means `none` is not by itself a guarantee that no ambient cookie, storage, or authentication state is used. Removing the HTTP jar would be safer for that runtime but create cross-runtime inconsistency and could break hosts that intentionally reuse authenticated clients. A cross-runtime stateless guarantee offers the clearest security contract but requires a breaking adapter/API design and lifecycle rules for browser contexts.
+
+### Related files
+
+- `docs/spec/language-v0.1.md`
+- `docs/http-runtime.md`
+- `docs/browser-runtime.md`
+- `docs/security-model.md`
+- `internal/executor/executor.go`
+- `internal/executor/fetch.go`
+- `internal/executor/browser.go`
+- `internal/executor/types.go`
