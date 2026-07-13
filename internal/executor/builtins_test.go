@@ -347,6 +347,60 @@ func TestBuiltinReplacementAndRegexBoundaries(t *testing.T) {
 	}
 }
 
+func TestBuiltinSubstringAndSplitBoundaries(t *testing.T) {
+	tests := []struct {
+		name    string
+		builtin string
+		input   string
+		call    ir.TransformCall
+		want    any
+		wantErr bool
+	}{
+		{name: "substring omitted end", builtin: "substring", input: "あいう", call: testCall(map[string]any{"start": 1}), want: "いう"},
+		{name: "substring negative clamp", builtin: "substring", input: "abc", call: testCall(map[string]any{"start": -99}), want: "abc"},
+		{name: "substring upper clamp", builtin: "substring", input: "abc", call: testCall(map[string]any{"start": 99}), want: ""},
+		{name: "substring reversed", builtin: "substring", input: "abc", call: testCall(map[string]any{"start": 2, "end": 1}), want: ""},
+		{name: "substring missing start", builtin: "substring", input: "abc", call: testCall(nil), wantErr: true},
+		{name: "substring fractional start", builtin: "substring", input: "abc", call: testCall(map[string]any{"start": 1.5}), wantErr: true},
+		{name: "split unlimited", builtin: "split", input: "a,b,c", call: testCall(map[string]any{"separator": ","}), want: []string{"a", "b", "c"}},
+		{name: "split zero", builtin: "split", input: "a,b", call: testCall(map[string]any{"separator": ",", "limit": 0}), want: []string{}},
+		{name: "split one", builtin: "split", input: "a,b", call: testCall(map[string]any{"separator": ",", "limit": 1}), want: []string{"a"}},
+		{name: "split Unicode scalars", builtin: "split", input: "あい", call: testCall(map[string]any{"separator": "", "limit": 1}), want: []string{"あ"}},
+		{name: "split empty input", builtin: "split", input: "", call: testCall(map[string]any{"separator": ""}), want: []string{}},
+		{name: "split negative limit", builtin: "split", input: "a,b", call: testCall(map[string]any{"separator": ",", "limit": -1}), wantErr: true},
+		{name: "split missing separator", builtin: "split", input: "a,b", call: testCall(nil), wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := applyBuiltinRuntime(tt.builtin, tt.input, tt.call)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("result = %#v, want error", got)
+				}
+				return
+			}
+			if err != nil || !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("result = %#v, error = %v, want %#v", got, err, tt.want)
+			}
+		})
+	}
+
+	for _, name := range []string{"start", "limit"} {
+		t.Run("malformed "+name, func(t *testing.T) {
+			builtin := "substring"
+			call := ir.TransformCall{NamedArguments: []ir.NamedArgument{{Name: name, Value: json.RawMessage(`not-json`)}}}
+			if name == "limit" {
+				builtin = "split"
+				call.NamedArguments = append(call.NamedArguments, ir.NamedArgument{Name: "separator", Value: json.RawMessage(`","`)})
+			}
+			_, err := applyBuiltinRuntime(builtin, "a,b", call)
+			if err == nil || !strings.Contains(err.Error(), "decode IR literal") {
+				t.Fatalf("malformed %s error = %#v", name, err)
+			}
+		})
+	}
+}
+
 func TestBuiltinFailures(t *testing.T) {
 	tests := []struct {
 		name  string

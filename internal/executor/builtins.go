@@ -357,7 +357,7 @@ func builtinSubstring(input any, arguments map[string]json.RawMessage) (any, err
 	if err != nil {
 		return nil, err
 	}
-	start, err := optionalIntArgument(arguments, "start", 0)
+	start, err := requiredIntArgument(arguments, "start")
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +396,7 @@ func builtinSplit(input any, arguments map[string]json.RawMessage) (any, error) 
 	if err != nil {
 		return nil, err
 	}
-	limit, err := optionalIntArgument(arguments, "limit", -1)
+	limit, err := optionalNonNegativeIntArgument(arguments, "limit", -1)
 	if err != nil {
 		return nil, err
 	}
