@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -452,6 +453,169 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (function roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
 	return function(request)
+}
+
+type trackingBody struct {
+	reader io.Reader
+	closed bool
+}
+
+func (body *trackingBody) Read(buffer []byte) (int, error) { return body.reader.Read(buffer) }
+func (body *trackingBody) Close() error {
+	body.closed = true
+	return nil
+}
+
+type errorReader struct{ err error }
+
+func (reader errorReader) Read([]byte) (int, error) { return 0, reader.err }
+
+type contextReader struct{ ctx context.Context }
+
+func (reader contextReader) Read([]byte) (int, error) {
+	<-reader.ctx.Done()
+	return 0, reader.ctx.Err()
+}
+
+func compileHTTPRuntimeSpec(t *testing.T, target string) *ir.Extractor {
+	t.Helper()
+	path := compileTestSpec(t, fmt.Sprintf(`extractor "http-cleanup" version=1 {
+  source "html" { fetch mode="http" url=%q }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`, target))
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	return extractor
+}
+
+func TestExecuteHTTPClosesResponseBodies(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		status     string
+		reader     io.Reader
+		maxBody    int64
+		wantCode   string
+	}{
+		{name: "success", statusCode: http.StatusOK, status: "200 OK", reader: strings.NewReader(`<h1>ok</h1>`)},
+		{name: "status error", statusCode: http.StatusInternalServerError, status: "500 Internal Server Error", reader: strings.NewReader("error"), wantCode: "E_HTTP_STATUS"},
+		{name: "read error", statusCode: http.StatusOK, status: "200 OK", reader: errorReader{err: io.ErrUnexpectedEOF}, wantCode: "E_HTTP_READ"},
+		{name: "body too large", statusCode: http.StatusOK, status: "200 OK", reader: strings.NewReader("12345"), maxBody: 4, wantCode: "E_HTTP_BODY_TOO_LARGE"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := &trackingBody{reader: tt.reader}
+			client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: tt.statusCode, Status: tt.status, Header: make(http.Header), Body: body, Request: request}, nil
+			})}
+			result, err := Execute(context.Background(), compileHTTPRuntimeSpec(t, "https://example.invalid/"), nil, Options{HTTPClient: client, MaxResponseBytes: tt.maxBody})
+			if !body.closed {
+				t.Fatal("response body was not closed")
+			}
+			if tt.wantCode == "" {
+				if err != nil || result.Value["title"] != "ok" {
+					t.Fatalf("result = %#v, error = %v", result, err)
+				}
+				return
+			}
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode {
+				t.Fatalf("error = %#v", err)
+			}
+		})
+	}
+}
+
+func TestExecuteHTTPClosesBodyAfterReadCancellation(t *testing.T) {
+	var body *trackingBody
+	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		body = &trackingBody{reader: contextReader{ctx: request.Context()}}
+		return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header), Body: body, Request: request}, nil
+	})}
+	_, err := Execute(context.Background(), compileHTTPRuntimeSpec(t, "https://example.invalid/"), nil, Options{HTTPClient: client, RequestTimeout: 10 * time.Millisecond})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_HTTP_READ" || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("error = %#v", err)
+	}
+	if body == nil || !body.closed {
+		t.Fatal("canceled response body was not closed")
+	}
+}
+
+func TestExecuteHTTPRedirectPolicyOrderAndBodyCleanup(t *testing.T) {
+	var bodies []*trackingBody
+	var events []string
+	client := &http.Client{
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			events = append(events, "request:"+request.URL.Path)
+			if request.URL.Path == "/start" {
+				body := &trackingBody{reader: strings.NewReader("")}
+				bodies = append(bodies, body)
+				return &http.Response{
+					StatusCode: http.StatusFound, Status: "302 Found", Header: http.Header{"Location": []string{"/end"}}, Body: body, Request: request,
+				}, nil
+			}
+			body := &trackingBody{reader: strings.NewReader(`<h1>redirected</h1>`)}
+			bodies = append(bodies, body)
+			return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header), Body: body, Request: request}, nil
+		}),
+		CheckRedirect: func(request *http.Request, via []*http.Request) error {
+			events = append(events, "client-policy:"+request.URL.Path)
+			return nil
+		},
+	}
+	result, err := Execute(context.Background(), compileHTTPRuntimeSpec(t, "https://example.invalid/start"), nil, Options{
+		HTTPClient: client,
+		URLPolicy: func(_ context.Context, target *url.URL) error {
+			events = append(events, "url-policy:"+target.Path)
+			return nil
+		},
+	})
+	if err != nil || result.Value["title"] != "redirected" {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	wantEvents := []string{"url-policy:/start", "request:/start", "url-policy:/end", "client-policy:/end", "request:/end"}
+	if !reflect.DeepEqual(events, wantEvents) {
+		t.Fatalf("events = %v, want %v", events, wantEvents)
+	}
+	if len(bodies) != 2 || !bodies[0].closed || !bodies[1].closed {
+		t.Fatalf("response bodies = %#v", bodies)
+	}
+}
+
+func TestExecuteHTTPRedirectRejectionClosesBodyBeforeClientPolicy(t *testing.T) {
+	body := &trackingBody{reader: strings.NewReader("")}
+	clientPolicyCalled := false
+	client := &http.Client{
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusFound, Status: "302 Found", Header: http.Header{"Location": []string{"/blocked"}}, Body: body, Request: request,
+			}, nil
+		}),
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			clientPolicyCalled = true
+			return nil
+		},
+	}
+	blocked := errors.New("redirect blocked")
+	_, err := Execute(context.Background(), compileHTTPRuntimeSpec(t, "https://example.invalid/start"), nil, Options{
+		HTTPClient: client,
+		URLPolicy: func(_ context.Context, target *url.URL) error {
+			if target.Path == "/blocked" {
+				return blocked
+			}
+			return nil
+		},
+	})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_URL_POLICY" || !errors.Is(err, blocked) {
+		t.Fatalf("error = %#v", err)
+	}
+	if !body.closed || clientPolicyCalled {
+		t.Fatalf("body closed = %v, client policy called = %v", body.closed, clientPolicyCalled)
+	}
 }
 
 func TestExecuteHTTPPreservesParentCancellation(t *testing.T) {
