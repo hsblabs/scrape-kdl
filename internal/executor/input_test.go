@@ -136,3 +136,63 @@ func TestResolveInputsDefaultsAndFailures(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveInputsRejectsMalformedDeclarations(t *testing.T) {
+	validDefault := json.RawMessage(`1`)
+	malformedDefault := json.RawMessage(`not-json`)
+	wrongDefault := json.RawMessage(`"one"`)
+	tests := []struct {
+		name        string
+		definitions []ir.Input
+		provided    map[string]any
+		wantCode    string
+	}{
+		{
+			name:        "valid provided override",
+			definitions: []ir.Input{{Name: "value", Type: "int", Default: &validDefault}},
+			provided:    map[string]any{"value": int64(2)},
+		},
+		{
+			name:        "duplicate name",
+			definitions: []ir.Input{{Name: "value", Type: "int"}, {Name: "value", Type: "string"}},
+			wantCode:    "E_IR_INVALID",
+		},
+		{
+			name:        "unsupported type",
+			definitions: []ir.Input{{Name: "value", Type: "u8"}},
+			wantCode:    "E_IR_INVALID",
+		},
+		{
+			name:        "required default",
+			definitions: []ir.Input{{Name: "value", Type: "int", Required: true, Default: &validDefault}},
+			wantCode:    "E_IR_INVALID",
+		},
+		{
+			name:        "malformed hidden default",
+			definitions: []ir.Input{{Name: "value", Type: "int", Default: &malformedDefault}},
+			provided:    map[string]any{"value": int64(2)},
+			wantCode:    "E_INPUT_DEFAULT",
+		},
+		{
+			name:        "wrong hidden default type",
+			definitions: []ir.Input{{Name: "value", Type: "int", Default: &wrongDefault}},
+			provided:    map[string]any{"value": int64(2)},
+			wantCode:    "E_INPUT_TYPE",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resolved, err := resolveInputs(tt.definitions, tt.provided)
+			if tt.wantCode == "" {
+				if err != nil || resolved["value"] != int64(2) {
+					t.Fatalf("resolved = %#v, error = %v", resolved, err)
+				}
+				return
+			}
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode || execution.Path != "input.value" {
+				t.Fatalf("error = %#v", err)
+			}
+		})
+	}
+}

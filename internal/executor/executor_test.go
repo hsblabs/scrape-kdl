@@ -669,6 +669,22 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
 		{
+			name: "duplicate input declaration",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Inputs = append(extractor.Inputs, extractor.Inputs[0])
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "malformed hidden input default",
+			mutate: func(extractor *ir.Extractor) {
+				value := json.RawMessage(`not-json`)
+				extractor.Inputs[0].Required = false
+				extractor.Inputs[0].Default = &value
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_INPUT_DEFAULT",
+		},
+		{
 			name: "duplicate output name",
 			mutate: func(extractor *ir.Extractor) {
 				first := extractor.Output.Members[0].(ir.Field)

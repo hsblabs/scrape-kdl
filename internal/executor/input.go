@@ -12,6 +12,24 @@ import (
 func resolveInputs(definitions []ir.Input, provided map[string]any) (map[string]any, error) {
 	known := make(map[string]ir.Input, len(definitions))
 	for _, definition := range definitions {
+		if _, exists := known[definition.Name]; exists {
+			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate input declaration %q", definition.Name), Path: "input." + definition.Name}
+		}
+		if definition.Type != "string" && definition.Type != "bool" && definition.Type != "int" && definition.Type != "float" {
+			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unsupported input type %q", definition.Type), Path: "input." + definition.Name}
+		}
+		if definition.Required && definition.Default != nil {
+			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "required input must not declare a default", Path: "input." + definition.Name}
+		}
+		if definition.Default != nil {
+			decoded, err := decodeJSON(*definition.Default)
+			if err != nil {
+				return nil, &ExecutionError{Code: "E_INPUT_DEFAULT", Message: err.Error(), Path: "input." + definition.Name, Cause: err}
+			}
+			if _, err := normalizeInput(definition.Type, decoded); err != nil {
+				return nil, &ExecutionError{Code: "E_INPUT_TYPE", Message: err.Error(), Path: "input." + definition.Name, Cause: err}
+			}
+		}
 		known[definition.Name] = definition
 	}
 	unknown := ""

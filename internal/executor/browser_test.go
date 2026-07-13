@@ -401,6 +401,13 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			allowJavaScript: true,
 			wantCode:        "E_IR_INVALID",
 		},
+		{
+			name: "duplicate input declaration",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Inputs = []ir.Input{{Name: "value", Type: "string"}, {Name: "value", Type: "string"}}
+			},
+			wantCode: "E_IR_INVALID",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
