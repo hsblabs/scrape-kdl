@@ -3,22 +3,24 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 module="$root/adapters/rod"
-backup="$(mktemp)"
-cp "$module/go.mod" "$backup"
+workspace="$(mktemp -d)"
+modfile="$workspace/rod.mod"
+
 restore() {
-  cp "$backup" "$module/go.mod"
-  rm -f "$backup"
+  rm -rf "$workspace"
 }
 trap restore EXIT
 
-cat >> "$module/go.mod" <<MOD
-
-replace github.com/go-rod/rod => ../../testdata/rodstub
-replace github.com/hsblabs/scrape-kdl => ../..
-MOD
+cp "$module/go.mod" "$modfile"
+if [[ -f "$module/go.sum" ]]; then
+  cp "$module/go.sum" "$workspace/rod.sum"
+fi
+GOWORK=off GOTOOLCHAIN=local go mod edit -modfile="$modfile" \
+  -replace "github.com/go-rod/rod=$root/testdata/rodstub" \
+  -replace "github.com/hsblabs/scrape-kdl=$root"
 
 (
   cd "$module"
-  GOWORK=off GOTOOLCHAIN=local go test ./...
-  GOWORK=off GOTOOLCHAIN=local go vet ./...
+  GOWORK=off GOTOOLCHAIN=local go test -modfile="$modfile" ./...
+  GOWORK=off GOTOOLCHAIN=local go vet -modfile="$modfile" ./...
 )
