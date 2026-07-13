@@ -10,6 +10,7 @@ import (
 )
 
 type transformRuntime struct {
+	extractor     *ir.Extractor
 	ctx           context.Context
 	declared      map[string]ir.Transform
 	externalDecls []ir.ExternalTransform
@@ -31,13 +32,56 @@ func newTransformRuntime(ctx context.Context, extractor *ir.Extractor, external 
 			externalDecls = append(externalDecls, typed)
 		}
 	}
-	return &transformRuntime{ctx: ctx, declared: declared, externalDecls: externalDecls, external: external, callStack: map[string]bool{}}
+	return &transformRuntime{extractor: extractor, ctx: ctx, declared: declared, externalDecls: externalDecls, external: external, callStack: map[string]bool{}}
 }
 
 func (runtime *transformRuntime) preflight() error {
 	for _, external := range runtime.externalDecls {
 		if _, exists := runtime.external[external.Symbol]; !exists {
 			return &ExecutionError{Code: "E_EXTERNAL_TRANSFORM_MISSING", Message: fmt.Sprintf("external transform symbol %q is not registered", external.Symbol), Path: external.Name}
+		}
+	}
+	for _, transform := range runtime.extractor.Transforms {
+		if pipeline, ok := transform.(ir.PipelineTransform); ok {
+			if err := runtime.preflightCalls(pipeline.Calls, pipeline.Name); err != nil {
+				return err
+			}
+		}
+	}
+	return runtime.preflightOutputCalls(runtime.extractor.Output)
+}
+
+func (runtime *transformRuntime) preflightOutputCalls(object ir.OutputObject) error {
+	for _, member := range object.Members {
+		switch typed := member.(type) {
+		case ir.Field:
+			if err := runtime.preflightCalls(typed.Transforms, typed.ID); err != nil {
+				return err
+			}
+		case ir.Collection:
+			if err := runtime.preflightOutputCalls(typed.Row); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (runtime *transformRuntime) preflightCalls(calls []ir.TransformCall, path string) error {
+	for _, call := range calls {
+		switch target := call.Target.(type) {
+		case ir.BuiltinTarget:
+			if !isKnownBuiltinRuntime(target.Name) {
+				cause := fmt.Errorf("unknown built-in %q", target.Name)
+				return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
+			}
+		case ir.DeclaredTarget:
+			if _, ok := runtime.declared[target.SymbolID]; !ok {
+				return &ExecutionError{Code: "E_TRANSFORM_MISSING", Message: fmt.Sprintf("declared transform %q is missing from IR", target.SymbolID), Path: path}
+			}
+		default:
+			cause := fmt.Errorf("unknown transform target %T", call.Target)
+			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
 		}
 	}
 	return nil

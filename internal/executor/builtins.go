@@ -13,6 +13,20 @@ import (
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
 
+func isKnownBuiltinRuntime(name string) bool {
+	switch name {
+	case "trim", "normalize-whitespace", "lowercase", "uppercase",
+		"replace", "regex-replace", "regex-capture", "substring",
+		"split", "join", "prepend", "append", "parse-int",
+		"parse-float", "parse-bool", "to-string", "empty-to-null",
+		"coalesce", "url-resolve", "url-query", "url-path",
+		"path-segment", "assert-matches", "assert-enum", "assert-min", "assert-max":
+		return true
+	default:
+		return false
+	}
+}
+
 func applyBuiltinRuntime(name string, input any, call ir.TransformCall) (any, error) {
 	arguments := make(map[string]json.RawMessage, len(call.NamedArguments))
 	for _, argument := range call.NamedArguments {

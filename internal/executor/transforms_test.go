@@ -47,6 +47,55 @@ func TestTransformPreflightUsesDeclarationOrder(t *testing.T) {
 	}
 }
 
+func TestTransformPreflightValidatesCalls(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	validCall := ir.TransformCall{
+		Target: ir.BuiltinTarget{Kind: "builtin", Name: "trim"}, Input: stringType, Output: stringType,
+	}
+	newExtractor := func() *ir.Extractor {
+		return &ir.Extractor{Output: ir.OutputObject{Members: []ir.OutputMember{ir.Field{
+			ID: "output.value", Transforms: []ir.TransformCall{validCall},
+		}}}}
+	}
+	if err := newTransformRuntime(context.Background(), newExtractor(), nil).preflight(); err != nil {
+		t.Fatalf("valid preflight error = %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		target   ir.TransformTarget
+		wantCode string
+	}{
+		{name: "nil target", wantCode: "E_TRANSFORM"},
+		{name: "unknown builtin", target: ir.BuiltinTarget{Kind: "builtin", Name: "missing"}, wantCode: "E_TRANSFORM"},
+		{name: "missing declared", target: ir.DeclaredTarget{Kind: "declared", SymbolID: "transform:missing"}, wantCode: "E_TRANSFORM_MISSING"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			extractor := newExtractor()
+			field := extractor.Output.Members[0].(ir.Field)
+			field.Transforms[0].Target = tt.target
+			extractor.Output.Members[0] = field
+			err := newTransformRuntime(context.Background(), extractor, nil).preflight()
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode || execution.Path != "output.value" {
+				t.Fatalf("preflight error = %#v", err)
+			}
+		})
+	}
+
+	pipeline := ir.PipelineTransform{
+		Kind:          "pipeline",
+		TransformBase: ir.TransformBase{SymbolID: "transform:pipeline", Name: "pipeline", Input: stringType, Output: stringType},
+		Calls:         []ir.TransformCall{{Target: ir.DeclaredTarget{Kind: "declared", SymbolID: "transform:missing"}}},
+	}
+	err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{pipeline}}, nil).preflight()
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM_MISSING" || execution.Path != "pipeline" {
+		t.Fatalf("pipeline preflight error = %#v", err)
+	}
+}
+
 func TestTransformRuntimeDetectsRecursion(t *testing.T) {
 	stringType := typesys.Primitive("string")
 	const symbol = "transform:recursive"
