@@ -41,7 +41,9 @@ func TestBrowserExtractionE2E(t *testing.T) {
 			value "text"
 		}
 		field "title" type="string" required=#true {
-			evaluate-js #"""() => document.title || "untitled"""# scope="document" returns="string"
+			evaluate-js #"""
+				() => document.title || "untitled"
+				"""# scope="document" returns="string"
 		}
 		collection "items" on-row-error="fail" {
 			select "li"
@@ -76,5 +78,16 @@ func TestBrowserExtractionE2E(t *testing.T) {
 	}
 	if result.Value["value"] != "ready" {
 		t.Fatalf("value = %#v", result.Value["value"])
+	}
+	if result.Value["title"] != "untitled" {
+		t.Fatalf("title = %#v", result.Value["title"])
+	}
+	items, ok := result.Value["items"].([]any)
+	if !ok || len(items) != 2 {
+		t.Fatalf("items = %#v", result.Value["items"])
+	}
+	first, ok := items[0].(map[string]any)
+	if !ok || first["id"] != "1" || first["text"] != "A" {
+		t.Fatalf("items[0] = %#v", items[0])
 	}
 }
