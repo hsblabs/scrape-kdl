@@ -61,6 +61,7 @@ Baseline: `e5363b7`
 - Stabilized session request construction by sorting header names before applying values in both HTTP and go-rod runtimes, while preserving per-header and duplicate-cookie input order. HTTP now ignores nil cookie entries instead of panicking, matching the rod adapter. Added 100-run ordering regressions and real-adapter helper coverage without logging secrets.
 - Extended browser workflow-IR preflight to reject invalid wait states, non-positive timeouts and network-idle windows, and non-finite scroll coordinates before adapter acquisition. The explicit schema/compiler constraints remain unchanged; executor statement coverage increased to 82.0%.
 - Recorded the compatibility decision required to define a portable upper bound for `timeout-ms`; no overflow-limit behavior was changed implicitly.
+- Corrected HTML normalization for mixed-case start/end tag names and cascaded omitted table cell, row, and section closures across `thead`, `tbody`, and `tfoot`. Added raw-text closing-boundary and table-tree regressions plus fuzz seeds; a 20-second HTML fuzz run completed 28,788 executions without a panic. DOM statement coverage increased from 77.4% to 78.2%.
 
 ## Commits
 
@@ -128,6 +129,7 @@ Baseline: `e5363b7`
 - `fa39d8b` fix: stabilize session request construction
 - `769dace` fix: preflight malformed browser workflow values
 - `3734988` docs: record workflow timeout limit decision
+- `e523572` fix: recover mixed-case and table HTML
 
 ## Verification results
 
@@ -139,18 +141,18 @@ Passed:
 - `make release-check`;
 - concurrent execution of all four gates above;
 - `go test -shuffle=on -count=10 ./...`;
-- 10-second fuzz runs for KDL and selector parsing, a post-fix 20-second HTML parser run covering approximately 1.64 million executions, and a 20-second malformed built-in argument run covering approximately 1.60 million executions;
+- 10-second fuzz runs for KDL and selector parsing, a post-fix 20-second HTML parser run covering approximately 1.64 million executions, a second 20-second HTML boundary run completing 28,788 executions, and a 20-second malformed built-in argument run covering approximately 1.60 million executions;
 - `staticcheck ./...` for the root and adapter modules;
 - `govulncheck ./...` for the root and adapter modules, with no reachable vulnerabilities found;
 - `go mod verify` for both modules and `go mod tidy -diff` for the root module;
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 82.0%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 78.2%, executor coverage at 82.0%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, and malformed workflow values reaching browser operations instead of failing preflight.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, and omitted table sections nesting under cells.
 
 ## Environment-limited verification
 
@@ -169,5 +171,4 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 ## Next safe candidates
 
-- Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
 - Add direct `ExecuteHTML` cancellation tests only after identifying an existing structured diagnostic whose meaning already covers offline cancellation; otherwise record a diagnostic-contract decision.
