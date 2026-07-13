@@ -71,6 +71,7 @@ Baseline: `e5363b7`
 - Enforced the portable regex profile in malformed IR by rejecting duplicate/unsupported flags, named captures, negative literal/regex replacement counts, and capture indexes beyond the compiled group count. Distinguished an unmatched optional capture from an invalid group, and covered zero/all/limited/empty-match replacement plus `$` expansion. A 20-second malformed built-in fuzz run completed approximately 1.42 million executions without a panic; executor statement coverage increased to 83.7%.
 - Corrected declared US-ASCII decoding to reject every byte above `0x7f` instead of accepting arbitrary valid UTF-8. Added valid ASCII, invalid HTTP charset metadata with meta fallback, custom decoder byte/label propagation, deterministic alias normalization, and structured fallback-cause coverage; executor statement coverage increased to 84.2%.
 - Enforced required `substring start` and non-negative `split limit` in malformed IR, matching the compiler and built-in specification. Added Unicode scalar, negative/upper clamp, reversed range, zero/unlimited split, empty input, missing arguments, fractional values, and malformed JSON coverage; executor statement coverage increased to 84.9%.
+- Rejected duplicate named transform arguments and malformed positional or named argument JSON during runtime preflight. Hand-built IR now retains structured `E_TRANSFORM` paths and decoding causes while failing before HTTP transport or browser lease acquisition; executor statement coverage increased to 85.0%.
 
 ## Commits
 
@@ -148,6 +149,8 @@ Baseline: `e5363b7`
 - `e5bff83` fix: enforce portable regex boundaries
 - `dcfccb6` fix: validate declared ASCII responses
 - `a3c136a` fix: enforce substring and split arguments
+- `5fe3f20` docs: record charset and argument hardening
+- `13a2170` fix: preflight transform argument encoding
 
 ## Verification results
 
@@ -166,11 +169,11 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 87.8%, executor coverage at 84.9%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 87.8%, executor coverage at 85.0%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, omitted table sections nesting under cells, malformed query escapes silently converted to absent query values, malformed regex IR bypassing portable flag, capture, and count constraints, non-ASCII UTF-8 accepted under US-ASCII, and missing/negative substring and split arguments interpreted as defaults.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, omitted table sections nesting under cells, malformed query escapes silently converted to absent query values, malformed regex IR bypassing portable flag, capture, and count constraints, non-ASCII UTF-8 accepted under US-ASCII, missing/negative substring and split arguments interpreted as defaults, and duplicate or malformed transform arguments deferred until transform application.
 
 ## Environment-limited verification
 
@@ -190,5 +193,5 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 ## Next safe candidates
 
-- Audit duplicate and malformed named transform arguments during runtime preflight so malformed IR cannot defer validation until after fetch or navigation.
 - Extend numeric assertion and conversion malformed-IR coverage where compiler constraints already define an unambiguous runtime failure.
+- Audit transform-call argument names and arity against existing built-in signatures without changing the language contract.
