@@ -15,7 +15,7 @@
 3. Create and push an annotated `adapters/rod/vX.Y.Z` tag.
 4. The adapter release workflow verifies the module and creates a GitHub release.
 
-The repository `go.work` is for monorepo development only. Published module behavior is defined by each module's own `go.mod`.
+Local and CI adapter verification temporarily replaces the core requirement with the repository checkout. Published module behavior is defined by each module's own `go.mod`, which must not contain a local `replace` directive.
 
 ## Supported release targets
 

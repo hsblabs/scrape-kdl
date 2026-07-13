@@ -4,7 +4,7 @@ Contributions are accepted through GitHub issues and pull requests.
 
 ## Development requirements
 
-- Go 1.23 or later
+- Go 1.26 or later
 - GNU Make or compatible shell commands
 - Chromium only for go-rod E2E tests
 

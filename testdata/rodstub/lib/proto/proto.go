@@ -20,7 +20,7 @@ type NetworkCookieParam struct {
 	Path     string
 	HTTPOnly bool
 	Secure   bool
-	Expires  *TimeSinceEpoch
+	Expires  TimeSinceEpoch
 }
 type RuntimeRemoteObject struct{ Value JSON }
 type JSON struct{ V any }

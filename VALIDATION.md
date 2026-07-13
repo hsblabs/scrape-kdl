@@ -1,6 +1,6 @@
 # Validation
 
-Validated on 2026-07-13 with Go 1.23.2 in the artifact build environment.
+Validated on 2026-07-13 with Go 1.26.4.
 
 ## Integrated release check
 
