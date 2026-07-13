@@ -62,6 +62,17 @@ func TestDecodeHTMLUTF16(t *testing.T) {
 	}
 }
 
+func TestDecodeHTMLBOMOverridesDeclaredCharset(t *testing.T) {
+	body := append([]byte{0xff, 0xfe}, encodeUTF16("BOM wins", true)...)
+	decoded, err := decodeHTML(body, "text/html; charset=utf-8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decoded != "BOM wins" {
+		t.Fatalf("decoded = %q", decoded)
+	}
+}
+
 func TestDecodeHTMLReportsStableFailures(t *testing.T) {
 	t.Run("invalid UTF-8", func(t *testing.T) {
 		_, err := decodeHTML([]byte{0xff}, "text/html; charset=utf-8")

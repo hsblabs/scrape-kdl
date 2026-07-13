@@ -35,7 +35,7 @@ Built in:
 - Windows-1252;
 - UTF-16LE / UTF-16BE.
 
-Charset is selected from HTTP `Content-Type`, then an early `<meta charset>` declaration, then BOM, with UTF-8 as the default.
+Charset is selected from HTTP `Content-Type`, then an early `<meta charset>` declaration, with UTF-8 as the default. A recognized UTF-8 or UTF-16 byte-order mark overrides the declared charset.
 
 Other encodings are supported through `Options.CharsetDecoder`. This keeps encodings such as Shift_JIS and EUC-JP optional.
 
