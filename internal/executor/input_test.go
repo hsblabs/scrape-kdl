@@ -100,3 +100,39 @@ func TestResolveInputsReportsUnknownNamesDeterministically(t *testing.T) {
 		t.Fatalf("known input = %#v, error = %v", resolved, err)
 	}
 }
+
+func TestResolveInputsDefaultsAndFailures(t *testing.T) {
+	validDefault := json.RawMessage(`true`)
+	definitions := []ir.Input{{Name: "enabled", Type: "bool", Default: &validDefault}}
+	resolved, err := resolveInputs(definitions, nil)
+	if err != nil || resolved["enabled"] != true {
+		t.Fatalf("default input = %#v, error = %v", resolved, err)
+	}
+	resolved, err = resolveInputs(definitions, map[string]any{"enabled": false})
+	if err != nil || resolved["enabled"] != false {
+		t.Fatalf("provided input = %#v, error = %v", resolved, err)
+	}
+
+	malformedDefault := json.RawMessage(`true false`)
+	wrongTypeDefault := json.RawMessage(`"value"`)
+	for _, tt := range []struct {
+		name       string
+		definition ir.Input
+		wantCode   string
+	}{
+		{name: "trailing default data", definition: ir.Input{Name: "value", Type: "bool", Default: &malformedDefault}, wantCode: "E_INPUT_DEFAULT"},
+		{name: "default type", definition: ir.Input{Name: "value", Type: "int", Default: &wrongTypeDefault}, wantCode: "E_INPUT_TYPE"},
+		{name: "required missing", definition: ir.Input{Name: "value", Type: "string", Required: true}, wantCode: "E_INPUT_REQUIRED"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := resolveInputs([]ir.Input{tt.definition}, nil)
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode || execution.Path != "input.value" {
+				t.Fatalf("error = %#v", err)
+			}
+			if tt.wantCode != "E_INPUT_REQUIRED" && execution.Cause == nil {
+				t.Fatal("error cause is nil")
+			}
+		})
+	}
+}
