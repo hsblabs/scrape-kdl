@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -73,6 +74,61 @@ func TestDecodeHTMLBOMOverridesDeclaredCharset(t *testing.T) {
 	}
 }
 
+func TestDecodeHTMLASCIIRejectsNonASCII(t *testing.T) {
+	decoded, err := decodeHTML([]byte("ASCII\n"), "text/html; charset=us-ascii")
+	if err != nil || decoded != "ASCII\n" {
+		t.Fatalf("ASCII decode = %q, %v", decoded, err)
+	}
+	_, err = decodeHTML([]byte("é"), "text/html; charset=ascii")
+	assertExecutionErrorCode(t, err, "E_HTML_DECODE")
+}
+
+func TestDecodeHTMLIgnoresInvalidHTTPMetadataBeforeMeta(t *testing.T) {
+	body := append([]byte(`<meta charset="windows-1252"><p>`), 0x80)
+	decoded, err := decodeHTML(body, "text/html; charset")
+	if err != nil || !strings.HasSuffix(decoded, "<p>€") {
+		t.Fatalf("decoded = %q, error = %v", decoded, err)
+	}
+}
+
+func TestDecodeHTMLFallbackReceivesDeclaredLabelAndBytes(t *testing.T) {
+	body := []byte{0x81, 0x82}
+	called := 0
+	decoded, err := decodeHTMLWithFallback(body, `text/html; charset="X-Custom"`, func(gotBody []byte, charset string) (string, error) {
+		called++
+		if !bytes.Equal(gotBody, body) || charset != "X-Custom" {
+			t.Fatalf("fallback input = %v, %q", gotBody, charset)
+		}
+		return "decoded", nil
+	})
+	if err != nil || decoded != "decoded" || called != 1 {
+		t.Fatalf("fallback result = %q, error = %v, calls = %d", decoded, err, called)
+	}
+}
+
+func TestNormalizeCharsetAliases(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{input: " UTF8 ", want: "utf-8"},
+		{input: "ASCII", want: "us-ascii"},
+		{input: "latin1", want: "iso-8859-1"},
+		{input: "latin-1", want: "iso-8859-1"},
+		{input: "iso8859-1", want: "iso-8859-1"},
+		{input: "CP1252", want: "windows-1252"},
+		{input: "utf16", want: "utf-16le"},
+		{input: "utf_16le", want: "utf-16le"},
+		{input: "UTF16BE", want: "utf-16be"},
+		{input: "x-custom", want: "x-custom"},
+	}
+	for _, tt := range tests {
+		if got := normalizeCharset(tt.input); got != tt.want {
+			t.Fatalf("normalizeCharset(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
 func TestDecodeHTMLReportsStableFailures(t *testing.T) {
 	t.Run("invalid UTF-8", func(t *testing.T) {
 		_, err := decodeHTML([]byte{0xff}, "text/html; charset=utf-8")
@@ -94,6 +150,10 @@ func TestDecodeHTMLReportsStableFailures(t *testing.T) {
 		assertExecutionErrorCode(t, err, "E_HTML_DECODE")
 		if !errors.Is(err, wantErr) {
 			t.Fatalf("error %v does not wrap fallback error", err)
+		}
+		var execution *ExecutionError
+		if !errors.As(err, &execution) || execution.Cause != wantErr || !strings.Contains(execution.Message, `charset "shift_jis"`) {
+			t.Fatalf("fallback execution error = %#v", err)
 		}
 	})
 }

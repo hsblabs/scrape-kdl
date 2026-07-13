@@ -35,9 +35,16 @@ func decodeHTMLWithFallback(body []byte, contentType string, fallback CharsetDec
 		charset = "utf-8"
 	}
 	switch normalizeCharset(charset) {
-	case "utf-8", "us-ascii":
+	case "utf-8":
 		if !utf8.Valid(body) {
 			return "", &ExecutionError{Code: "E_HTML_DECODE", Message: "response is not valid UTF-8"}
+		}
+		return string(body), nil
+	case "us-ascii":
+		for _, value := range body {
+			if value > 0x7f {
+				return "", &ExecutionError{Code: "E_HTML_DECODE", Message: "response is not valid US-ASCII"}
+			}
 		}
 		return string(body), nil
 	case "iso-8859-1":
