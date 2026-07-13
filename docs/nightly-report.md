@@ -73,6 +73,7 @@ Baseline: `e5363b7`
 - Enforced required `substring start` and non-negative `split limit` in malformed IR, matching the compiler and built-in specification. Added Unicode scalar, negative/upper clamp, reversed range, zero/unlimited split, empty input, missing arguments, fractional values, and malformed JSON coverage; executor statement coverage increased to 84.9%.
 - Rejected duplicate named transform arguments and malformed positional or named argument JSON during runtime preflight. Hand-built IR now retains structured `E_TRANSFORM` paths and decoding causes while failing before HTTP transport or browser lease acquisition; executor statement coverage increased to 85.0%.
 - Rejected NaN and positive or negative infinity in numeric assertion comparisons. `math/big` accepts infinity without a parse error, so malformed or host-originated non-finite values previously bypassed `assert-min`/`assert-max`; added integer target/radix, malformed argument, exact `MaxUint64`, non-numeric, and non-finite regression coverage. Executor statement coverage increased to 85.9%.
+- Preflighted declared match-transform case inputs, case results, and defaults for valid JSON and compatibility with their declared types. Malformed hand-built IR now fails with its transform path and preserved cause before HTTP transport or browser acquisition; executor statement coverage increased to 86.1%.
 
 ## Commits
 
@@ -154,6 +155,8 @@ Baseline: `e5363b7`
 - `13a2170` fix: preflight transform argument encoding
 - `5ba4613` docs: record transform argument preflight
 - `d0ba18c` fix: reject non-finite numeric assertions
+- `455ef0f` docs: record numeric assertion hardening
+- `fca3cfb` fix: preflight match transform literals
 
 ## Verification results
 
@@ -172,11 +175,11 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 87.8%, executor coverage at 85.9%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, DOM coverage at 87.8%, executor coverage at 86.1%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, omitted table sections nesting under cells, malformed query escapes silently converted to absent query values, malformed regex IR bypassing portable flag, capture, and count constraints, non-ASCII UTF-8 accepted under US-ASCII, missing/negative substring and split arguments interpreted as defaults, duplicate or malformed transform arguments deferred until transform application, and infinity accepted by numeric assertions through `math/big` parsing.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, malformed transform calls reaching transport or browser activity before failure, nondeterministic duplicate session-header ordering, an HTTP nil-cookie panic path, malformed workflow values reaching browser operations instead of failing preflight, mixed-case raw-text closing tags rejected by the XML tokenizer, omitted table sections nesting under cells, malformed query escapes silently converted to absent query values, malformed regex IR bypassing portable flag, capture, and count constraints, non-ASCII UTF-8 accepted under US-ASCII, missing/negative substring and split arguments interpreted as defaults, duplicate or malformed transform arguments deferred until transform application, infinity accepted by numeric assertions through `math/big` parsing, and malformed match literals deferred until field extraction.
 
 ## Environment-limited verification
 
@@ -197,4 +200,4 @@ None. Useful transient failures resolved during the run included the E2E fixture
 ## Next safe candidates
 
 - Audit transform-call argument names and arity against existing built-in signatures without changing the language contract.
-- Preflight declared match-transform literals so malformed hand-built IR cannot defer JSON decoding until after source acquisition.
+- Audit duplicate declared transform symbol IDs so malformed IR cannot silently overwrite an earlier declaration in the runtime lookup map.
