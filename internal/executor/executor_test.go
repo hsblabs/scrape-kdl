@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hsblabs/scrape-kdl/internal/compiler"
+	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
 
 func compileTestSpec(t *testing.T, source string) string {
@@ -162,6 +164,48 @@ func TestExecuteFieldWarningAndExternalTransform(t *testing.T) {
 	}
 	if result.Warnings[0].Code != "W_ERROR_RECOVERED" || result.Warnings[1].Code != "W_PARTIAL_EXTRACTION" {
 		t.Fatalf("warnings = %#v", result.Warnings)
+	}
+}
+
+func TestExecuteNormalizesNumericTransformLiterals(t *testing.T) {
+	path := compileTestSpec(t, `extractor "numeric-literals" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  transform "maybe_count" input="string" output="int?" {
+    match {
+      case "one" 1
+      default #null
+    }
+  }
+  field "matched" type="int" required=#true {
+    select ".matched"
+    value "text"
+    apply "maybe_count"
+    apply "coalesce" value=3
+  }
+  field "defaulted" type="int" required=#true {
+    select ".defaulted"
+    value "text"
+    apply "maybe_count"
+    apply "coalesce" value=3
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	html := `<div class="matched">one</div><div class="defaulted">other</div>`
+	result, err := ExecuteHTML(context.Background(), extractor, html, Options{})
+	if err != nil || result.Value["matched"] != int64(1) || result.Value["defaulted"] != int64(3) {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+
+	match := extractor.Transforms[0].(ir.MatchTransform)
+	match.Cases[0].Then = json.RawMessage(`"invalid"`)
+	extractor.Transforms[0] = match
+	_, err = ExecuteHTML(context.Background(), extractor, html, Options{})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM" || execution.Path != "output.matched" || !strings.Contains(execution.Message, "not assignable to int?") {
+		t.Fatalf("invalid match result error = %v", err)
 	}
 }
 

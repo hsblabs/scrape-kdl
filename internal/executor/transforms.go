@@ -84,16 +84,27 @@ func (runtime *transformRuntime) applyDeclared(symbolID string, input any, path 
 	case ir.PipelineTransform:
 		return runtime.applyCalls(input, typed.Calls, path)
 	case ir.MatchTransform:
+		decodeResult := func(raw json.RawMessage) (any, error) {
+			value, err := decodeJSON(raw)
+			if err != nil {
+				return nil, err
+			}
+			normalized, ok := normalizeJSONResult(value, typed.Output)
+			if !ok {
+				return nil, fmt.Errorf("match result of type %T is not assignable to %s", value, typed.Output.String())
+			}
+			return normalized, nil
+		}
 		for _, item := range typed.Cases {
 			when, err := decodeJSON(item.When)
 			if err != nil {
 				return nil, err
 			}
 			if equalScalar(input, when) {
-				return decodeJSON(item.Then)
+				return decodeResult(item.Then)
 			}
 		}
-		return decodeJSON(typed.Default)
+		return decodeResult(typed.Default)
 	case ir.ExternalTransform:
 		function, ok := runtime.external[typed.Symbol]
 		if !ok {

@@ -2,10 +2,12 @@ package executor
 
 import (
 	"encoding/json"
+	"math"
 	"reflect"
 	"testing"
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
 func testCall(named map[string]any, positional ...any) ir.TransformCall {
@@ -18,6 +20,12 @@ func testCall(named map[string]any, positional ...any) ir.TransformCall {
 		raw, _ := json.Marshal(value)
 		call.NamedArguments = append(call.NamedArguments, ir.NamedArgument{Name: name, Value: raw})
 	}
+	return call
+}
+
+func typedTestCall(output typesys.Type, named map[string]any) ir.TransformCall {
+	call := testCall(named)
+	call.Output = output
 	return call
 }
 
@@ -48,7 +56,7 @@ func TestBuiltins(t *testing.T) {
 		{"parse-bool", "YES", testCall(map[string]any{"true": "yes", "false": "no"}), true},
 		{"to-string", int32(-4), testCall(nil), "-4"},
 		{"empty-to-null", "", testCall(nil), nil},
-		{"coalesce", nil, testCall(map[string]any{"value": "fallback"}), "fallback"},
+		{"coalesce", nil, typedTestCall(typesys.Primitive("string"), map[string]any{"value": "fallback"}), "fallback"},
 		{"url-resolve", "../x", testCall(map[string]any{"base": "https://example.com/a/b"}), "https://example.com/x"},
 		{"url-query", "https://e.test/?a=x&a=y", testCall(map[string]any{"name": "a", "index": 1}), "y"},
 		{"url-path", "https://e.test/a%20b", testCall(nil), "/a b"},
@@ -66,6 +74,85 @@ func TestBuiltins(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, test.want) {
 				t.Fatalf("got %#v (%T), want %#v (%T)", got, got, test.want, test.want)
+			}
+		})
+	}
+}
+
+func TestBuiltinJoinRepresentations(t *testing.T) {
+	call := testCall(map[string]any{"separator": "-"})
+	for _, tt := range []struct {
+		name  string
+		input any
+		want  string
+	}{
+		{name: "string slice", input: []string{"a", "b"}, want: "a-b"},
+		{name: "JSON array", input: []any{"a", "b"}, want: "a-b"},
+		{name: "empty", input: []any{}, want: ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := applyBuiltinRuntime("join", tt.input, call)
+			if err != nil || got != tt.want {
+				t.Fatalf("join = %#v, %v", got, err)
+			}
+		})
+	}
+	for _, tt := range []struct {
+		name  string
+		input any
+		call  ir.TransformCall
+	}{
+		{name: "non-string element", input: []any{"a", 2}, call: call},
+		{name: "wrong input", input: "a", call: call},
+		{name: "missing separator", input: []string{"a"}, call: testCall(nil)},
+		{name: "invalid separator", input: []string{"a"}, call: testCall(map[string]any{"separator": 1})},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := applyBuiltinRuntime("join", tt.input, tt.call); err == nil {
+				t.Fatal("join succeeded")
+			}
+		})
+	}
+}
+
+func TestBuiltinToStringNumericBoundaries(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		input any
+		want  string
+	}{
+		{name: "bool", input: true, want: "true"},
+		{name: "int", input: int(-1), want: "-1"},
+		{name: "int8", input: int8(-8), want: "-8"},
+		{name: "int16", input: int16(-16), want: "-16"},
+		{name: "int64", input: int64(-64), want: "-64"},
+		{name: "uint", input: uint(1), want: "1"},
+		{name: "uint16", input: uint16(16), want: "16"},
+		{name: "uint64", input: uint64(math.MaxUint64), want: "18446744073709551615"},
+		{name: "float32", input: float32(1.25), want: "1.25"},
+		{name: "float64", input: 1.25, want: "1.25"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := builtinToString(tt.input)
+			if err != nil || got != tt.want {
+				t.Fatalf("to-string = %#v, %v", got, err)
+			}
+		})
+	}
+	for _, tt := range []struct {
+		name  string
+		input any
+	}{
+		{name: "float32 NaN", input: float32(math.NaN())},
+		{name: "float32 infinity", input: float32(math.Inf(1))},
+		{name: "float64 NaN", input: math.NaN()},
+		{name: "float64 infinity", input: math.Inf(-1)},
+		{name: "array", input: []any{}},
+		{name: "nil", input: nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := builtinToString(tt.input); err == nil {
+				t.Fatal("to-string succeeded")
 			}
 		})
 	}

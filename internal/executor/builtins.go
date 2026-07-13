@@ -86,7 +86,11 @@ func applyBuiltinRuntime(name string, input any, call ir.TransformCall) (any, er
 		if err != nil || !ok {
 			return nil, argumentError("coalesce requires value", err)
 		}
-		return value, nil
+		normalized, compatible := normalizeJSONResult(value, call.Output)
+		if !compatible {
+			return nil, fmt.Errorf("coalesce value of type %T is not assignable to %s", value, call.Output.String())
+		}
+		return normalized, nil
 	case "url-resolve":
 		return builtinURLResolve(input, arguments)
 	case "url-query":
@@ -513,6 +517,9 @@ func builtinToString(input any) (any, error) {
 	case uint64:
 		return strconv.FormatUint(value, 10), nil
 	case float32:
+		if float32IsInvalid(value) {
+			return nil, fmt.Errorf("float must be finite")
+		}
 		return strconv.FormatFloat(float64(value), 'g', -1, 32), nil
 	case float64:
 		if math.IsNaN(value) || math.IsInf(value, 0) {

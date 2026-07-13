@@ -258,7 +258,7 @@ func (e *browserEngine) readField(scope BrowserElement, field ir.Field, path str
 		if err != nil {
 			return nil, &ExecutionError{Code: operationErrorCode("E_JAVASCRIPT_EVALUATION", err), Message: err.Error(), Path: path, Cause: err}
 		}
-		v, ok := normalizeJavaScriptResult(v, s.Returns)
+		v, ok := normalizeJSONResult(v, s.Returns)
 		if !ok {
 			return nil, &ExecutionError{Code: "E_JAVASCRIPT_RESULT_TYPE", Message: fmt.Sprintf("JavaScript result of type %T is not compatible with returns=%s", v, s.Returns.String()), Path: path}
 		}
@@ -268,7 +268,7 @@ func (e *browserEngine) readField(scope BrowserElement, field ir.Field, path str
 	}
 }
 
-func normalizeJavaScriptResult(value any, target typesys.Type) (any, bool) {
+func normalizeJSONResult(value any, target typesys.Type) (any, bool) {
 	if !isJSONCompatible(value) {
 		return value, false
 	}
@@ -279,7 +279,7 @@ func normalizeJavaScriptResult(value any, target typesys.Type) (any, bool) {
 		if target.Inner == nil {
 			return value, false
 		}
-		return normalizeJavaScriptResult(value, *target.Inner)
+		return normalizeJSONResult(value, *target.Inner)
 	}
 	if value == nil {
 		return value, target.Kind == typesys.KindPrimitive && target.Name == "unknown"
@@ -303,7 +303,7 @@ func normalizeJavaScriptResult(value any, target typesys.Type) (any, bool) {
 		normalized := make([]any, len(values))
 		for i := range values {
 			var ok bool
-			normalized[i], ok = normalizeJavaScriptResult(values[i], *target.Element)
+			normalized[i], ok = normalizeJSONResult(values[i], *target.Element)
 			if !ok {
 				return value, false
 			}
@@ -326,16 +326,16 @@ func normalizeJavaScriptResult(value any, target typesys.Type) (any, bool) {
 		_, ok := value.(bool)
 		return value, ok
 	case "int", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64":
-		return normalizeJavaScriptInteger(value, target.Name)
+		return normalizeJSONInteger(value, target.Name)
 	case "float", "f32", "f64":
-		return normalizeJavaScriptFloat(value, target.Name)
+		return normalizeJSONFloat(value, target.Name)
 	default:
 		return value, false
 	}
 }
 
-func normalizeJavaScriptInteger(value any, target string) (any, bool) {
-	integer, ok := javascriptInteger(value)
+func normalizeJSONInteger(value any, target string) (any, bool) {
+	integer, ok := jsonInteger(value)
 	if !ok {
 		return value, false
 	}
@@ -389,7 +389,7 @@ func normalizeJavaScriptInteger(value any, target string) (any, bool) {
 	return value, false
 }
 
-func javascriptInteger(value any) (*big.Int, bool) {
+func jsonInteger(value any) (*big.Int, bool) {
 	switch typed := value.(type) {
 	case int:
 		return big.NewInt(int64(typed)), true
@@ -430,7 +430,7 @@ func integerFromDecimal(value string) (*big.Int, bool) {
 	return new(big.Int).Set(rational.Num()), true
 }
 
-func normalizeJavaScriptFloat(value any, target string) (any, bool) {
+func normalizeJSONFloat(value any, target string) (any, bool) {
 	var converted float64
 	switch typed := value.(type) {
 	case int:
