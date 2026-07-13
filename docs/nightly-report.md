@@ -47,6 +47,7 @@ Baseline: `e5363b7`
 - Extended browser lease coverage to reject a nil release callback before navigation and to prove exactly-once release after ordinary workflow and output-query failures. Executor statement coverage increased to 77.0%.
 - Recorded the required compatibility and security decision for ambient `http.Client` jar or browser-context state under `session policy="none"`; current behavior was intentionally left unchanged.
 - Verified response-cookie lifecycle through a supplied jar: redirect responses persist host-only and domain cookies with their proper scope, only the domain cookie reaches a subdomain, and final-response cookies are retained. Tests record cookie names only, never values.
+- Added direct HTTP client wrapper tests proving nil-policy identity, non-nil-policy clone isolation, preservation of transport/jar/timeout, caller callback ordering, and policy rejection before the caller-owned redirect callback.
 
 ## Commits
 
@@ -97,6 +98,7 @@ Baseline: `e5363b7`
 - `e1f2798` test: extend browser lease cleanup
 - `a7b0a44` docs: record ambient session state decision
 - `422f5e8` test: cover response cookie lifecycle
+- `c0d6a22` test: verify HTTP client clone isolation
 
 ## Verification results
 
@@ -139,5 +141,5 @@ None. Useful transient failures resolved during the run included the E2E fixture
 
 - Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
 - Exercise malformed selector and transform IR through `ExecuteHTML`, which should fail before parsing the supplied document.
-- Add direct tests for HTTP client clone immutability so installing `URLPolicy` cannot mutate a caller-owned `CheckRedirect` or other client fields.
 - Extend browser runtime malformed-IR preflight coverage to unknown output members and nested invalid selectors before adapter acquisition.
+- Add direct policy error conversion tests for wrapped errors and unrelated fetch failures without changing diagnostic mappings.
