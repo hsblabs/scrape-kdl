@@ -113,6 +113,22 @@ func preflightOutputStructure(root ir.OutputObject) error {
 			switch typed := member.(type) {
 			case ir.Field:
 				name, id = typed.Name, typed.ID
+				if typed.Selection != nil && typed.Selection.Match != "one" && typed.Selection.Match != "first" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid selection match mode %q", typed.Selection.Match), Path: typed.ID}
+				}
+				switch source := typed.ValueSource.(type) {
+				case ir.TextValueSource, ir.HTMLValueSource:
+					if typed.Selection == nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
+					}
+				case ir.AttributeValueSource:
+					if typed.Selection == nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
+					}
+					if source.Name == "" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "attribute value source requires a non-empty name", Path: typed.ID}
+					}
+				}
 				if typed.Required && typed.Default != nil {
 					return &ExecutionError{Code: "E_IR_INVALID", Message: "required field must not declare a default", Path: typed.ID}
 				}

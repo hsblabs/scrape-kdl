@@ -337,6 +337,17 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			},
 			wantCode: "E_IR_INVALID",
 		},
+		{
+			name: "nested field selection match mode",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				field.Selection.Match = "last"
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_IR_INVALID",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
