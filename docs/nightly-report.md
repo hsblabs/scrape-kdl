@@ -42,6 +42,7 @@ Baseline: `e5363b7`
 - Added an HTTP preflight boundary matrix proving that missing external transforms, invalid selectors, browser-only value sources, missing or mistyped inputs, required sessions, and invalid expanded URLs all fail before the transport is called, with a successful request as the control.
 - Hardened malformed built-in arguments: negative `regex-capture` groups now return an error instead of indexing a negative slice offset, and non-string `parse-bool` `true`/`false` values no longer collapse to empty strings. Removed the now-unnecessary `unicode/utf8` sentinel.
 - Re-ran core, race, real go-rod, Chromium E2E, and release gates concurrently after the HTTP preflight and built-in hardening changes; executor statement coverage increased to 76.6%.
+- Added a bounded malformed-argument fuzz target across regex capture/replacement, substring, split, boolean parsing, URL queries and paths, numeric assertions, and coalescing. A 20-second run completed approximately 1.60 million executions without finding another panic.
 
 ## Commits
 
@@ -87,6 +88,7 @@ Baseline: `e5363b7`
 - `ae0c0d8` test: cover session redirect boundaries
 - `6a511aa` test: enforce HTTP preflight boundary
 - `1eab03f` fix: harden malformed builtin arguments
+- `0c5081d` test: fuzz malformed builtin arguments
 
 ## Verification results
 
@@ -98,7 +100,7 @@ Passed:
 - `make release-check`;
 - concurrent execution of all four gates above;
 - `go test -shuffle=on -count=10 ./...`;
-- 10-second fuzz runs for KDL and selector parsing, plus a post-fix 20-second HTML parser run covering approximately 1.64 million executions;
+- 10-second fuzz runs for KDL and selector parsing, a post-fix 20-second HTML parser run covering approximately 1.64 million executions, and a 20-second malformed built-in argument run covering approximately 1.60 million executions;
 - `staticcheck ./...` for the root and adapter modules;
 - `govulncheck ./...` for the root and adapter modules, with no reachable vulnerabilities found;
 - `go mod verify` for both modules and `go mod tidy -diff` for the root module;
@@ -129,4 +131,4 @@ None. Useful transient failures resolved during the run included the E2E fixture
 - Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
 - Extend browser lease cleanup tests across ordinary adapter errors and cancellation interleavings without changing the public adapter contract.
 - Add deterministic tests for cookie-jar scope and a custom `CheckRedirect` that removes sensitive headers, preserving standard `net/http` ownership of redirect behavior.
-- Add a bounded fuzz target for malformed built-in transform calls to find panic-only failures without changing valid KDL semantics.
+- Exercise malformed selector and transform IR through `ExecuteHTML`, which should fail before parsing the supplied document.
