@@ -180,3 +180,56 @@ func TestCompileRejectsInvalidBrowserWorkflowSteps(t *testing.T) {
 		}
 	}
 }
+
+func TestCompileInputDefaults(t *testing.T) {
+	extractor, codes := compileText(t, `extractor "input-defaults" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/{lang}" }
+  input "lang" type="string" required=#false default="ja"
+  input "enabled" type="bool" required=#false default=#true
+  input "count" type="int" required=#false default=-2
+  input "ratio" type="float" required=#false default=1.5
+  field "title" type="string" required=#true {
+    select "h1" match="one"
+    value "text"
+  }
+}`)
+	if extractor == nil {
+		t.Fatalf("compile diagnostics = %v", codes)
+	}
+	want := map[string]string{
+		"lang": `"ja"`, "enabled": "true", "count": "-2", "ratio": "1.5",
+	}
+	for _, input := range extractor.Inputs {
+		if input.Required || input.Default == nil || string(*input.Default) != want[input.Name] {
+			t.Fatalf("input %q = %#v", input.Name, input)
+		}
+		delete(want, input.Name)
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing inputs = %v", want)
+	}
+	if len(extractor.Source.Fetch.URLTemplate.Segments) != 2 {
+		t.Fatalf("URL template = %#v", extractor.Source.Fetch.URLTemplate)
+	}
+}
+
+func TestCompileRejectsInvalidDefaults(t *testing.T) {
+	extractor, codes := compileText(t, `extractor "invalid-defaults" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  input "required_value" type="string" required=#true default="x"
+  input "wrong_bool" type="bool" required=#false default="true"
+  field "title" type="string" required=#false default=1 {
+    select "h1" match="one"
+    value "text"
+    on-error "default"
+  }
+}`)
+	if extractor != nil {
+		t.Fatalf("extractor = %#v", extractor)
+	}
+	for _, code := range []string{"E_INPUT_REQUIRED_DEFAULT", "E_DEFAULT_INVALID"} {
+		if !slices.Contains(codes, code) {
+			t.Fatalf("diagnostics %v do not contain %q", codes, code)
+		}
+	}
+}
