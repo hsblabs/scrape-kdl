@@ -51,6 +51,9 @@ Baseline: `e5363b7`
 - Added browser output-IR preflight before input resolution and adapter acquisition. Nested malformed selectors, unknown output members, and unknown value sources now fail with existing structured codes before browser activity; valid extraction remains unchanged. Updated browser runtime execution-order documentation. Executor statement coverage increased to 77.1%.
 - Added browser workflow-IR preflight for known step kinds and selector-bearing steps. Malformed workflow selectors and unknown steps now fail at a stable workflow path before adapter acquisition, while valid workflow order is preserved. Updated browser runtime documentation; executor statement coverage increased to 77.4%.
 - Added direct URL-policy tests for nil and allowing policies, invalid URL rejection before callback invocation, structured policy rejection, `url.Error` wrapping from `http.Client`, cause preservation, and non-conversion of unrelated transport errors. Executor statement coverage increased to 77.5%.
+- Rejected trailing data after IR JSON literals instead of silently accepting the first valid prefix. Added direct single-value decoding tests and an `ExecuteHTML` malformed-default regression covering stable `E_IR_INVALID` mapping.
+- Fixed runtime integer input normalization at the rounded `float64` upper boundary: logical `2^63` is now rejected instead of saturating to `MaxInt64`, while `MinInt64` and the largest representable float below `2^63` remain valid.
+- Made multiple unknown runtime inputs deterministic by reporting the lexicographically first name in one pass. Added coverage for every accepted input representation, invalid and non-finite values, defaults, provided overrides, trailing default data, type mismatches, and missing required inputs. Executor statement coverage increased to 80.3%.
 
 ## Commits
 
@@ -107,6 +110,10 @@ Baseline: `e5363b7`
 - `20465ba` fix: preflight browser workflow IR
 - `4786118` docs: include workflow preflight
 - `f4b4c9f` test: cover URL policy error mapping
+- `d982b5e` fix: reject trailing IR JSON data
+- `13d23f7` fix: reject rounded integer overflow
+- `44383db` fix: stabilize unknown input errors
+- `cf172fb` test: cover runtime input defaults
 
 ## Verification results
 
@@ -125,11 +132,11 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 77.5%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 80.3%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, and a malformed negative `regex-capture` group that reached a negative slice index.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, and rounded `float64` input at logical `2^63` saturating into the signed integer range.
 
 ## Environment-limited verification
 
@@ -151,4 +158,5 @@ None. Useful transient failures resolved during the run included the E2E fixture
 - Exercise malformed selector and transform IR through `ExecuteHTML`, which should fail before parsing the supplied document.
 - Add malformed workflow timeout and state tests only where the existing compiler contract gives an unambiguous `E_IR_INVALID` runtime result.
 - Audit duplicate session header and cookie handling for deterministic request construction without logging values.
-- Add direct tests for `ExecuteHTML` cancellation and malformed default recovery without changing its documented offline boundary.
+- Add direct `ExecuteHTML` cancellation tests only after identifying an existing structured diagnostic whose meaning already covers offline cancellation; otherwise record a diagnostic-contract decision.
+- Extend HTTP field recovery coverage across fail/null/warn/default and malformed recovery defaults, matching the browser runtime tests.
