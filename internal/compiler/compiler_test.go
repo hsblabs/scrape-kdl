@@ -6,11 +6,27 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
 
 func fixture(parts ...string) string {
 	all := append([]string{"..", "..", "fixtures"}, parts...)
 	return filepath.Join(all...)
+}
+
+func compileText(t *testing.T, content string) (*ir.Extractor, []string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "extractor.kdl")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	extractor, diagnostics := CompileFile(path)
+	codes := make([]string, len(diagnostics))
+	for i := range diagnostics {
+		codes[i] = diagnostics[i].Code
+	}
+	return extractor, codes
 }
 
 func TestCompileBasicHTTP(t *testing.T) {
@@ -95,5 +111,72 @@ func TestCompileInitializesIRArrays(t *testing.T) {
 	}
 	if result.Output.Members == nil {
 		t.Fatal("output members must be an array")
+	}
+}
+
+func TestCompileBrowserWorkflowSteps(t *testing.T) {
+	extractor, codes := compileText(t, `extractor "workflow" version=1 {
+  source "html" {
+    fetch mode="browser" url="https://example.invalid/"
+    workflow {
+      wait-for "#ready" state="attached" timeout-ms=100
+      click "button" timeout-ms=200
+      fill "input" "value" timeout-ms=300
+      press "input" "Enter" timeout-ms=400
+      scroll 1.5 -2
+      wait-for-network-idle idle-ms=250 timeout-ms=500
+      evaluate-js "() => null" timeout-ms=600
+    }
+  }
+  field "title" type="string" required=#true {
+    select "h1" match="one"
+    value "text"
+  }
+}`)
+	if slices.Contains(codes, "E_TYPE_MISMATCH") || extractor == nil {
+		t.Fatalf("compile = %#v, diagnostics = %v", extractor, codes)
+	}
+	if len(extractor.Source.Workflow) != 7 {
+		t.Fatalf("workflow = %#v", extractor.Source.Workflow)
+	}
+	if step, ok := extractor.Source.Workflow[0].(ir.WaitForStep); !ok || step.State != "attached" || step.TimeoutMS == nil || *step.TimeoutMS != 100 {
+		t.Fatalf("wait-for = %#v", extractor.Source.Workflow[0])
+	}
+	if step, ok := extractor.Source.Workflow[4].(ir.ScrollStep); !ok || step.X != 1.5 || step.Y != -2 {
+		t.Fatalf("scroll = %#v", extractor.Source.Workflow[4])
+	}
+	if step, ok := extractor.Source.Workflow[5].(ir.NetworkIdleStep); !ok || step.IdleMS != 250 || step.TimeoutMS == nil || *step.TimeoutMS != 500 {
+		t.Fatalf("network idle = %#v", extractor.Source.Workflow[5])
+	}
+	for _, capability := range []string{"browser.evaluate-js", "browser.input", "browser.navigate", "browser.network-idle", "browser.query", "browser.read-text", "browser.scroll", "browser.wait"} {
+		if !slices.Contains(extractor.Capabilities, capability) {
+			t.Fatalf("capabilities %v do not contain %q", extractor.Capabilities, capability)
+		}
+	}
+}
+
+func TestCompileRejectsInvalidBrowserWorkflowSteps(t *testing.T) {
+	extractor, codes := compileText(t, `extractor "invalid-workflow" version=1 {
+  source "html" {
+    fetch mode="browser" url="https://example.invalid/"
+    workflow {
+      wait-for "[" state="moving" timeout-ms=0
+      scroll "right" 0
+      wait-for-network-idle idle-ms=0 timeout-ms=0
+      unsupported-step
+    }
+  }
+  field "title" type="string" required=#true {
+    select "h1" match="one"
+    value "text"
+  }
+}`)
+	if extractor != nil {
+		t.Fatalf("extractor = %#v", extractor)
+	}
+	for _, code := range []string{"E_SELECTOR_INVALID", "E_TYPE_MISMATCH", "E_UNKNOWN_NODE"} {
+		if !slices.Contains(codes, code) {
+			t.Fatalf("diagnostics %v do not contain %q", codes, code)
+		}
 	}
 }
