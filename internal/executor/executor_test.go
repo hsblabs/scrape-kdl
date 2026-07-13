@@ -552,6 +552,34 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 	}{
 		{name: "success", inputs: map[string]any{"id": int64(1)}, session: &Session{}},
 		{
+			name: "invalid extractor kind",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Kind = "program"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unsupported IR version",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.IRVersion = "1.0"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unsupported language version",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.LanguageVersion = "1.0"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "non-positive extractor version",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Version = 0
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "external transform",
 			mutate: func(extractor *ir.Extractor) {
 				extractor.Transforms = append(extractor.Transforms, ir.ExternalTransform{

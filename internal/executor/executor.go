@@ -85,6 +85,9 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 	if extractor.Source.Fetch.Mode != "http" {
 		return nil, &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: fmt.Sprintf("HTTP runtime cannot execute fetch mode %q", extractor.Source.Fetch.Mode)}
 	}
+	if err := preflightExtractorStructure(extractor); err != nil {
+		return nil, err
+	}
 	if err := preflightSourceStructure(extractor.Source); err != nil {
 		return nil, err
 	}
@@ -103,6 +106,22 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 		return nil, err
 	}
 	return result, nil
+}
+
+func preflightExtractorStructure(extractor *ir.Extractor) error {
+	if extractor.Kind != "extractor" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown extractor kind %q", extractor.Kind), Path: "extractor"}
+	}
+	if extractor.IRVersion != "0.1" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unsupported IR version %q", extractor.IRVersion), Path: "irVersion"}
+	}
+	if extractor.LanguageVersion != "0.1" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unsupported language version %q", extractor.LanguageVersion), Path: "languageVersion"}
+	}
+	if extractor.Version < 1 {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: "extractor version must be positive", Path: "version"}
+	}
+	return nil
 }
 
 func preflightSourceStructure(source ir.Source) error {

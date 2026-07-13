@@ -215,6 +215,13 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 	}{
 		{name: "success"},
 		{
+			name: "unsupported IR version",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.IRVersion = "1.0"
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "nested selector",
 			mutate: func(extractor *ir.Extractor) {
 				collection := extractor.Output.Members[0].(ir.Collection)
