@@ -19,6 +19,7 @@ import (
 
 	"github.com/hsblabs/scrape-kdl/internal/compiler"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
 func compileTestSpec(t *testing.T, source string) string {
@@ -298,7 +299,7 @@ func TestExecuteNormalizesNumericTransformLiterals(t *testing.T) {
 	extractor.Transforms[0] = match
 	_, err = ExecuteHTML(context.Background(), extractor, html, Options{})
 	var execution *ExecutionError
-	if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM" || execution.Path != "output.matched" || !strings.Contains(execution.Message, "not assignable to int?") {
+	if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM" || execution.Path != "maybe_count" || !strings.Contains(execution.Message, "not assignable to int?") {
 		t.Fatalf("invalid match result error = %v", err)
 	}
 }
@@ -628,6 +629,18 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 					PositionalArguments: []json.RawMessage{json.RawMessage(`not-json`)},
 				}}
 				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM",
+		},
+		{
+			name: "malformed match literal",
+			mutate: func(extractor *ir.Extractor) {
+				stringType := typesys.Primitive("string")
+				extractor.Transforms = append(extractor.Transforms, ir.MatchTransform{
+					Kind:          "match",
+					TransformBase: ir.TransformBase{SymbolID: "transform:match", Name: "match", Input: stringType, Output: stringType},
+					Default:       json.RawMessage(`not-json`),
+				})
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM",
 		},

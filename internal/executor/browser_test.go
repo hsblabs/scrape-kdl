@@ -13,6 +13,7 @@ import (
 
 	"github.com/hsblabs/scrape-kdl/internal/compiler"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
 type fakeElement struct{ id string }
@@ -274,6 +275,19 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 				}}
 				collection.Row.Members[0] = field
 				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_TRANSFORM",
+		},
+		{
+			name: "malformed match literal",
+			mutate: func(extractor *ir.Extractor) {
+				stringType := typesys.Primitive("string")
+				extractor.Transforms = append(extractor.Transforms, ir.MatchTransform{
+					Kind:          "match",
+					TransformBase: ir.TransformBase{SymbolID: "transform:match", Name: "match", Input: stringType, Output: stringType},
+					Cases:         []ir.MatchCase{{When: json.RawMessage(`not-json`), Then: json.RawMessage(`"output"`)}},
+					Default:       json.RawMessage(`"fallback"`),
+				})
 			},
 			wantCode: "E_TRANSFORM",
 		},

@@ -159,6 +159,44 @@ func TestTransformPreflightValidatesCalls(t *testing.T) {
 	}
 }
 
+func TestTransformPreflightValidatesMatchLiterals(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	valid := ir.MatchTransform{
+		Kind:          "match",
+		TransformBase: ir.TransformBase{SymbolID: "transform:match", Name: "match", Input: stringType, Output: stringType},
+		Cases:         []ir.MatchCase{{When: json.RawMessage(`"input"`), Then: json.RawMessage(`"output"`)}},
+		Default:       json.RawMessage(`"fallback"`),
+	}
+	if err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{valid}}, nil).preflight(); err != nil {
+		t.Fatalf("valid match preflight error = %v", err)
+	}
+
+	tests := []struct {
+		name        string
+		mutate      func(*ir.MatchTransform)
+		wantMessage string
+	}{
+		{name: "malformed case input", mutate: func(match *ir.MatchTransform) { match.Cases[0].When = json.RawMessage(`not-json`) }, wantMessage: "invalid match case 0 input"},
+		{name: "incompatible case input", mutate: func(match *ir.MatchTransform) { match.Cases[0].When = json.RawMessage(`1`) }, wantMessage: "match case 0 input"},
+		{name: "malformed case result", mutate: func(match *ir.MatchTransform) { match.Cases[0].Then = json.RawMessage(`not-json`) }, wantMessage: "invalid match case 0 result"},
+		{name: "incompatible case result", mutate: func(match *ir.MatchTransform) { match.Cases[0].Then = json.RawMessage(`1`) }, wantMessage: "match case 0 result"},
+		{name: "malformed default", mutate: func(match *ir.MatchTransform) { match.Default = json.RawMessage(`not-json`) }, wantMessage: "invalid match default"},
+		{name: "incompatible default", mutate: func(match *ir.MatchTransform) { match.Default = json.RawMessage(`1`) }, wantMessage: "match default"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			match := valid
+			match.Cases = append([]ir.MatchCase(nil), valid.Cases...)
+			tt.mutate(&match)
+			err := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{match}}, nil).preflight()
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM" || execution.Path != "match" || execution.Cause == nil || !strings.Contains(execution.Message, tt.wantMessage) {
+				t.Fatalf("preflight error = %#v", err)
+			}
+		})
+	}
+}
+
 func TestTransformRuntimeDetectsRecursion(t *testing.T) {
 	stringType := typesys.Primitive("string")
 	const symbol = "transform:recursive"

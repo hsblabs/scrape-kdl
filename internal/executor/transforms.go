@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
 type transformRuntime struct {
@@ -42,13 +43,42 @@ func (runtime *transformRuntime) preflight() error {
 		}
 	}
 	for _, transform := range runtime.extractor.Transforms {
-		if pipeline, ok := transform.(ir.PipelineTransform); ok {
-			if err := runtime.preflightCalls(pipeline.Calls, pipeline.Name); err != nil {
+		switch typed := transform.(type) {
+		case ir.PipelineTransform:
+			if err := runtime.preflightCalls(typed.Calls, typed.Name); err != nil {
+				return err
+			}
+		case ir.MatchTransform:
+			if err := preflightMatchTransform(typed); err != nil {
 				return err
 			}
 		}
 	}
 	return runtime.preflightOutputCalls(runtime.extractor.Output)
+}
+
+func preflightMatchTransform(match ir.MatchTransform) error {
+	validate := func(raw json.RawMessage, expected typesys.Type, description string) error {
+		value, err := decodeJSON(raw)
+		if err != nil {
+			cause := fmt.Errorf("invalid %s: %w", description, err)
+			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: match.Name, Cause: cause}
+		}
+		if _, ok := normalizeJSONResult(value, expected); !ok {
+			cause := fmt.Errorf("%s of type %T is not assignable to %s", description, value, expected.String())
+			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: match.Name, Cause: cause}
+		}
+		return nil
+	}
+	for index, item := range match.Cases {
+		if err := validate(item.When, match.Input, fmt.Sprintf("match case %d input", index)); err != nil {
+			return err
+		}
+		if err := validate(item.Then, match.Output, fmt.Sprintf("match case %d result", index)); err != nil {
+			return err
+		}
+	}
+	return validate(match.Default, match.Output, "match default")
 }
 
 func (runtime *transformRuntime) preflightOutputCalls(object ir.OutputObject) error {
