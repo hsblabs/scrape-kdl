@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -775,6 +776,128 @@ func TestExecuteHTTPSessionHeadersFollowRedirectSecurityRules(t *testing.T) {
 				t.Fatalf("header presence initial=%+v redirected=%+v", initial, redirected)
 			}
 		})
+	}
+}
+
+func TestExecuteHTTPCookieJarAppliesRedirectScope(t *testing.T) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := &url.URL{Scheme: "https", Host: "example.invalid", Path: "/"}
+	subdomain := &url.URL{Scheme: "https", Host: "sub.example.invalid", Path: "/"}
+	jar.SetCookies(root, []*http.Cookie{
+		{Name: "host", Value: "test-value", Path: "/"},
+		{Name: "domain", Value: "test-value", Domain: "example.invalid", Path: "/"},
+	})
+	jar.SetCookies(subdomain, []*http.Cookie{{Name: "subdomain", Value: "test-value", Path: "/"}})
+
+	var observations []map[string]bool
+	client := &http.Client{
+		Jar: jar,
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			present := map[string]bool{}
+			for _, cookie := range request.Cookies() {
+				present[cookie.Name] = true
+			}
+			observations = append(observations, present)
+			if request.URL.Path == "/start" {
+				return &http.Response{
+					StatusCode: http.StatusFound, Status: "302 Found",
+					Header: http.Header{"Location": []string{"https://sub.example.invalid/end"}},
+					Body:   io.NopCloser(strings.NewReader("")), Request: request,
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header),
+				Body: io.NopCloser(strings.NewReader(`<h1>redirected</h1>`)), Request: request,
+			}, nil
+		}),
+	}
+	path := compileTestSpec(t, `extractor "redirect-jar" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/start" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := Execute(context.Background(), extractor, nil, Options{
+		HTTPClient: client,
+		URLPolicy:  func(context.Context, *url.URL) error { return nil },
+	})
+	if err != nil || result.Value["title"] != "redirected" {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	want := []map[string]bool{
+		{"host": true, "domain": true},
+		{"domain": true, "subdomain": true},
+	}
+	if !reflect.DeepEqual(observations, want) {
+		t.Fatalf("cookie names = %#v, want %#v", observations, want)
+	}
+}
+
+func TestExecuteHTTPCustomRedirectCanStripSessionHeaders(t *testing.T) {
+	type observation struct {
+		authorization bool
+		cookie        bool
+		trace         bool
+	}
+	var observations []observation
+	redirectCalls := 0
+	client := &http.Client{
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			observations = append(observations, observation{
+				authorization: request.Header.Get("Authorization") != "",
+				cookie:        request.Header.Get("Cookie") != "",
+				trace:         request.Header.Get("X-Trace") != "",
+			})
+			if request.URL.Path == "/start" {
+				return &http.Response{
+					StatusCode: http.StatusFound, Status: "302 Found", Header: http.Header{"Location": []string{"/end"}},
+					Body: io.NopCloser(strings.NewReader("")), Request: request,
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header),
+				Body: io.NopCloser(strings.NewReader(`<h1>redirected</h1>`)), Request: request,
+			}, nil
+		}),
+		CheckRedirect: func(request *http.Request, _ []*http.Request) error {
+			redirectCalls++
+			request.Header.Del("Authorization")
+			request.Header.Del("Cookie")
+			request.Header.Del("X-Trace")
+			return nil
+		},
+	}
+	path := compileTestSpec(t, `extractor "redirect-mutation" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/start"; session policy="optional" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	policyCalls := 0
+	result, err := Execute(context.Background(), extractor, nil, Options{
+		HTTPClient: client,
+		Session: &Session{
+			Headers: http.Header{"Authorization": []string{"Bearer test-value"}, "X-Trace": []string{"test-value"}},
+			Cookies: []*http.Cookie{{Name: "session", Value: "test-value"}},
+		},
+		URLPolicy: func(context.Context, *url.URL) error {
+			policyCalls++
+			return nil
+		},
+	})
+	if err != nil || result.Value["title"] != "redirected" {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	want := []observation{{authorization: true, cookie: true, trace: true}, {}}
+	if !reflect.DeepEqual(observations, want) || redirectCalls != 1 || policyCalls != 2 {
+		t.Fatalf("headers = %+v, redirect calls = %d, policy calls = %d", observations, redirectCalls, policyCalls)
 	}
 }
 
