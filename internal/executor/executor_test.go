@@ -700,6 +700,28 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
 		{
+			name: "unknown collection row policy",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ID, field.Name = "output.rows[].title", "title"
+				extractor.Output.Members = append(extractor.Output.Members, ir.Collection{
+					Kind: "collection", ID: "output.rows", Name: "rows", Selector: "h1", OnRowError: "ignore",
+					Row: ir.OutputObject{Kind: "object", Members: []ir.OutputMember{field}},
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "empty collection row schema",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Output.Members = append(extractor.Output.Members, ir.Collection{
+					Kind: "collection", ID: "output.rows", Name: "rows", Selector: "h1", OnRowError: "fail",
+					Row: ir.OutputObject{Kind: "object"},
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "unknown field recovery policy",
 			mutate: func(extractor *ir.Extractor) {
 				field := extractor.Output.Members[0].(ir.Field)

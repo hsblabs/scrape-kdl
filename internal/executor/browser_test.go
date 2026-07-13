@@ -328,6 +328,15 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			},
 			wantCode: "E_IR_INVALID",
 		},
+		{
+			name: "empty collection row schema",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				collection.Row.Members = nil
+				extractor.Output.Members[0] = collection
+			},
+			wantCode: "E_IR_INVALID",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

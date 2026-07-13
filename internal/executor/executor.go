@@ -146,6 +146,12 @@ func preflightOutputStructure(root ir.OutputObject) error {
 				if typed.MaxItems != nil && *typed.MaxItems < effectiveMinimum {
 					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("collection maxItems %d is less than effective minItems %d", *typed.MaxItems, effectiveMinimum), Path: typed.ID}
 				}
+				if typed.OnRowError != "fail" && typed.OnRowError != "skip" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown on-row-error policy %q", typed.OnRowError), Path: typed.ID}
+				}
+				if len(typed.Row.Members) == 0 {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "collection row requires at least one output member", Path: typed.ID}
+				}
 			default:
 				continue
 			}
