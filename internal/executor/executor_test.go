@@ -656,6 +656,17 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM",
 		},
+		{
+			name: "duplicate transform symbol",
+			mutate: func(extractor *ir.Extractor) {
+				base := ir.TransformBase{SymbolID: "transform:duplicate", Name: "duplicate"}
+				extractor.Transforms = append(extractor.Transforms,
+					ir.PipelineTransform{Kind: "pipeline", TransformBase: base},
+					ir.PipelineTransform{Kind: "pipeline", TransformBase: base},
+				)
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
 		{name: "required input", session: &Session{}, wantCode: "E_INPUT_REQUIRED"},
 		{name: "input type", inputs: map[string]any{"id": "wrong"}, session: &Session{}, wantCode: "E_INPUT_TYPE"},
 		{name: "required session", inputs: map[string]any{"id": int64(1)}, wantCode: "E_SESSION_REQUIRED"},

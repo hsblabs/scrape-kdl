@@ -48,6 +48,20 @@ func TestTransformPreflightUsesDeclarationOrder(t *testing.T) {
 	}
 }
 
+func TestTransformPreflightRejectsDuplicateSymbols(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	base := ir.TransformBase{SymbolID: "transform:duplicate", Input: stringType, Output: stringType}
+	extractor := &ir.Extractor{Transforms: []ir.Transform{
+		ir.PipelineTransform{Kind: "pipeline", TransformBase: base},
+		ir.MatchTransform{Kind: "match", TransformBase: base, Default: json.RawMessage(`"fallback"`)},
+	}}
+	var execution *ExecutionError
+	err := newTransformRuntime(context.Background(), extractor, nil).preflight()
+	if !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "transforms" || !strings.Contains(execution.Message, `"transform:duplicate"`) {
+		t.Fatalf("duplicate symbol preflight error = %#v", err)
+	}
+}
+
 func TestTransformPreflightValidatesCalls(t *testing.T) {
 	stringType := typesys.Primitive("string")
 	validCall := ir.TransformCall{

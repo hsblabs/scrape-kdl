@@ -18,26 +18,39 @@ type transformRuntime struct {
 	externalDecls []ir.ExternalTransform
 	external      map[string]ExternalTransform
 	callStack     map[string]bool
+	duplicateID   string
+	hasDuplicate  bool
 }
 
 func newTransformRuntime(ctx context.Context, extractor *ir.Extractor, external map[string]ExternalTransform) *transformRuntime {
 	declared := make(map[string]ir.Transform, len(extractor.Transforms))
 	externalDecls := make([]ir.ExternalTransform, 0)
+	var duplicateID string
+	runtimeDuplicateSet := false
+	addDeclared := func(symbolID string, transform ir.Transform) {
+		if _, exists := declared[symbolID]; exists && !runtimeDuplicateSet {
+			duplicateID, runtimeDuplicateSet = symbolID, true
+		}
+		declared[symbolID] = transform
+	}
 	for _, transform := range extractor.Transforms {
 		switch typed := transform.(type) {
 		case ir.PipelineTransform:
-			declared[typed.SymbolID] = transform
+			addDeclared(typed.SymbolID, transform)
 		case ir.MatchTransform:
-			declared[typed.SymbolID] = transform
+			addDeclared(typed.SymbolID, transform)
 		case ir.ExternalTransform:
-			declared[typed.SymbolID] = transform
+			addDeclared(typed.SymbolID, transform)
 			externalDecls = append(externalDecls, typed)
 		}
 	}
-	return &transformRuntime{extractor: extractor, ctx: ctx, declared: declared, externalDecls: externalDecls, external: external, callStack: map[string]bool{}}
+	return &transformRuntime{extractor: extractor, ctx: ctx, declared: declared, externalDecls: externalDecls, external: external, callStack: map[string]bool{}, duplicateID: duplicateID, hasDuplicate: runtimeDuplicateSet}
 }
 
 func (runtime *transformRuntime) preflight() error {
+	if runtime.hasDuplicate {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate declared transform symbol %q", runtime.duplicateID), Path: "transforms"}
+	}
 	for _, external := range runtime.externalDecls {
 		if _, exists := runtime.external[external.Symbol]; !exists {
 			return &ExecutionError{Code: "E_EXTERNAL_TRANSFORM_MISSING", Message: fmt.Sprintf("external transform symbol %q is not registered", external.Symbol), Path: external.Name}
