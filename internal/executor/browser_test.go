@@ -162,6 +162,44 @@ func TestExecuteBrowserPreflightsExternalTransformsBeforeAcquire(t *testing.T) {
 	}
 }
 
+func TestExecuteBrowserPreflightsInputsAndSessionBeforeAcquire(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-preflight" version=1 {
+  source "html" {
+    fetch mode="browser" url="https://example.invalid/{id}"
+    session policy="required"
+  }
+  input "id" type="int" required=#true
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	tests := []struct {
+		name     string
+		inputs   map[string]any
+		session  *Session
+		wantCode string
+	}{
+		{name: "required input", session: &Session{}, wantCode: "E_INPUT_REQUIRED"},
+		{name: "input type", inputs: map[string]any{"id": "wrong"}, session: &Session{}, wantCode: "E_INPUT_TYPE"},
+		{name: "required session", inputs: map[string]any{"id": int64(1)}, wantCode: "E_SESSION_REQUIRED"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			browser := &leasedFakeBrowser{}
+			_, err := Execute(context.Background(), extractor, tt.inputs, Options{Browser: browser, Session: tt.session})
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode {
+				t.Fatalf("error = %#v", err)
+			}
+			if browser.acquired != 0 || browser.released != 0 || len(browser.calls) != 0 {
+				t.Fatalf("browser used before preflight: acquired=%d released=%d calls=%v", browser.acquired, browser.released, browser.calls)
+			}
+		})
+	}
+}
+
 type leasedFakeBrowser struct {
 	fakeBrowser
 	acquired   int
