@@ -2,8 +2,10 @@ package executor
 
 import (
 	"encoding/json"
+	"errors"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
@@ -311,6 +313,34 @@ func TestBuiltinFailures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if _, err := applyBuiltinRuntime(test.name, test.input, test.call); err == nil {
 				t.Fatal("expected error")
+			}
+		})
+	}
+}
+
+func TestBuiltinRequiredArgumentErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   any
+		call    ir.TransformCall
+		message string
+	}{
+		{name: "coalesce", input: nil, call: typedTestCall(typesys.Primitive("string"), nil), message: "coalesce requires value"},
+		{name: "assert-min", input: int64(1), call: testCall(nil), message: "numeric bound is required"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name+"/missing", func(t *testing.T) {
+			_, err := applyBuiltinRuntime(tt.name, tt.input, tt.call)
+			if err == nil || err.Error() != tt.message || errors.Unwrap(err) != nil {
+				t.Fatalf("missing argument error = %#v", err)
+			}
+		})
+		t.Run(tt.name+"/invalid JSON", func(t *testing.T) {
+			call := tt.call
+			call.NamedArguments = []ir.NamedArgument{{Name: "value", Value: json.RawMessage(`not-json`)}}
+			_, err := applyBuiltinRuntime(tt.name, tt.input, call)
+			if err == nil || !strings.Contains(err.Error(), tt.message) || !strings.Contains(err.Error(), "decode IR literal") || errors.Unwrap(err) == nil {
+				t.Fatalf("invalid argument error = %#v", err)
 			}
 		})
 	}
