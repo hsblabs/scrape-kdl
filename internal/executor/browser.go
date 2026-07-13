@@ -82,6 +82,9 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	if err := transforms.preflight(); err != nil {
 		return nil, err
 	}
+	if err := preflightBrowserWorkflow(extractor.Source.Workflow); err != nil {
+		return nil, err
+	}
 	if err := preflightBrowserOutput(extractor.Output); err != nil {
 		return nil, err
 	}
@@ -125,6 +128,31 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 		return nil, err
 	}
 	return finalizeResult(value, e.warnings, e.partial), nil
+}
+
+func preflightBrowserWorkflow(steps []ir.WorkflowStep) error {
+	for index, step := range steps {
+		path := fmt.Sprintf("source.workflow[%d]", index)
+		selector := ""
+		switch typed := step.(type) {
+		case ir.WaitForStep:
+			selector = typed.Selector
+		case ir.ClickStep:
+			selector = typed.Selector
+		case ir.FillStep:
+			selector = typed.Selector
+		case ir.PressStep:
+			selector = typed.Selector
+		case ir.ScrollStep, ir.NetworkIdleStep, ir.EvaluateJavaScriptStep:
+			continue
+		default:
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown workflow step %T", step), Path: path}
+		}
+		if _, err := dom.ParseSelector(selector); err != nil {
+			return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: path, Cause: err}
+		}
+	}
+	return nil
 }
 
 func preflightBrowserOutput(object ir.OutputObject) error {
