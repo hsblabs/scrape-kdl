@@ -528,6 +528,15 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_BROWSER_RUNTIME_MISSING",
 		},
+		{
+			name: "unknown value source",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ValueSource = nil
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
 		{name: "required input", session: &Session{}, wantCode: "E_INPUT_REQUIRED"},
 		{name: "input type", inputs: map[string]any{"id": "wrong"}, session: &Session{}, wantCode: "E_INPUT_TYPE"},
 		{name: "required session", inputs: map[string]any{"id": int64(1)}, wantCode: "E_SESSION_REQUIRED"},

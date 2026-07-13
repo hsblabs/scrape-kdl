@@ -108,8 +108,12 @@ func (e *engine) preflightOutput(object ir.OutputObject) error {
 					return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: typed.ID, Cause: err}
 				}
 			}
-			if _, ok := typed.ValueSource.(ir.JavaScriptValueSource); ok {
+			switch typed.ValueSource.(type) {
+			case ir.TextValueSource, ir.HTMLValueSource, ir.AttributeValueSource:
+			case ir.JavaScriptValueSource:
 				return &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: "HTTP runtime cannot execute JavaScript value sources", Path: typed.ID}
+			default:
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown value source %T", typed.ValueSource), Path: typed.ID}
 			}
 		case ir.Collection:
 			if _, err := e.selector(typed.Selector); err != nil {
