@@ -45,6 +45,8 @@ Baseline: `e5363b7`
 - Added a bounded malformed-argument fuzz target across regex capture/replacement, substring, split, boolean parsing, URL queries and paths, numeric assertions, and coalescing. A 20-second run completed approximately 1.60 million executions without finding another panic.
 - Verified that the wrapped HTTP client preserves cookie-jar scope and custom redirect mutation: host-only cookies do not reach subdomains, domain cookies do, and a supplied `CheckRedirect` can remove session headers and cookies without runtime reinjection. Executor statement coverage increased to 76.8%.
 - Extended browser lease coverage to reject a nil release callback before navigation and to prove exactly-once release after ordinary workflow and output-query failures. Executor statement coverage increased to 77.0%.
+- Recorded the required compatibility and security decision for ambient `http.Client` jar or browser-context state under `session policy="none"`; current behavior was intentionally left unchanged.
+- Verified response-cookie lifecycle through a supplied jar: redirect responses persist host-only and domain cookies with their proper scope, only the domain cookie reaches a subdomain, and final-response cookies are retained. Tests record cookie names only, never values.
 
 ## Commits
 
@@ -93,6 +95,8 @@ Baseline: `e5363b7`
 - `0c5081d` test: fuzz malformed builtin arguments
 - `9f682d1` test: verify redirect client ownership
 - `e1f2798` test: extend browser lease cleanup
+- `a7b0a44` docs: record ambient session state decision
+- `422f5e8` test: cover response cookie lifecycle
 
 ## Verification results
 
@@ -129,10 +133,11 @@ None. Useful transient failures resolved during the run included the E2E fixture
 - Subcommand help exit status: decide when explicit `validate --help`, `compile --help`, and `extract --help` should change from status 2 to status 0. See `docs/decision-needed.md`.
 - Go representation of browser JavaScript results: define the concrete adapter result types accepted for logical JSON arrays, objects, and numbers. See `docs/decision-needed.md`.
 - External transform result-type diagnostics: choose the public diagnostic used when a host callback returns a value incompatible with its declared output type. See `docs/decision-needed.md`.
+- Ambient state under `session policy="none"`: define whether only explicit `Session` input is ignored or whether host-owned cookie jars and browser contexts must also be stateless. See `docs/decision-needed.md`.
 
 ## Next safe candidates
 
 - Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
 - Exercise malformed selector and transform IR through `ExecuteHTML`, which should fail before parsing the supplied document.
-- Audit response `Set-Cookie` updates across redirects with a supplied jar, recording names and scope only rather than secret values.
-- Clarify whether an `http.Client` cookie jar is considered session state when a source declares `session policy="none"`; record a decision rather than changing behavior if the specification remains ambiguous.
+- Add direct tests for HTTP client clone immutability so installing `URLPolicy` cannot mutate a caller-owned `CheckRedirect` or other client fields.
+- Extend browser runtime malformed-IR preflight coverage to unknown output members and nested invalid selectors before adapter acquisition.
