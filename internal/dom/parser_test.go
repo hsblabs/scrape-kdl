@@ -115,3 +115,47 @@ func TestParseHTMLOptionalTableEndTags(t *testing.T) {
 	assertText("table > tbody > tr > td", "A", "B")
 	assertText("table > tfoot > tr > td", "F")
 }
+
+func TestParseHTMLOptionalEndTagFamilies(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+		selector string
+		want     []string
+	}{
+		{
+			name: "description list", html: `<dl><dt>Term A<dd>Definition A<dt>Term B<dd>Definition B</dl>`,
+			selector: "dl > dt, dl > dd", want: []string{"Term A", "Definition A", "Term B", "Definition B"},
+		},
+		{
+			name: "ruby annotations", html: `<ruby>base<rp>(<rt>reading<rp>)</ruby>`,
+			selector: "ruby > rp, ruby > rt", want: []string{"(", "reading", ")"},
+		},
+		{
+			name: "select options", html: `<select><optgroup label="a"><option>A<option>B<optgroup label="b"><option>C</select>`,
+			selector: "select > optgroup > option", want: []string{"A", "B", "C"},
+		},
+		{
+			name: "paragraph block", html: `<main><p>paragraph<div>block</div></main>`,
+			selector: "main > p, main > div", want: []string{"paragraph", "block"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			document := mustParseHTML(t, tt.html)
+			nodes := QueryAll(document, mustSelector(t, tt.selector))
+			got := make([]string, 0, len(nodes))
+			for _, node := range nodes {
+				got = append(got, node.TextContent())
+			}
+			if len(got) != len(tt.want) {
+				t.Fatalf("text = %v, want %v", got, tt.want)
+			}
+			for index := range got {
+				if got[index] != tt.want[index] {
+					t.Fatalf("text = %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}
