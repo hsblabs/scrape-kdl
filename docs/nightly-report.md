@@ -57,6 +57,7 @@ Baseline: `e5363b7`
 - Normalized numeric field defaults to each field's resolved successful type in both HTTP and browser execution. Missing-value and error-recovery defaults now return consistent concrete values, while malformed out-of-range defaults in hand-built IR fail with a stable `E_IR_INVALID` path. Executor statement coverage increased to 81.0%.
 - Added HTTP field-recovery parity coverage for null, warn, fail, and required-missing behavior, including warning order, structured error propagation, and the rule that `on-error` does not recover missing required values.
 - Rejected unknown HTTP value sources during output-IR preflight before transport activity, matching browser-mode validation and preventing malformed hand-built IR from being hidden by field recovery. Executor statement coverage increased to 81.2%.
+- Added transform-call preflight across declared pipelines and nested output fields. Nil targets, unknown built-ins, and missing declared transforms now retain their existing structured diagnostics while failing before HTTP transport or browser acquisition. Executor statement coverage increased to 81.6%.
 
 ## Commits
 
@@ -120,6 +121,7 @@ Baseline: `e5363b7`
 - `afb431b` fix: normalize numeric field defaults
 - `3603059` test: cover HTTP field recovery policies
 - `e939fb9` fix: preflight unknown HTTP value sources
+- `fd06c4d` fix: preflight malformed transform calls
 
 ## Verification results
 
@@ -138,11 +140,11 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 81.2%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 81.6%, and source package coverage at 100%.
 
 ## Unresolved failures
 
-None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, and unknown HTTP value sources reaching transport activity before malformed-IR rejection.
+None. Useful transient failures resolved during the run included the E2E fixture's invalid JavaScript, concurrent rod verification corrupting temporary module metadata state, a regression test demonstrating that `net/http` can invoke a custom transport for an already-canceled request unless the runtime checks cancellation first, an HTML fuzz input that triggered a raw-text slice-bounds panic with invalid UTF-8, a malformed negative `regex-capture` group that reached a negative slice index, trailing data accepted after an IR JSON value, rounded `float64` input at logical `2^63` saturating into the signed integer range, numeric field defaults leaking raw `json.Number` values instead of their resolved runtime types, unknown HTTP value sources reaching transport activity before malformed-IR rejection, and malformed transform calls reaching transport or browser activity before failure.
 
 ## Environment-limited verification
 
@@ -161,7 +163,6 @@ None. Useful transient failures resolved during the run included the E2E fixture
 ## Next safe candidates
 
 - Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
-- Exercise malformed transform calls through HTTP and browser runtime preflight, using only existing diagnostics and preserving validated-IR behavior.
 - Add malformed workflow timeout and state tests only where the existing compiler contract gives an unambiguous `E_IR_INVALID` runtime result.
 - Audit duplicate session header and cookie handling for deterministic request construction without logging values.
 - Add direct `ExecuteHTML` cancellation tests only after identifying an existing structured diagnostic whose meaning already covers offline cancellation; otherwise record a diagnostic-contract decision.
