@@ -14,10 +14,14 @@ func resolveInputs(definitions []ir.Input, provided map[string]any) (map[string]
 	for _, definition := range definitions {
 		known[definition.Name] = definition
 	}
+	unknown := ""
 	for name := range provided {
-		if _, ok := known[name]; !ok {
-			return nil, &ExecutionError{Code: "E_INPUT_UNKNOWN", Message: fmt.Sprintf("unknown input %q", name), Path: "input." + name}
+		if _, ok := known[name]; !ok && (unknown == "" || name < unknown) {
+			unknown = name
 		}
+	}
+	if unknown != "" {
+		return nil, &ExecutionError{Code: "E_INPUT_UNKNOWN", Message: fmt.Sprintf("unknown input %q", unknown), Path: "input." + unknown}
 	}
 	resolved := make(map[string]any, len(definitions))
 	for _, definition := range definitions {

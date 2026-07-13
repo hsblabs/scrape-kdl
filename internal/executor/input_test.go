@@ -85,3 +85,18 @@ func TestResolveInputsRejectsRoundedIntegerOverflow(t *testing.T) {
 		t.Fatalf("overflow error = %#v", err)
 	}
 }
+
+func TestResolveInputsReportsUnknownNamesDeterministically(t *testing.T) {
+	provided := map[string]any{"zeta": 1, "alpha": 2, "middle": 3}
+	for iteration := 0; iteration < 1000; iteration++ {
+		_, err := resolveInputs(nil, provided)
+		var execution *ExecutionError
+		if !errors.As(err, &execution) || execution.Code != "E_INPUT_UNKNOWN" || execution.Path != "input.alpha" || execution.Message != `unknown input "alpha"` {
+			t.Fatalf("iteration %d error = %#v", iteration, err)
+		}
+	}
+	resolved, err := resolveInputs([]ir.Input{{Name: "alpha", Type: "int", Required: true}}, map[string]any{"alpha": int64(1)})
+	if err != nil || resolved["alpha"] != int64(1) {
+		t.Fatalf("known input = %#v, error = %v", resolved, err)
+	}
+}
