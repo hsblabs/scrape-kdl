@@ -169,6 +169,68 @@ func TestExecuteFieldWarningAndExternalTransform(t *testing.T) {
 	}
 }
 
+func TestExecuteHTMLFieldRecoveryPolicies(t *testing.T) {
+	path := compileTestSpec(t, `extractor "http-recovery" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "nulled" type="u8" required=#false {
+    select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "null"
+  }
+  field "warned" type="u8" required=#false {
+    select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "warn"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := ExecuteHTML(context.Background(), extractor, `<span class="bad">invalid</span>`, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Value["nulled"] != nil || result.Value["warned"] != nil || !result.Partial {
+		t.Fatalf("result = %#v", result)
+	}
+	if len(result.Warnings) != 2 || result.Warnings[0].Code != "W_ERROR_RECOVERED" || result.Warnings[0].Path != "output.warned" || result.Warnings[1].Code != "W_PARTIAL_EXTRACTION" {
+		t.Fatalf("warnings = %#v", result.Warnings)
+	}
+}
+
+func TestExecuteHTMLFieldRecoveryFail(t *testing.T) {
+	path := compileTestSpec(t, `extractor "http-recovery-fail" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "value" type="u8" required=#true {
+    select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "fail"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	_, err := ExecuteHTML(context.Background(), extractor, `<span class="bad">invalid</span>`, Options{})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM" || execution.Path != "output.value" || execution.Cause == nil {
+		t.Fatalf("error = %#v", err)
+	}
+}
+
+func TestExecuteHTMLRequiredMissingIsNotRecovered(t *testing.T) {
+	path := compileTestSpec(t, `extractor "http-required-missing" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "value" type="string" required=#true {
+    select ".missing" match="first"; value "text"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	_, err := ExecuteHTML(context.Background(), extractor, `<span>present</span>`, Options{})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_REQUIRED_VALUE_MISSING" || execution.Path != "output.value" {
+		t.Fatalf("error = %#v", err)
+	}
+}
+
 func TestExecuteHTMLNormalizesNumericFieldDefaults(t *testing.T) {
 	path := compileTestSpec(t, `extractor "numeric-defaults" version=1 {
   source "html" { fetch mode="http" url="https://example.invalid/" }
