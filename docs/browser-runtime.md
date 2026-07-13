@@ -4,14 +4,17 @@ Browser-mode extractors run through an application-supplied `BrowserAdapter`. Th
 
 `Program.Extract` performs:
 
-1. input resolution and URL expansion;
-2. session-policy enforcement;
-3. optional adapter lease acquisition;
-4. browser navigation;
-5. workflow execution in source order;
-6. live-DOM field and collection extraction;
-7. JavaScript result validation and transform execution;
-8. lease release on success or failure.
+1. runtime capability and output-IR preflight;
+2. input resolution and URL expansion;
+3. session-policy enforcement;
+4. optional adapter lease acquisition;
+5. browser navigation;
+6. workflow execution in source order;
+7. live-DOM field and collection extraction;
+8. JavaScript result validation and transform execution;
+9. lease release on success or failure.
+
+External-transform availability, portable output selectors, output member kinds, and value-source kinds are checked before the adapter lease is acquired or navigation begins.
 
 JavaScript is disabled by default. Trusted specs must opt in with `AllowJavaScript: true`.
 
