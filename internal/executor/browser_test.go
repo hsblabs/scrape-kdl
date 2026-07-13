@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/url"
 	"reflect"
 	"strings"
@@ -316,6 +317,39 @@ func TestExecuteBrowserPreflightsMalformedWorkflowBeforeAcquire(t *testing.T) {
 			name: "unknown step",
 			mutate: func(extractor *ir.Extractor) {
 				extractor.Source.Workflow[0] = nil
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "state",
+			mutate: func(extractor *ir.Extractor) {
+				step := extractor.Source.Workflow[0].(ir.WaitForStep)
+				step.State = "moving"
+				extractor.Source.Workflow[0] = step
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "timeout",
+			mutate: func(extractor *ir.Extractor) {
+				step := extractor.Source.Workflow[0].(ir.WaitForStep)
+				value := 0
+				step.TimeoutMS = &value
+				extractor.Source.Workflow[0] = step
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "network idle",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.Workflow[0] = ir.NetworkIdleStep{Kind: "wait-for-network-idle", IdleMS: 0}
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "scroll coordinates",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.Workflow[0] = ir.ScrollStep{Kind: "scroll", X: math.Inf(1), Y: 0}
 			},
 			wantCode: "E_IR_INVALID",
 		},

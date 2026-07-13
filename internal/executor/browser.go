@@ -134,22 +134,53 @@ func preflightBrowserWorkflow(steps []ir.WorkflowStep) error {
 	for index, step := range steps {
 		path := fmt.Sprintf("source.workflow[%d]", index)
 		selector := ""
+		var timeoutMS *int
+		waitState := ""
+		hasSelector := false
+		isWait := false
 		switch typed := step.(type) {
 		case ir.WaitForStep:
 			selector = typed.Selector
+			timeoutMS = typed.TimeoutMS
+			waitState = typed.State
+			hasSelector = true
+			isWait = true
 		case ir.ClickStep:
 			selector = typed.Selector
+			timeoutMS = typed.TimeoutMS
+			hasSelector = true
 		case ir.FillStep:
 			selector = typed.Selector
+			timeoutMS = typed.TimeoutMS
+			hasSelector = true
 		case ir.PressStep:
 			selector = typed.Selector
-		case ir.ScrollStep, ir.NetworkIdleStep, ir.EvaluateJavaScriptStep:
-			continue
+			timeoutMS = typed.TimeoutMS
+			hasSelector = true
+		case ir.ScrollStep:
+			if math.IsNaN(typed.X) || math.IsInf(typed.X, 0) || math.IsNaN(typed.Y) || math.IsInf(typed.Y, 0) {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: "scroll coordinates must be finite", Path: path}
+			}
+		case ir.NetworkIdleStep:
+			if typed.IdleMS < 1 {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: "network idleMs must be positive", Path: path}
+			}
+			timeoutMS = typed.TimeoutMS
+		case ir.EvaluateJavaScriptStep:
+			timeoutMS = typed.TimeoutMS
 		default:
 			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown workflow step %T", step), Path: path}
 		}
-		if _, err := dom.ParseSelector(selector); err != nil {
-			return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: path, Cause: err}
+		if hasSelector {
+			if _, err := dom.ParseSelector(selector); err != nil {
+				return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: path, Cause: err}
+			}
+		}
+		if isWait && waitState != "attached" && waitState != "visible" && waitState != "hidden" && waitState != "detached" {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid wait-for state %q", waitState), Path: path}
+		}
+		if timeoutMS != nil && *timeoutMS < 1 {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: "workflow timeoutMs must be positive", Path: path}
 		}
 	}
 	return nil
