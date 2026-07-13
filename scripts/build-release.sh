@@ -37,7 +37,4 @@ for target in $targets; do
   tar -C "$stage" -czf "$out_abs/$name.tar.gz" "$binary" LICENSE README.md
   rm -rf "$stage"
 done
-(
-  cd "$out_abs"
-  sha256sum ./* > checksums.txt
-)
+"$root/scripts/write-release-checksums.sh" "$out_abs"
