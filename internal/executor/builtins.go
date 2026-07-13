@@ -768,6 +768,9 @@ func numericBigFloat(value any) (*big.Float, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid number %q: %w", text, err)
 	}
+	if parsed.IsInf() {
+		return nil, fmt.Errorf("number must be finite")
+	}
 	return parsed, nil
 }
 

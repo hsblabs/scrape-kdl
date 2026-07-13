@@ -236,6 +236,83 @@ func TestBuiltinNumericParsingBoundaries(t *testing.T) {
 	}
 }
 
+func TestBuiltinNumericMalformedIRBoundaries(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		input string
+		call  ir.TransformCall
+		want  any
+	}{
+		{name: "signed i32", input: "-2147483648", call: testCall(map[string]any{"as": "i32"}), want: int32(math.MinInt32)},
+		{name: "unsigned u32", input: "4294967295", call: testCall(map[string]any{"as": "u32"}), want: uint32(math.MaxUint32)},
+		{name: "minimum radix", input: "101", call: testCall(map[string]any{"as": "u8", "radix": 2}), want: uint8(5)},
+		{name: "maximum radix", input: "z", call: testCall(map[string]any{"as": "u8", "radix": 36}), want: uint8(35)},
+	} {
+		t.Run("parse-int success/"+tt.name, func(t *testing.T) {
+			got, err := applyBuiltinRuntime("parse-int", tt.input, tt.call)
+			if err != nil || !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("parse-int = %#v, %v", got, err)
+			}
+		})
+	}
+
+	malformedNamed := func(name string, raw string) ir.TransformCall {
+		return ir.TransformCall{NamedArguments: []ir.NamedArgument{{Name: name, Value: json.RawMessage(raw)}}}
+	}
+	for _, tt := range []struct {
+		name    string
+		builtin string
+		input   any
+		call    ir.TransformCall
+	}{
+		{name: "integer wrong input", builtin: "parse-int", input: int64(1), call: testCall(map[string]any{"as": "int"})},
+		{name: "integer missing target", builtin: "parse-int", input: "1", call: testCall(nil)},
+		{name: "integer malformed target", builtin: "parse-int", input: "1", call: malformedNamed("as", `not-json`)},
+		{name: "integer non-string target", builtin: "parse-int", input: "1", call: testCall(map[string]any{"as": 1})},
+		{name: "integer malformed radix", builtin: "parse-int", input: "1", call: ir.TransformCall{NamedArguments: []ir.NamedArgument{
+			{Name: "as", Value: json.RawMessage(`"int"`)},
+			{Name: "radix", Value: json.RawMessage(`not-json`)},
+		}}},
+		{name: "integer fractional radix", builtin: "parse-int", input: "1", call: testCall(map[string]any{"as": "int", "radix": 10.5})},
+		{name: "integer radix above maximum", builtin: "parse-int", input: "1", call: testCall(map[string]any{"as": "int", "radix": 37})},
+		{name: "float wrong input", builtin: "parse-float", input: int64(1), call: testCall(map[string]any{"as": "float"})},
+		{name: "float missing target", builtin: "parse-float", input: "1", call: testCall(nil)},
+		{name: "float malformed target", builtin: "parse-float", input: "1", call: malformedNamed("as", `not-json`)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := applyBuiltinRuntime(tt.builtin, tt.input, tt.call); err == nil {
+				t.Fatalf("%s succeeded", tt.builtin)
+			}
+		})
+	}
+
+	maximum := testCall(map[string]any{"value": uint64(math.MaxUint64)})
+	if got, err := applyBuiltinRuntime("assert-min", uint64(math.MaxUint64), maximum); err != nil || got != uint64(math.MaxUint64) {
+		t.Fatalf("assert-min maximum uint64 = %#v, %v", got, err)
+	}
+	for _, tt := range []struct {
+		name  string
+		input any
+		call  ir.TransformCall
+	}{
+		{name: "non-numeric input", input: "1", call: testCall(map[string]any{"value": 1})},
+		{name: "positive infinity input", input: math.Inf(1), call: testCall(map[string]any{"value": 1})},
+		{name: "negative infinity input", input: math.Inf(-1), call: testCall(map[string]any{"value": 1})},
+		{name: "NaN input", input: math.NaN(), call: testCall(map[string]any{"value": 1})},
+		{name: "non-numeric bound", input: int64(1), call: testCall(map[string]any{"value": "1"})},
+		{name: "malformed bound", input: int64(1), call: malformedNamed("value", `not-json`)},
+	} {
+		t.Run("assert-min failure/"+tt.name, func(t *testing.T) {
+			if _, err := applyBuiltinRuntime("assert-min", tt.input, tt.call); err == nil {
+				t.Fatal("assert-min succeeded")
+			}
+		})
+	}
+	if _, err := numericBigFloat(json.Number("not-a-number")); err == nil {
+		t.Fatal("numericBigFloat accepted an invalid JSON number")
+	}
+}
+
 func TestBuiltinBooleanParsingConfiguration(t *testing.T) {
 	call := testCall(map[string]any{"true": "yes", "false": "no"})
 	for input, want := range map[string]bool{"YES": true, "no": false} {
