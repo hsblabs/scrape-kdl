@@ -35,6 +35,10 @@ Baseline: `e5363b7`
 - Covered every browser workflow operation across successful execution, ordinary adapter errors, deadline expiry, and cancellation while preserving stable paths and causes.
 - Audited external-transform output validation and recorded the required diagnostic-contract decision instead of changing observable error codes implicitly.
 - Verified HTTP response-body closure on success, status failure, read failure, size rejection, body-read timeout, successful redirects, and policy-rejected redirects. Fixed the ordering contract in tests so `URLPolicy` is proven to run before a custom `CheckRedirect`; executor statement coverage increased to 74.6%.
+- Moved browser external-transform preflight ahead of input/session validation, adapter acquisition, and navigation, so an unavailable host callback cannot cause browser activity. Added ordering coverage for transform, input, and session failures.
+- Made external-transform preflight diagnostics deterministic by preserving declaration order instead of iterating a map. Added repeated-order, partial-registry, nested-recursion, call-stack cleanup, callback-cause, and malformed-IR tests.
+- Documented and tested session header and cookie propagation across HTTP redirects. Sensitive headers remain on the same domain and its subdomains under Go's default redirect policy, are not forwarded to a different domain, and custom non-sensitive headers continue to follow redirects.
+- Re-ran core, race, real go-rod, Chromium E2E, and release gates concurrently after the runtime safety changes; executor statement coverage increased to 75.8%.
 
 ## Commits
 
@@ -74,6 +78,10 @@ Baseline: `e5363b7`
 - `d020067` test: cover browser workflow failures
 - `e6942ef` docs: record external transform type decision
 - `dd88d5c` test: verify HTTP response cleanup
+- `385f3a1` fix: preflight browser transforms before navigation
+- `ec3293c` test: cover browser preflight ordering
+- `3410810` fix: stabilize transform preflight order
+- `ae0c0d8` test: cover session redirect boundaries
 
 ## Verification results
 
@@ -92,7 +100,7 @@ Passed:
 - `actionlint` and `bash -n scripts/*.sh`;
 - Linux amd64 and macOS arm64 release archive builds and SHA-256 verification;
 - focused executor and CLI race tests after cancellation, JavaScript return, and command-workflow changes;
-- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 74.6%, and source package coverage at 100%.
+- root statement coverage at 89.1%, CLI coverage at 88.8%, compiler coverage at 72.0%, executor coverage at 75.8%, and source package coverage at 100%.
 
 ## Unresolved failures
 
@@ -114,6 +122,6 @@ None. Useful transient failures resolved during the run included the E2E fixture
 ## Next safe candidates
 
 - Extend malformed HTML regression coverage around raw-text closing tags and optional-end-tag recovery without broadening the documented parser contract.
-- Add direct tests for runtime preflight ordering across missing external transforms, invalid selectors, and network/browser activity.
-- Exercise nested declared-transform recursion and malformed-IR failures without changing diagnostic codes.
-- Review session header and cookie handling across same-origin and cross-origin redirects against Go's documented redirect security behavior.
+- Exercise HTTP preflight ordering for malformed selectors, missing external transforms, and invalid template input before any transport activity.
+- Audit browser lease cleanup across adapter panics is out of scope, but additional ordinary error and cancellation interleavings can be tested without changing the public adapter contract.
+- Add deterministic tests for cookie-jar scope and a custom `CheckRedirect` that removes sensitive headers, preserving standard `net/http` ownership of redirect behavior.
