@@ -140,7 +140,7 @@ var rcdataElements = map[string]bool{
 // RCDATA elements before the XML tokenizer sees them. XML entity decoding then
 // restores the original text in the resulting DOM.
 func protectRawText(source string) string {
-	lower := strings.ToLower(source)
+	lower := asciiLower(source)
 	var out strings.Builder
 	out.Grow(len(source))
 
@@ -175,6 +175,16 @@ func protectRawText(source string) string {
 		cursor = closeStart
 	}
 	return out.String()
+}
+
+func asciiLower(source string) string {
+	lowered := []byte(source)
+	for i, value := range lowered {
+		if value >= 'A' && value <= 'Z' {
+			lowered[i] = value + ('a' - 'A')
+		}
+	}
+	return string(lowered)
 }
 
 func findTagEnd(source string, start int) int {

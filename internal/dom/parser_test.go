@@ -50,6 +50,17 @@ func TestParseHTMLRCDATA(t *testing.T) {
 	}
 }
 
+func TestProtectRawTextPreservesInvalidUTF8Offsets(t *testing.T) {
+	source := "<sCript>\xd6\xd6\xd6\xd6\xd6</sCript"
+	if got := protectRawText(source); got != source {
+		t.Fatalf("protectRawText = %q, want %q", got, source)
+	}
+	if got := asciiLower("A\xd6Zé"); got != "a\xd6zé" || len(got) != len("A\xd6Zé") {
+		t.Fatalf("asciiLower = %q (%d bytes)", got, len(got))
+	}
+	_, _ = ParseHTML(strings.NewReader(source))
+}
+
 func TestParseHTMLRecoversTruncatedDocument(t *testing.T) {
 	document := mustParseHTML(t, `<main><input disabled><p>first<p>second<ul><li>a<li>b`)
 	inputs := QueryAll(document, mustSelector(t, "input[disabled]"))
