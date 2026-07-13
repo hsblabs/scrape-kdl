@@ -2,10 +2,15 @@ package executor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"math"
+	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
 // BrowserElement is an opaque element handle owned by a BrowserAdapter.
@@ -253,13 +258,225 @@ func (e *browserEngine) readField(scope BrowserElement, field ir.Field, path str
 		if err != nil {
 			return nil, &ExecutionError{Code: operationErrorCode("E_JAVASCRIPT_EVALUATION", err), Message: err.Error(), Path: path, Cause: err}
 		}
-		if !isJSONCompatible(v) {
-			return nil, &ExecutionError{Code: "E_JAVASCRIPT_RESULT_TYPE", Message: fmt.Sprintf("JavaScript returned non-JSON-compatible value %T", v), Path: path}
+		v, ok := normalizeJavaScriptResult(v, s.Returns)
+		if !ok {
+			return nil, &ExecutionError{Code: "E_JAVASCRIPT_RESULT_TYPE", Message: fmt.Sprintf("JavaScript result of type %T is not compatible with returns=%s", v, s.Returns.String()), Path: path}
 		}
 		return v, nil
 	default:
 		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown value source %T", field.ValueSource), Path: path}
 	}
+}
+
+func normalizeJavaScriptResult(value any, target typesys.Type) (any, bool) {
+	if !isJSONCompatible(value) {
+		return value, false
+	}
+	if target.Kind == typesys.KindNullable {
+		if value == nil {
+			return nil, true
+		}
+		if target.Inner == nil {
+			return value, false
+		}
+		return normalizeJavaScriptResult(value, *target.Inner)
+	}
+	if value == nil {
+		return value, target.Kind == typesys.KindPrimitive && target.Name == "unknown"
+	}
+	if target.Kind == typesys.KindArray {
+		if target.Element == nil {
+			return value, false
+		}
+		var values []any
+		switch typed := value.(type) {
+		case []any:
+			values = typed
+		case []string:
+			values = make([]any, len(typed))
+			for i := range typed {
+				values[i] = typed[i]
+			}
+		default:
+			return value, false
+		}
+		normalized := make([]any, len(values))
+		for i := range values {
+			var ok bool
+			normalized[i], ok = normalizeJavaScriptResult(values[i], *target.Element)
+			if !ok {
+				return value, false
+			}
+		}
+		return normalized, true
+	}
+	if target.Kind != typesys.KindPrimitive {
+		return value, false
+	}
+	switch target.Name {
+	case "unknown":
+		return value, true
+	case "object":
+		_, ok := value.(map[string]any)
+		return value, ok
+	case "string":
+		_, ok := value.(string)
+		return value, ok
+	case "bool":
+		_, ok := value.(bool)
+		return value, ok
+	case "int", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64":
+		return normalizeJavaScriptInteger(value, target.Name)
+	case "float", "f32", "f64":
+		return normalizeJavaScriptFloat(value, target.Name)
+	default:
+		return value, false
+	}
+}
+
+func normalizeJavaScriptInteger(value any, target string) (any, bool) {
+	integer, ok := javascriptInteger(value)
+	if !ok {
+		return value, false
+	}
+	if target == "u64" {
+		if !integer.IsUint64() {
+			return value, false
+		}
+		return integer.Uint64(), true
+	}
+	if target[0] == 'u' {
+		if !integer.IsUint64() {
+			return value, false
+		}
+		converted := integer.Uint64()
+		switch target {
+		case "u8":
+			if converted <= math.MaxUint8 {
+				return uint8(converted), true
+			}
+		case "u16":
+			if converted <= math.MaxUint16 {
+				return uint16(converted), true
+			}
+		case "u32":
+			if converted <= math.MaxUint32 {
+				return uint32(converted), true
+			}
+		}
+		return value, false
+	}
+	if !integer.IsInt64() {
+		return value, false
+	}
+	converted := integer.Int64()
+	switch target {
+	case "int", "i64":
+		return converted, true
+	case "i8":
+		if converted >= math.MinInt8 && converted <= math.MaxInt8 {
+			return int8(converted), true
+		}
+	case "i16":
+		if converted >= math.MinInt16 && converted <= math.MaxInt16 {
+			return int16(converted), true
+		}
+	case "i32":
+		if converted >= math.MinInt32 && converted <= math.MaxInt32 {
+			return int32(converted), true
+		}
+	}
+	return value, false
+}
+
+func javascriptInteger(value any) (*big.Int, bool) {
+	switch typed := value.(type) {
+	case int:
+		return big.NewInt(int64(typed)), true
+	case int8:
+		return big.NewInt(int64(typed)), true
+	case int16:
+		return big.NewInt(int64(typed)), true
+	case int32:
+		return big.NewInt(int64(typed)), true
+	case int64:
+		return big.NewInt(typed), true
+	case uint:
+		return new(big.Int).SetUint64(uint64(typed)), true
+	case uint8:
+		return new(big.Int).SetUint64(uint64(typed)), true
+	case uint16:
+		return new(big.Int).SetUint64(uint64(typed)), true
+	case uint32:
+		return new(big.Int).SetUint64(uint64(typed)), true
+	case uint64:
+		return new(big.Int).SetUint64(typed), true
+	case float32:
+		return integerFromDecimal(strconv.FormatFloat(float64(typed), 'g', -1, 32))
+	case float64:
+		return integerFromDecimal(strconv.FormatFloat(typed, 'g', -1, 64))
+	case json.Number:
+		return integerFromDecimal(typed.String())
+	default:
+		return nil, false
+	}
+}
+
+func integerFromDecimal(value string) (*big.Int, bool) {
+	rational, ok := new(big.Rat).SetString(value)
+	if !ok || !rational.IsInt() {
+		return nil, false
+	}
+	return new(big.Int).Set(rational.Num()), true
+}
+
+func normalizeJavaScriptFloat(value any, target string) (any, bool) {
+	var converted float64
+	switch typed := value.(type) {
+	case int:
+		converted = float64(typed)
+	case int8:
+		converted = float64(typed)
+	case int16:
+		converted = float64(typed)
+	case int32:
+		converted = float64(typed)
+	case int64:
+		converted = float64(typed)
+	case uint:
+		converted = float64(typed)
+	case uint8:
+		converted = float64(typed)
+	case uint16:
+		converted = float64(typed)
+	case uint32:
+		converted = float64(typed)
+	case uint64:
+		converted = float64(typed)
+	case float32:
+		converted = float64(typed)
+	case float64:
+		converted = typed
+	case json.Number:
+		var err error
+		converted, err = typed.Float64()
+		if err != nil {
+			return value, false
+		}
+	default:
+		return value, false
+	}
+	if math.IsNaN(converted) || math.IsInf(converted, 0) {
+		return value, false
+	}
+	if target == "f32" {
+		narrowed := float32(converted)
+		if float32IsInvalid(narrowed) {
+			return value, false
+		}
+		return narrowed, true
+	}
+	return converted, true
 }
 
 func (e *browserEngine) handleMissing(field ir.Field, path, message string) (any, error) {

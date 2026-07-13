@@ -46,6 +46,9 @@ func TestBrowserExtractionE2E(t *testing.T) {
 				() => document.title || "untitled"
 				"""# scope="document" returns="string"
 		}
+		field "item_count" type="int" required=#true {
+			evaluate-js "() => document.querySelectorAll('li').length" scope="document" returns="int"
+		}
 		collection "items" on-row-error="fail" {
 			select "li"
 			field "id" type="string" required=#true { select ".id" match="one"; value "attr" name="data-id" }
@@ -88,6 +91,9 @@ func TestBrowserExtractionE2E(t *testing.T) {
 	}
 	if result.Value["title"] != "untitled" {
 		t.Fatalf("title = %#v", result.Value["title"])
+	}
+	if result.Value["item_count"] != int64(2) {
+		t.Fatalf("item_count = %#v (%T)", result.Value["item_count"], result.Value["item_count"])
 	}
 	items, ok := result.Value["items"].([]any)
 	if !ok || len(items) != 2 {

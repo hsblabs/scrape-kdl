@@ -252,6 +252,62 @@ func TestExecuteBrowserValidatesJSONNumberResult(t *testing.T) {
 	}
 }
 
+func TestExecuteBrowserValidatesDeclaredJavaScriptReturnType(t *testing.T) {
+	tests := []struct {
+		name    string
+		returns string
+		value   any
+		want    any
+		wantErr bool
+	}{
+		{name: "string", returns: "string", value: "ok", want: "ok"},
+		{name: "string mismatch", returns: "string", value: true, wantErr: true},
+		{name: "integer from browser number", returns: "int", value: float64(42), want: int64(42)},
+		{name: "fractional integer", returns: "int", value: 1.5, wantErr: true},
+		{name: "signed integer boundary", returns: "i8", value: float64(127), want: int8(127)},
+		{name: "signed integer overflow", returns: "i8", value: float64(128), wantErr: true},
+		{name: "unsigned integer", returns: "u8", value: json.Number("255"), want: uint8(255)},
+		{name: "negative unsigned integer", returns: "u8", value: float64(-1), wantErr: true},
+		{name: "maximum unsigned integer", returns: "u64", value: json.Number("18446744073709551615"), want: uint64(18446744073709551615)},
+		{name: "float32", returns: "f32", value: 1.5, want: float32(1.5)},
+		{name: "float32 overflow", returns: "f32", value: json.Number("3.5e38"), wantErr: true},
+		{name: "nullable", returns: "int?", value: nil, want: nil},
+		{name: "integer array", returns: "int[]", value: []any{float64(1), json.Number("2")}, want: []any{int64(1), int64(2)}},
+		{name: "array element mismatch", returns: "int[]", value: []any{float64(1), "2"}, wantErr: true},
+		{name: "object", returns: "object", value: map[string]any{"ok": true}, want: map[string]any{"ok": true}},
+		{name: "object mismatch", returns: "object", value: []any{}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := compileTestSpec(t, `extractor "browser-return" version=1 {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "value" type="`+tt.returns+`" required=#true {
+    evaluate-js "() => null" scope="document" returns="`+tt.returns+`"
+  }
+}`)
+			extractor, diagnostics := compiler.CompileFile(path)
+			if diagnostics.HasErrors() {
+				t.Fatalf("compile diagnostics = %#v", diagnostics)
+			}
+
+			result, err := Execute(context.Background(), extractor, nil, Options{Browser: &fakeBrowser{js: tt.value}, AllowJavaScript: true})
+			if tt.wantErr {
+				var execution *ExecutionError
+				if !errors.As(err, &execution) || execution.Code != "E_JAVASCRIPT_RESULT_TYPE" {
+					t.Fatalf("error = %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Execute error = %v", err)
+			}
+			if got := result.Value["value"]; !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("value = %#v (%T), want %#v (%T)", got, got, tt.want, tt.want)
+			}
+		})
+	}
+}
+
 func TestExecuteBrowserURLPolicyRejectsBeforeAcquireOrNavigate(t *testing.T) {
 	extractor, diagnostics := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
 	if diagnostics.HasErrors() {
