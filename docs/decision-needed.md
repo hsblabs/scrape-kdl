@@ -62,3 +62,35 @@ Returning 0 matches established CLI behavior and prevents automation from treati
 - `cmd/scrape-kdl/main_test.go`
 - `README.md`
 - `docs/compatibility.md`
+
+## Go representation of browser JavaScript results
+
+### Decision
+
+Define which concrete Go representations `BrowserAdapter.Evaluate` may return for JSON-compatible arrays, objects, and numbers.
+
+### Background
+
+The language specification defines JavaScript results as logical JSON values, while the Go adapter documentation only says that `Evaluate` must return a JSON-compatible value. The runtime currently accepts scalar Go numeric types, `json.Number`, `[]string`, `[]any`, and `map[string]any`. It rejects other values that `encoding/json` can encode to the same logical JSON shape, such as `[]map[string]any` and `map[string]string`. The go-rod adapter already returns the accepted `float64`, `[]any`, and `map[string]any` forms, so this ambiguity primarily affects third-party adapter authors.
+
+### Options
+
+1. Document the currently accepted concrete representations as the complete adapter contract.
+2. Canonicalize every result through `encoding/json` before declared-type validation, thereby accepting structs, typed slices and maps, and custom marshalers.
+3. Expand acceptance only for reflect-based slices and string-keyed maps whose recursively contained values are accepted, without invoking custom JSON marshaling.
+
+### Recommendation
+
+Document a small canonical representation set and provide an adapter-facing normalization helper before considering broader automatic conversion. Keep the runtime's validation side-effect free and avoid implicitly invoking custom marshalers in the trusted-JavaScript boundary.
+
+### Compatibility and safety impact
+
+Documenting the current set may require third-party adapters to normalize typed containers but preserves deterministic runtime behavior. Broadening acceptance is mostly backward compatible, but JSON round-tripping can invoke user code through `json.Marshaler`, erase concrete numeric precision, reject cycles late, and allocate a second complete result tree. A reflection-based expansion avoids custom marshaler side effects but creates a larger public compatibility surface that must remain stable.
+
+### Related files
+
+- `internal/executor/browser.go`
+- `internal/executor/executor.go`
+- `docs/browser-runtime.md`
+- `docs/spec/language-v0.1.md`
+- `adapters/rod/adapter.go`
