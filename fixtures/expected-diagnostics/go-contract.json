@@ -32,6 +32,15 @@
       "span": { "file": "cycle/a.kdl", "start": { "offset": 0, "line": 1, "column": 1 }, "end": { "offset": 0, "line": 1, "column": 1 } }
     }
   ],
+  "regex-lookahead.kdl": [
+    {
+      "code": "E_REGEX_INVALID",
+      "severity": "error",
+      "message": "error parsing regexp: invalid or unsupported Perl syntax: `(?=`",
+      "span": { "file": "regex-lookahead.kdl", "start": { "offset": 255, "line": 9, "column": 5 }, "end": { "offset": 277, "line": 9, "column": 27 } },
+      "path": "output.value.transforms[0]"
+    }
+  ],
   "timeout-overflow.kdl": [
     {
       "code": "E_TYPE_MISMATCH",

@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL("../../..", import.meta.url));
 
 const manifestResult = await runTypeScriptSlice({ root });
 assert.equal(manifestResult.status, "passed", JSON.stringify(manifestResult.cases.filter((testCase) => testCase.status === "failed"), null, 2));
-assert.equal(manifestResult.cases.length, 16, "the manifest must retain the complete shared TypeScript compiler suite");
+assert.equal(manifestResult.cases.length, 17, "the manifest must retain the complete shared TypeScript compiler suite");
 assert.deepEqual(manifestResult.cases.map((testCase) => testCase.id), [
   "valid.basic-http",
   "valid.race-detail",
@@ -19,6 +19,7 @@ assert.deepEqual(manifestResult.cases.map((testCase) => testCase.id), [
   "invalid.http-js",
   "invalid.import-cycle",
   "invalid.timeout-overflow",
+  "invalid.regex-lookahead",
   "invalid.transform-type-mismatch",
   "invalid.integer-version",
   "invalid.missing-document-version",

@@ -1,6 +1,7 @@
 import type { CompileOptions, Source } from "./public-api.js";
 import type { Node, Property, Span, Value } from "./parser.js";
 import { loadSourceGraph, type LoadedDocument } from "./source-loader.js";
+import { parseSelector } from "./selector.js";
 import type {
   CollectionIR, ExtractorIR, FieldIR, InputIR, JsonScalar, NamedArgumentIR, OutputObjectIR,
   PrimitiveTypeName, ResolvedTransformCallIR, SourceFileIR, SourceIR, TemplateSegmentIR, TransformIR, TypeRef,
@@ -685,8 +686,12 @@ class SemanticCompiler {
     if (pattern !== undefined) {
       if (pattern.includes("(?P<") || pattern.includes("(?<")) this.add("E_REGEX_INVALID", "error", "named capture groups are outside the portable RE2 profile", node.span, path);
       else {
-        try { new RegExp(pattern, flags?.replace("s", "s") ?? ""); }
-        catch (error) { this.add("E_REGEX_INVALID", "error", error instanceof Error ? error.message : String(error), node.span, path); }
+        const lookaround = /\(\?(?:[=!]|<[=!])/u.exec(pattern)?.[0];
+        if (lookaround !== undefined) this.add("E_REGEX_INVALID", "error", `error parsing regexp: invalid or unsupported Perl syntax: \`${lookaround}\``, node.span, path);
+        else {
+          try { new RegExp(pattern, `${flags ?? ""}u`); }
+          catch (error) { this.add("E_REGEX_INVALID", "error", error instanceof Error ? error.message : String(error), node.span, path); }
+        }
       }
     }
     if (name === "parse-int") {
@@ -715,8 +720,11 @@ class SemanticCompiler {
   }
 
   private checkSelector(selector: string, node: Node, path: string): void {
-    const error = selectorError(selector);
-    if (error !== undefined) this.add(error.includes("unsupported") ? "E_SELECTOR_UNSUPPORTED" : "E_SELECTOR_INVALID", "error", error, node.span, path);
+    try { parseSelector(selector); }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.add(message.includes("unsupported") ? "E_SELECTOR_UNSUPPORTED" : "E_SELECTOR_INVALID", "error", message, node.span, path);
+    }
   }
 
   private add(code: string, severity: Diagnostic["severity"], message: string, span: Span, path: string): void {
@@ -879,27 +887,6 @@ function integerProperty(node: Node, name: string): number | undefined { const v
 
 function validateIdentifier(diagnostics: Diagnostic[], name: string, span: Span, root: boolean, path: string): void {
   if (!(root ? ROOT_NAME : USER_NAME).test(name)) diagnostics.push(diagnostic("E_IDENTIFIER_INVALID", `invalid identifier ${JSON.stringify(name)}`, span, path));
-}
-
-function selectorError(selector: string): string | undefined {
-  if (selector.trim() === "") return "selector must not be empty";
-  if (/::|:has\(|:not\([^)]*,|\[[^\]]+[is]\]/u.test(selector)) return "unsupported selector syntax";
-  const supportedPseudos = new Set([
-    "first-child", "last-child", "only-child", "empty", "first-of-type", "last-of-type", "only-of-type",
-    "nth-child", "nth-last-child", "nth-of-type", "nth-last-of-type", "not",
-  ]);
-  for (const match of selector.matchAll(/:([a-z-]+)/gu)) if (!supportedPseudos.has(match[1]!)) return `unsupported pseudo-class ${JSON.stringify(match[1])}`;
-  let square = 0; let round = 0; let quote = "";
-  for (const character of selector) {
-    if (quote !== "") { if (character === quote) quote = ""; continue; }
-    if (character === "\"" || character === "'") quote = character;
-    else if (character === "[") square++;
-    else if (character === "]") square--;
-    else if (character === "(") round++;
-    else if (character === ")") round--;
-    if (square < 0 || round < 0) return "invalid selector syntax";
-  }
-  return square === 0 && round === 0 && quote === "" ? undefined : "invalid selector syntax";
 }
 
 function withOptional<T extends object, K extends string, V>(base: T, key: K, value: V | undefined): T & { readonly [P in K]?: V } {

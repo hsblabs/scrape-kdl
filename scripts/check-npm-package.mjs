@@ -34,7 +34,7 @@ async function main() {
   assert.equal(packageJSON.license, "Apache-2.0");
   assert.equal(packageJSON.type, "module");
   assert.equal(packageJSON.engines.node, ">=26");
-  assert.equal(packageJSON.dependencies, undefined, "core package must have no runtime dependencies at this milestone");
+  assert.deepEqual(packageJSON.dependencies, { parse5: "8.0.1" }, "core package must pin only the approved HTML parser runtime dependency");
   assert.equal(packageJSON.peerDependencies, undefined, "core package must not acquire browser-library peers");
   assert.equal(JSON.stringify(packageJSON).toLowerCase().includes("playwright"), false, "core package metadata must not mention Playwright");
   assert.doesNotMatch(JSON.stringify(packageJSON), /(?:file|workspace):/u, "core package metadata must not contain local dependency protocols");
@@ -102,6 +102,12 @@ assert.deepEqual(supportedIRVersions(), ["2026-07-15"]);
 const source = await import("node:fs/promises").then(({ readFile }) => readFile(new URL("./extractor.kdl", import.meta.url)));
 const memory = await compile({ path: "extractor.kdl", data: source });
 assert.equal(memory.program.metadata.name, "basic-http");
+assert.deepEqual(await memory.program.extract({ id: "package-smoke" }, {
+  fetch: async () => new Response(
+    "<!doctype html><html><body><h1> Package Smoke </h1><ul class=items><li><span class=value>1</span></li></ul></body></html>",
+    { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },
+  ),
+}), { value: { title: "Package Smoke", items: [{ value: 1 }] }, warnings: [], partial: false });
 assert.deepEqual(await validate({ path: "extractor.kdl", data: source }), []);
 const imported = await compile({
   path: "spec/extractor.kdl",

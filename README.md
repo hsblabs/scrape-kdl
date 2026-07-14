@@ -141,9 +141,9 @@ See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and
 The `@hsblabs/scrape-kdl` workspace is an ESM-only, publishable package scaffold for Node.js 26 and later.
 Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
 The package independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture without invoking Go.
-The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, and dated IR lowerer run behind this boundary with shared Go/TypeScript diagnostics and canonical IR fixtures. Issue #14 adds the HTTP runtime; until then, `Program.extract` is intentionally unavailable at runtime.
+The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, and HTTP/offline-HTML runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
 The reserved `@hsblabs/scrape-kdl-playwright` workspace remains private until Issue #16 and no concrete browser library is a dependency of the core package.
-See `docs/spec/conformance-coverage.md` for the audited rule inventory and the exact slice boundary.
+See `docs/spec/conformance-coverage.md` and `docs/html-compatibility.md` for the audited rule inventory and parser-compatibility gates.
 
 ## Browser mode
 

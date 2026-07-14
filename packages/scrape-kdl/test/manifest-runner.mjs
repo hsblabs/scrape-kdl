@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { canonicalJSONStringify } from "../dist/canonical-json.js";
 import { compileContractSlice } from "../dist/compiler.js";
+import { executeHTML } from "../dist/runtime.js";
 import { validateJSONSchema } from "../../../scripts/json-schema-validator.mjs";
 
 export async function runTypeScriptSlice({ root, manifestPath = "conformance/manifest.json", suite = "typescript-slice", job = "core" }) {
@@ -67,6 +68,14 @@ async function runCase(root, manifest, irSchema, testCase, execution) {
     if (!sameJSON(compiled.ir, expected)) {
       result.differences.push({ kind: "ir", message: `value differs from ${testCase.expectations.ir}` });
     }
+  }
+  if (execution.stages.includes("runtime")) {
+    const html = await readFile(`${root}/${testCase.expectations.html}`, "utf8");
+    const inputs = JSON.parse(await readFile(`${root}/${testCase.expectations.inputs}`, "utf8"));
+    const extracted = await executeHTML(compiled.ir, html, { signal: AbortSignal.timeout(30_000) });
+    result.observations.push({ kind: "runtime", value: extracted });
+    const expected = JSON.parse(await readFile(`${root}/${testCase.expectations.output}`, "utf8"));
+    if (!sameJSON(extracted, expected)) result.differences.push({ kind: "runtime", message: `value differs from ${testCase.expectations.output}` });
   }
   return result;
 }

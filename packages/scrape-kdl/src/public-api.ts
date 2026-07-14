@@ -1,7 +1,9 @@
 import { compileContractSlice } from "./compiler.js";
+import { executeProgram } from "./runtime.js";
 import type { DiagnosticIR, ExtractorIR, JsonValue } from "./ir.js";
 
 export type * from "./ir.js";
+export { ExecutionError } from "./execution-error.js";
 
 export interface Source {
   readonly path: string;
@@ -160,20 +162,6 @@ export interface ExtractionResult {
   readonly partial: boolean;
 }
 
-export class ExecutionError extends Error {
-  readonly code: string;
-  readonly path?: string;
-  override readonly cause?: unknown;
-
-  constructor(code: string, message: string, options: { readonly path?: string; readonly cause?: unknown } = {}) {
-    super(message, options.cause === undefined ? undefined : { cause: options.cause });
-    this.name = "ExecutionError";
-    this.code = code;
-    if (options.path !== undefined) this.path = options.path;
-    if (options.cause !== undefined) this.cause = options.cause;
-  }
-}
-
 class ProgramSnapshot implements Program {
   readonly ir: ExtractorIR;
   readonly metadata: ProgramMetadata;
@@ -190,8 +178,8 @@ class ProgramSnapshot implements Program {
     });
   }
 
-  async extract(_inputs: Readonly<Record<string, JsonValue>> = {}, _options: ExecutionOptions = {}): Promise<ExtractionResult> {
-    throw new Error("TypeScript extraction is not implemented in the v0.3 package scaffold; see roadmap Issue #14");
+  async extract(inputs: Readonly<Record<string, JsonValue>> = {}, options: ExecutionOptions = {}): Promise<ExtractionResult> {
+    return executeProgram(this.ir, inputs, options);
   }
 }
 

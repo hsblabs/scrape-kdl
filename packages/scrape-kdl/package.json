@@ -41,5 +41,8 @@
   "homepage": "https://github.com/hsblabs/scrape-kdl#readme",
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "parse5": "8.0.1"
   }
 }
