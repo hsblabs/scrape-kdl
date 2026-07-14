@@ -5,6 +5,7 @@ All notable implementation changes are recorded here. Formal releases will use S
 ## Unreleased — M5 release hardening
 
 - Replaced the untagged integer/`0.1` working-draft identifiers with independent `2026-07-15` document, language, and Validated IR date strings; `Program.Version` now returns a string and the Go API exposes exact supported-version registries.
+- Added the dated Validated IR schema layout, canonical JSON normalization, schema/golden validation, declaration-shape drift checks, and acquisition-time file/capability metadata preflight.
 - Moved all module paths to `github.com/hsblabs/scrape-kdl`.
 - Added KDL slashdash suppression for nodes, arguments, properties, and child blocks.
 - Added hexadecimal, octal, and binary integer literals.

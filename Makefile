@@ -1,4 +1,4 @@
-.PHONY: test race vet build format-check module-check golden diagnostics validate-example extract-example verify
+.PHONY: test race vet build format-check module-check golden diagnostics ir-contract validate-example extract-example verify
 .PHONY: test-rod-contract test-rod test-rod-e2e release-check release-dist
 
 test:
@@ -25,6 +25,9 @@ golden:
 diagnostics:
 	./scripts/check-diagnostics.sh
 
+ir-contract:
+	GOTOOLCHAIN=local go test ./internal/canonicaljson ./internal/ir ./scripts -run 'Test(Canonical|IR)'
+
 validate-example:
 	GOTOOLCHAIN=local go run ./cmd/scrape-kdl validate ./fixtures/valid/race-detail.kdl
 
@@ -40,7 +43,7 @@ test-rod:
 test-rod-e2e:
 	./scripts/verify-rod.sh --e2e
 
-verify: format-check module-check golden diagnostics vet test race build validate-example extract-example test-rod-contract
+verify: format-check module-check golden diagnostics ir-contract vet test race build validate-example extract-example test-rod-contract
 
 release-check:
 	./scripts/verify-release.sh

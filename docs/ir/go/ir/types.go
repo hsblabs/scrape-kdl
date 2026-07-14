@@ -50,7 +50,7 @@ type SourceFile struct {
 	Path          string `json:"path"`
 	ModuleName    string `json:"moduleName,omitempty"`
 	ModuleVersion string `json:"moduleVersion,omitempty"`
-	SHA256        string `json:"sha256,omitempty"`
+	SHA256        string `json:"sha256"`
 }
 
 type Extractor struct {
@@ -235,26 +235,26 @@ type ValueSource interface {
 }
 
 type TextValueSource struct {
-	Kind    string     `json:"kind"`
-	RawType TypeRef    `json:"rawType"`
-	Span    SourceSpan `json:"span"`
+	Kind    string           `json:"kind"`
+	RawType PrimitiveTypeRef `json:"rawType"`
+	Span    SourceSpan       `json:"span"`
 }
 
 func (TextValueSource) isValueSource() {}
 
 type HTMLValueSource struct {
-	Kind    string     `json:"kind"`
-	RawType TypeRef    `json:"rawType"`
-	Span    SourceSpan `json:"span"`
+	Kind    string           `json:"kind"`
+	RawType PrimitiveTypeRef `json:"rawType"`
+	Span    SourceSpan       `json:"span"`
 }
 
 func (HTMLValueSource) isValueSource() {}
 
 type AttributeValueSource struct {
-	Kind    string     `json:"kind"`
-	Name    string     `json:"name"`
-	RawType TypeRef    `json:"rawType"`
-	Span    SourceSpan `json:"span"`
+	Kind    string           `json:"kind"`
+	Name    string           `json:"name"`
+	RawType PrimitiveTypeRef `json:"rawType"`
+	Span    SourceSpan       `json:"span"`
 }
 
 func (AttributeValueSource) isValueSource() {}
