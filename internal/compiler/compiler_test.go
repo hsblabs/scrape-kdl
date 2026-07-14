@@ -78,6 +78,7 @@ func TestInvalidFixtures(t *testing.T) {
 		{name: "transform type mismatch", path: fixture("invalid", "transform-type-mismatch.kdl"), code: "E_TRANSFORM_TYPE_MISMATCH"},
 		{name: "duplicate property", path: fixture("invalid", "duplicate-property.kdl"), code: "E_DUPLICATE_PROPERTY"},
 		{name: "import cycle", path: fixture("invalid", "import-cycle.kdl"), code: "E_IMPORT_CYCLE"},
+		{name: "timeout overflow", path: fixture("invalid", "timeout-overflow.kdl"), code: "E_TYPE_MISMATCH"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -179,6 +180,24 @@ func TestCompileRejectsInvalidBrowserWorkflowSteps(t *testing.T) {
 		if !slices.Contains(codes, code) {
 			t.Fatalf("diagnostics %v do not contain %q", codes, code)
 		}
+	}
+}
+
+func TestCompileRejectsDurationOverflow(t *testing.T) {
+	extractor, codes := compileText(t, `extractor "duration-overflow" version=1 {
+  source "html" {
+    fetch mode="browser" url="https://example.invalid/"
+    workflow {
+      wait-for "#ready" timeout-ms=9223372036855
+      wait-for-network-idle idle-ms=9223372036855
+    }
+  }
+  field "title" type="string" required=#true {
+    evaluate-js "() => 'title'" scope="document" returns="string" timeout-ms=9223372036855
+  }
+}`)
+	if extractor != nil || !slices.Contains(codes, "E_TYPE_MISMATCH") {
+		t.Fatalf("extractor = %#v, diagnostics = %v", extractor, codes)
 	}
 }
 

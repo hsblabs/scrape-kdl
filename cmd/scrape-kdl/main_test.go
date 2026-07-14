@@ -79,6 +79,22 @@ func TestRunTopLevelCommands(t *testing.T) {
 	}
 }
 
+func TestRunSubcommandHelpSucceeds(t *testing.T) {
+	for _, args := range [][]string{
+		{"validate", "--help"},
+		{"validate", "missing.kdl", "-h"},
+		{"compile", "--help"},
+		{"compile", "missing.kdl", "-h"},
+		{"extract", "--help"},
+		{"extract", "missing.kdl", "-h"},
+	} {
+		code, stdout, stderr := captureRun(t, args...)
+		if code != 0 || !strings.Contains(stdout, "scrape-kdl "+args[0]) || stderr != "" {
+			t.Fatalf("run(%q) = code %d, stdout %q, stderr %q", args, code, stdout, stderr)
+		}
+	}
+}
+
 func TestRunValidate(t *testing.T) {
 	valid := filepath.Join("..", "..", "fixtures", "valid", "basic-http.kdl")
 	invalid := filepath.Join("..", "..", "fixtures", "invalid", "duplicate-property.kdl")
@@ -279,6 +295,59 @@ func TestParseSession(t *testing.T) {
 				t.Fatal("invalid session value succeeded")
 			}
 		})
+	}
+}
+
+func TestDecodeAndMergeSessionDocuments(t *testing.T) {
+	session, err := decodeSessionDocument(strings.NewReader(`{
+  "headers": {"Authorization": ["Bearer secret"], "X-Test": ["one", "two"]},
+  "cookies": [{"name": "session", "value": "secret"}]
+}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(session.Headers, http.Header{"Authorization": {"Bearer secret"}, "X-Test": {"one", "two"}}) {
+		t.Fatalf("headers = %#v", session.Headers)
+	}
+	if len(session.Cookies) != 1 || session.Cookies[0].Name != "session" || session.Cookies[0].Value != "secret" {
+		t.Fatalf("cookies = %#v", session.Cookies)
+	}
+
+	extra, err := parseSession([]string{"X-Test: three"}, []string{"other=value"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	merged := mergeSessions(session, extra)
+	if !reflect.DeepEqual(merged.Headers["X-Test"], []string{"one", "two", "three"}) || len(merged.Cookies) != 2 {
+		t.Fatalf("merged session = %#v", merged)
+	}
+
+	for _, document := range []string{
+		``,
+		`{"unknown": true}`,
+		`{} {}`,
+		`{"headers":{"": ["value"]}}`,
+		`{"cookies":[{"name":"", "value":"secret"}]}`,
+	} {
+		if _, err := decodeSessionDocument(strings.NewReader(document)); err == nil {
+			t.Fatalf("invalid session document succeeded: %q", document)
+		}
+	}
+}
+
+func TestReadSessionFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "session.json")
+	if err := os.WriteFile(path, []byte(`{"headers":{},"cookies":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if session, err := readSessionFile(path); err != nil || session == nil {
+		t.Fatalf("readSessionFile() = %#v, %v", session, err)
+	}
+	if session, err := readSessionFile(""); err != nil || session != nil {
+		t.Fatalf("readSessionFile(empty) = %#v, %v", session, err)
+	}
+	if _, err := readSessionFile(filepath.Join(t.TempDir(), "missing.json")); err == nil {
+		t.Fatal("missing session file succeeded")
 	}
 }
 

@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	scrapekdl "github.com/hsblabs/scrape-kdl"
@@ -127,5 +129,25 @@ func TestPublicExtractPreservesContextCancellation(t *testing.T) {
 	}
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("public error does not preserve context cancellation: %v", err)
+	}
+}
+
+func TestNormalizeBrowserResult(t *testing.T) {
+	value, err := scrapekdl.NormalizeBrowserResult([]any{[]string{"one", "two"}, map[string]any{"count": int64(2)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []any{[]any{"one", "two"}, map[string]any{"count": int64(2)}}
+	if !reflect.DeepEqual(value, want) {
+		t.Fatalf("normalized = %#v, want %#v", value, want)
+	}
+	for _, invalid := range []any{
+		map[string]string{"key": "value"},
+		[]map[string]any{{"key": "value"}},
+		math.Inf(1),
+	} {
+		if _, err := scrapekdl.NormalizeBrowserResult(invalid); err == nil {
+			t.Fatalf("invalid browser result succeeded: %#v", invalid)
+		}
 	}
 }

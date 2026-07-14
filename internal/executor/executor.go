@@ -9,6 +9,7 @@ import (
 
 	"github.com/hsblabs/scrape-kdl/internal/dom"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/limits"
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
@@ -69,6 +70,9 @@ func ExecuteHTML(ctx context.Context, extractor *ir.Extractor, html string, opti
 	options = options.withDefaults()
 	engine, err := newEngine(ctx, extractor, options)
 	if err != nil {
+		return nil, err
+	}
+	if err := executionContextError(ctx, "output"); err != nil {
 		return nil, err
 	}
 	document, err := dom.ParseHTML(strings.NewReader(html))
@@ -221,8 +225,10 @@ func preflightOutputStructure(root ir.OutputObject) error {
 					if source.Scope != "document" && source.Scope != "current" {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid JavaScript scope %q", source.Scope), Path: typed.ID}
 					}
-					if source.TimeoutMS != nil && *source.TimeoutMS < 1 {
-						return &ExecutionError{Code: "E_IR_INVALID", Message: "JavaScript timeoutMs must be positive", Path: typed.ID}
+					if source.TimeoutMS != nil {
+						if _, ok := limits.Milliseconds(*source.TimeoutMS); !ok {
+							return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("JavaScript timeoutMs must be between 1 and %d", limits.MaxMilliseconds), Path: typed.ID}
+						}
 					}
 					if source.Scope == "document" && typed.Selection != nil {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "document-scoped JavaScript forbids a selection", Path: typed.ID}
@@ -353,6 +359,9 @@ func (e *engine) executeDocument(document *dom.Node) (*Result, error) {
 func (e *engine) executeObject(scope *dom.Node, object ir.OutputObject, path string) (map[string]any, error) {
 	result := make(map[string]any, len(object.Members))
 	for _, member := range object.Members {
+		if err := executionContextError(e.ctx, path); err != nil {
+			return nil, err
+		}
 		switch typed := member.(type) {
 		case ir.Field:
 			value, err := e.executeField(scope, typed, path+"."+typed.Name)
@@ -495,8 +504,14 @@ func (e *engine) executeCollection(scope *dom.Node, collection ir.Collection, pa
 	rows := dom.QueryAll(scope, selector)
 	result := make([]any, 0, len(rows))
 	for index, row := range rows {
+		if err := executionContextError(e.ctx, fmt.Sprintf("%s[%d]", path, index)); err != nil {
+			return nil, err
+		}
 		value, err := e.executeObject(row, collection.Row, fmt.Sprintf("%s[%d]", path, index))
 		if err != nil {
+			if isExecutionCanceled(err) {
+				return nil, err
+			}
 			if collection.OnRowError != "skip" {
 				return nil, err
 			}

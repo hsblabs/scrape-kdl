@@ -8,6 +8,7 @@ import (
 	"github.com/hsblabs/scrape-kdl/internal/diagnostic"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 	"github.com/hsblabs/scrape-kdl/internal/kdl"
+	"github.com/hsblabs/scrape-kdl/internal/limits"
 )
 
 func (c *Compiler) compileInputs(d *loadedDocument) ([]ir.Input, map[string]ir.Input) {
@@ -236,27 +237,27 @@ func (c *Compiler) compileWorkflow(n *kdl.Node) []ir.WorkflowStep {
 			if state != "attached" && state != "visible" && state != "hidden" && state != "detached" {
 				c.diags.Add("E_TYPE_MISMATCH", diagnostic.SeverityError, "invalid wait-for state", ch.Span, path)
 			}
-			out = append(out, ir.WaitForStep{Kind: "wait-for", Selector: sel, State: state, TimeoutMS: positiveIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
+			out = append(out, ir.WaitForStep{Kind: "wait-for", Selector: sel, State: state, TimeoutMS: durationIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
 			c.capabilities["browser.wait"] = struct{}{}
 		case "click":
 			validateNode(&c.diags, ch, 1, 1, map[string]valueExpectation{"timeout-ms": expectNonNegativeInt}, path)
 			sel, _ := stringArg(ch, 0)
 			c.checkSelector(sel, ch, path)
-			out = append(out, ir.ClickStep{Kind: "click", Selector: sel, TimeoutMS: positiveIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
+			out = append(out, ir.ClickStep{Kind: "click", Selector: sel, TimeoutMS: durationIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
 			c.capabilities["browser.input"] = struct{}{}
 		case "fill":
 			validateNode(&c.diags, ch, 2, 2, map[string]valueExpectation{"timeout-ms": expectNonNegativeInt}, path)
 			sel, _ := stringArg(ch, 0)
 			val, _ := stringArg(ch, 1)
 			c.checkSelector(sel, ch, path)
-			out = append(out, ir.FillStep{Kind: "fill", Selector: sel, Value: val, TimeoutMS: positiveIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
+			out = append(out, ir.FillStep{Kind: "fill", Selector: sel, Value: val, TimeoutMS: durationIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
 			c.capabilities["browser.input"] = struct{}{}
 		case "press":
 			validateNode(&c.diags, ch, 2, 2, map[string]valueExpectation{"timeout-ms": expectNonNegativeInt}, path)
 			sel, _ := stringArg(ch, 0)
 			key, _ := stringArg(ch, 1)
 			c.checkSelector(sel, ch, path)
-			out = append(out, ir.PressStep{Kind: "press", Selector: sel, Key: key, TimeoutMS: positiveIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
+			out = append(out, ir.PressStep{Kind: "press", Selector: sel, Key: key, TimeoutMS: durationIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
 			c.capabilities["browser.input"] = struct{}{}
 		case "scroll":
 			validateNode(&c.diags, ch, 2, 2, map[string]valueExpectation{}, path)
@@ -274,14 +275,16 @@ func (c *Compiler) compileWorkflow(n *kdl.Node) []ir.WorkflowStep {
 				idle = v
 				if idle < 1 {
 					c.diags.Add("E_TYPE_MISMATCH", diagnostic.SeverityError, "idle-ms must be positive", ch.Span, path)
+				} else if int64(idle) > limits.MaxMilliseconds {
+					c.diags.Add("E_TYPE_MISMATCH", diagnostic.SeverityError, fmt.Sprintf("idle-ms must not exceed %d", limits.MaxMilliseconds), ch.Span, path)
 				}
 			}
-			out = append(out, ir.NetworkIdleStep{Kind: "wait-for-network-idle", IdleMS: idle, TimeoutMS: positiveIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
+			out = append(out, ir.NetworkIdleStep{Kind: "wait-for-network-idle", IdleMS: idle, TimeoutMS: durationIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
 			c.capabilities["browser.network-idle"] = struct{}{}
 		case "evaluate-js":
 			validateNode(&c.diags, ch, 1, 1, map[string]valueExpectation{"timeout-ms": expectNonNegativeInt}, path)
 			src, _ := stringArg(ch, 0)
-			out = append(out, ir.EvaluateJavaScriptStep{Kind: "evaluate-js", Source: src, TimeoutMS: positiveIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
+			out = append(out, ir.EvaluateJavaScriptStep{Kind: "evaluate-js", Source: src, TimeoutMS: durationIntPtr(c, ch, "timeout-ms", path), Span: ch.Span})
 			c.capabilities["browser.evaluate-js"] = struct{}{}
 			c.jsPresent = true
 		default:
@@ -298,6 +301,22 @@ func positiveIntPtr(c *Compiler, n *kdl.Node, name, path string) *int {
 	}
 	if v < 1 {
 		c.diags.Add("E_TYPE_MISMATCH", diagnostic.SeverityError, name+" must be positive", n.Span, path)
+		return nil
+	}
+	return &v
+}
+
+func durationIntPtr(c *Compiler, n *kdl.Node, name, path string) *int {
+	v, ok := intProperty(n, name)
+	if !ok {
+		return nil
+	}
+	if v < 1 {
+		c.diags.Add("E_TYPE_MISMATCH", diagnostic.SeverityError, name+" must be positive", n.Span, path)
+		return nil
+	}
+	if int64(v) > limits.MaxMilliseconds {
+		c.diags.Add("E_TYPE_MISMATCH", diagnostic.SeverityError, fmt.Sprintf("%s must not exceed %d", name, limits.MaxMilliseconds), n.Span, path)
 		return nil
 	}
 	return &v

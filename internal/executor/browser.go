@@ -11,6 +11,7 @@ import (
 
 	"github.com/hsblabs/scrape-kdl/internal/dom"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/limits"
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
@@ -189,8 +190,8 @@ func preflightBrowserWorkflow(steps []ir.WorkflowStep) error {
 			if typed.Kind != "wait-for-network-idle" {
 				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid network-idle step kind %q", typed.Kind), Path: path}
 			}
-			if typed.IdleMS < 1 {
-				return &ExecutionError{Code: "E_IR_INVALID", Message: "network idleMs must be positive", Path: path}
+			if _, ok := limits.Milliseconds(typed.IdleMS); !ok {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("network idleMs must be between 1 and %d", limits.MaxMilliseconds), Path: path}
 			}
 			timeoutMS = typed.TimeoutMS
 		case ir.EvaluateJavaScriptStep:
@@ -209,8 +210,10 @@ func preflightBrowserWorkflow(steps []ir.WorkflowStep) error {
 		if isWait && waitState != "attached" && waitState != "visible" && waitState != "hidden" && waitState != "detached" {
 			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid wait-for state %q", waitState), Path: path}
 		}
-		if timeoutMS != nil && *timeoutMS < 1 {
-			return &ExecutionError{Code: "E_IR_INVALID", Message: "workflow timeoutMs must be positive", Path: path}
+		if timeoutMS != nil {
+			if _, ok := limits.Milliseconds(*timeoutMS); !ok {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("workflow timeoutMs must be between 1 and %d", limits.MaxMilliseconds), Path: path}
+			}
 		}
 	}
 	return nil
@@ -248,7 +251,8 @@ func timeout(ms *int, fallback time.Duration) time.Duration {
 	if ms == nil {
 		return fallback
 	}
-	return time.Duration(*ms) * time.Millisecond
+	duration, _ := limits.Milliseconds(*ms)
+	return duration
 }
 
 func (e *browserEngine) runWorkflow() error {
@@ -267,7 +271,8 @@ func (e *browserEngine) runWorkflow() error {
 		case ir.ScrollStep:
 			err = e.adapter.Scroll(e.ctx, s.X, s.Y)
 		case ir.NetworkIdleStep:
-			err = e.adapter.WaitForNetworkIdle(e.ctx, time.Duration(s.IdleMS)*time.Millisecond, timeout(s.TimeoutMS, e.options.RequestTimeout))
+			idle, _ := limits.Milliseconds(s.IdleMS)
+			err = e.adapter.WaitForNetworkIdle(e.ctx, idle, timeout(s.TimeoutMS, e.options.RequestTimeout))
 		case ir.EvaluateJavaScriptStep:
 			_, err = e.adapter.Evaluate(e.ctx, s.Source, BrowserEvaluateOptions{Timeout: timeout(s.TimeoutMS, e.options.RequestTimeout)})
 		default:
@@ -283,6 +288,9 @@ func (e *browserEngine) runWorkflow() error {
 func (e *browserEngine) executeObject(scope BrowserElement, object ir.OutputObject, path string) (map[string]any, error) {
 	out := make(map[string]any, len(object.Members))
 	for _, member := range object.Members {
+		if err := executionContextError(e.ctx, path); err != nil {
+			return nil, err
+		}
 		switch m := member.(type) {
 		case ir.Field:
 			v, err := e.executeField(scope, m, path+"."+m.Name)
@@ -452,6 +460,59 @@ func normalizeJSONResult(value any, target typesys.Type) (any, bool) {
 		return normalizeJSONFloat(value, target.Name)
 	default:
 		return value, false
+	}
+}
+
+// NormalizeBrowserResult validates and normalizes the concrete Go value forms
+// accepted from BrowserAdapter.Evaluate. It does not use reflection or invoke
+// json.Marshaler implementations.
+func NormalizeBrowserResult(value any) (any, error) {
+	switch typed := value.(type) {
+	case nil, string, bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return value, nil
+	case json.Number:
+		if !isJSONCompatible(typed) {
+			return nil, fmt.Errorf("browser result contains an invalid JSON number")
+		}
+		return typed, nil
+	case float32:
+		if float32IsInvalid(typed) {
+			return nil, fmt.Errorf("browser result contains a non-finite number")
+		}
+		return typed, nil
+	case float64:
+		if math.IsNaN(typed) || math.IsInf(typed, 0) {
+			return nil, fmt.Errorf("browser result contains a non-finite number")
+		}
+		return typed, nil
+	case []string:
+		result := make([]any, len(typed))
+		for index, item := range typed {
+			result[index] = item
+		}
+		return result, nil
+	case []any:
+		result := make([]any, len(typed))
+		for index, item := range typed {
+			normalized, err := NormalizeBrowserResult(item)
+			if err != nil {
+				return nil, err
+			}
+			result[index] = normalized
+		}
+		return result, nil
+	case map[string]any:
+		result := make(map[string]any, len(typed))
+		for name, item := range typed {
+			normalized, err := NormalizeBrowserResult(item)
+			if err != nil {
+				return nil, err
+			}
+			result[name] = normalized
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("browser result has unsupported Go type %T", value)
 	}
 }
 
@@ -651,8 +712,14 @@ func (e *browserEngine) executeCollection(scope BrowserElement, c ir.Collection,
 	}
 	out := make([]any, 0, len(rows))
 	for i, row := range rows {
+		if err := executionContextError(e.ctx, fmt.Sprintf("%s[%d]", path, i)); err != nil {
+			return nil, err
+		}
 		v, err := e.executeObject(row, c.Row, fmt.Sprintf("%s[%d]", path, i))
 		if err != nil {
+			if isExecutionCanceled(err) {
+				return nil, err
+			}
 			if c.OnRowError != "skip" {
 				return nil, err
 			}

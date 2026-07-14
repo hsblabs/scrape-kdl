@@ -57,6 +57,18 @@ func operationErrorCode(fallback string, err error) string {
 	return fallback
 }
 
+func executionContextError(ctx context.Context, path string) error {
+	if err := ctx.Err(); err != nil {
+		return &ExecutionError{Code: "E_EXECUTION_CANCELED", Message: err.Error(), Path: path, Cause: err}
+	}
+	return nil
+}
+
+func isExecutionCanceled(err error) bool {
+	var execution *ExecutionError
+	return errors.As(err, &execution) && execution.Code == "E_EXECUTION_CANCELED"
+}
+
 type ExternalTransform func(context.Context, any) (any, error)
 type CharsetDecoder func(body []byte, charset string) (string, error)
 

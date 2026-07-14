@@ -1,0 +1,13 @@
+extractor "timeout-overflow" version=1 {
+  source "html" {
+    fetch mode="browser" url="https://example.invalid/"
+    workflow {
+      wait-for "#ready" timeout-ms=9223372036855
+    }
+  }
+
+  field "title" type="string" required=#true {
+    select "h1"
+    value "text"
+  }
+}

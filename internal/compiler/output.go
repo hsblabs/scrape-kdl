@@ -174,7 +174,7 @@ func (c *Compiler) compileField(owner *loadedDocument, n *kdl.Node, path string,
 		if scope == "current" && field.Selection == nil && !strings.Contains(path, "[]") {
 			c.diags.Add("E_CURRENT_SCOPE_UNAVAILABLE", diagnostic.SeverityError, "top-level current scope requires select", e.Span, path+".valueSource")
 		}
-		field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: scope, Source: src, Returns: returns, TimeoutMS: positiveIntPtr(c, e, "timeout-ms", path+".valueSource"), Span: e.Span}
+		field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: scope, Source: src, Returns: returns, TimeoutMS: durationIntPtr(c, e, "timeout-ms", path+".valueSource"), Span: e.Span}
 		rawType = returns
 		c.capabilities["browser.evaluate-js"] = struct{}{}
 		if field.Selection != nil && ownerSourceMode(owner) == "browser" {

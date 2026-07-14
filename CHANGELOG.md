@@ -20,6 +20,13 @@ All notable implementation changes are recorded here. Formal releases will use S
 - Aligned runtime diagnostics with the normative diagnostic registry, including timeout and partial-extraction codes.
 - Added KDL, CSS selector, and HTML parser fuzz tests with scheduled CI.
 - Added release-tag validation and automatic diagnostic-documentation drift checks.
+- Added `--session-file` JSON and standard-input support for secrets and deprecated direct `--header` and `--cookie` values.
+- Changed explicit subcommand `-h` and `--help` requests to exit successfully.
+- Defined browser JavaScript result representations and added `NormalizeBrowserResult` for adapter authors.
+- Added immediate external-transform result validation with `E_EXTERNAL_TRANSFORM_RESULT_TYPE`.
+- Defined `session policy="none"` as suppressing only explicit session input while preserving documented host-owned ambient state.
+- Bounded millisecond workflow durations to the portable `time.Duration` maximum.
+- Added coarse-grained offline HTML cancellation with `E_EXECUTION_CANCELED`.
 
 ## M4 — go-rod adapter
 

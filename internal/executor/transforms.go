@@ -401,6 +401,13 @@ func (runtime *transformRuntime) applyDeclared(symbolID string, input any, path 
 		if err != nil {
 			return nil, &ExecutionError{Code: "E_EXTERNAL_TRANSFORM", Message: err.Error(), Path: path, Cause: err}
 		}
+		if !matchesRuntimeType(value, typed.Output) {
+			return nil, &ExecutionError{
+				Code:    "E_EXTERNAL_TRANSFORM_RESULT_TYPE",
+				Message: fmt.Sprintf("external transform %q returned %T, which is not assignable to %s", typed.Name, value, typed.Output.String()),
+				Path:    path,
+			}
+		}
 		return value, nil
 	default:
 		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown declared transform %T", transform), Path: path}

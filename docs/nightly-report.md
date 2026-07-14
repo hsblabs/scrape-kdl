@@ -13,7 +13,7 @@ Baseline: `e5363b7`
 - Made release checksum generation portable across Linux `sha256sum` and macOS `shasum`, with tests for both tools and the no-tool failure path.
 - Ensured temporary release staging directories are removed after successful and failed cross-builds, with regression tests for both paths.
 - Updated `VALIDATION.md` from the previous offline-only record to the current Go 1.26.5, real go-rod, Chromium E2E, fuzz, static analysis, vulnerability, and release-smoke results.
-- Recorded the security and compatibility decision required for cookie and sensitive-header CLI input in `docs/decision-needed.md` without changing the existing CLI contract.
+- Recorded the security and compatibility decision required for cookie and sensitive-header CLI input without changing the existing CLI contract at that time.
 - Extended real Chromium coverage to current-scoped JavaScript, JavaScript failure propagation, and integer return normalization.
 - Added charset boundary tests for HTML meta declarations, the 4096-byte sniff limit, UTF-16 decoding, BOM precedence, malformed input, unsupported encodings, and fallback failures; corrected the runtime documentation to state that recognized BOMs override declared charsets.
 - Prevented already-canceled HTTP requests from reaching a custom transport, preserving the existing timeout/cancellation diagnostic mapping and cancellation cause. Added matching browser acquire, workflow, and lease-release coverage.
@@ -257,15 +257,15 @@ None. Useful transient failures resolved during the run included the E2E fixture
 - No tag, GitHub Release, merge, or main-branch mutation was performed.
 - Windows verification was not attempted because Windows is explicitly unsupported.
 
-## Decisions recorded
+## Decisions resolved after this report
 
-- Secure CLI session input: decide whether and how to replace or deprecate direct `--cookie` and sensitive `--header` values with file or standard-input based secret handling. See `docs/decision-needed.md`.
-- Subcommand help exit status: decide when explicit `validate --help`, `compile --help`, and `extract --help` should change from status 2 to status 0. See `docs/decision-needed.md`.
-- Go representation of browser JavaScript results: define the concrete adapter result types accepted for logical JSON arrays, objects, and numbers. See `docs/decision-needed.md`.
-- External transform result-type diagnostics: choose the public diagnostic used when a host callback returns a value incompatible with its declared output type. See `docs/decision-needed.md`.
-- Ambient state under `session policy="none"`: define whether only explicit `Session` input is ignored or whether host-owned cookie jars and browser contexts must also be stateless. See `docs/decision-needed.md`.
-- Workflow timeout upper bound: define the portable maximum before Go `time.Duration` conversion and the behavior for larger positive values. See `docs/decision-needed.md`.
-- Offline `ExecuteHTML` cancellation: define the cancellation boundary and a structured diagnostic that is not tied to HTTP, browser, or transform operations. See `docs/decision-needed.md`.
+- Secret-bearing CLI session input uses `--session-file` or standard input; direct cookie and header flags are deprecated but retained for compatibility.
+- Explicit subcommand help exits with status 0, while malformed arguments remain status 2.
+- Browser JavaScript results use the concrete Go representation set documented in `docs/browser-runtime.md`, with `NormalizeBrowserResult` available to adapters.
+- External transform result mismatches fail immediately with `E_EXTERNAL_TRANSFORM_RESULT_TYPE`.
+- `session policy="none"` ignores the explicit `Session` only; isolation of ambient client or browser state is a host responsibility.
+- Millisecond workflow durations are bounded by the largest whole-millisecond Go `time.Duration`.
+- Offline parsing and output traversal observe cancellation at deterministic coarse-grained boundaries and report `E_EXECUTION_CANCELED`.
 
 ## Next safe candidates
 

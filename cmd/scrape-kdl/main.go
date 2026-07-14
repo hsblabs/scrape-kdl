@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"os"
@@ -53,6 +54,10 @@ func run(args []string) int {
 }
 
 func runValidate(args []string) int {
+	if hasHelpFlag(args) {
+		usageValidate(os.Stdout)
+		return 0
+	}
 	path, jsonOutput, ok := parseValidateArgs(args)
 	if !ok {
 		usageValidate(os.Stderr)
@@ -77,6 +82,10 @@ func runValidate(args []string) int {
 }
 
 func runCompile(args []string) int {
+	if hasHelpFlag(args) {
+		usageCompile(os.Stdout)
+		return 0
+	}
 	path, outPath, ok := parseCompileArgs(args)
 	if !ok {
 		usageCompile(os.Stderr)
@@ -172,7 +181,20 @@ func (values *repeatedFlag) Set(value string) error {
 	return nil
 }
 
+func hasHelpFlag(args []string) bool {
+	for _, arg := range args {
+		if arg == "-h" || arg == "--help" {
+			return true
+		}
+	}
+	return false
+}
+
 func runExtract(args []string) int {
+	if hasHelpFlag(args) {
+		usageExtract(os.Stdout)
+		return 0
+	}
 	path := ""
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		path = args[0]
@@ -185,13 +207,15 @@ func runExtract(args []string) int {
 	var cookieFlags repeatedFlag
 	var htmlPath string
 	var outPath string
+	var sessionPath string
 	var requestTimeout time.Duration
 	var maxBody int64
 	var userAgent string
 	var sessionProvided bool
 	flags.Var(&inputFlags, "input", "runtime input as name=value (repeatable)")
-	flags.Var(&headerFlags, "header", "HTTP session header as Name: value (repeatable)")
-	flags.Var(&cookieFlags, "cookie", "HTTP session cookie as name=value (repeatable)")
+	flags.Var(&headerFlags, "header", "deprecated: HTTP session header as Name: value; use --session-file")
+	flags.Var(&cookieFlags, "cookie", "deprecated: HTTP session cookie as name=value; use --session-file")
+	flags.StringVar(&sessionPath, "session-file", "", "read session JSON from a file, or - for standard input")
 	flags.StringVar(&htmlPath, "html", "", "execute against an already-decoded HTML file instead of fetching")
 	flags.StringVar(&outPath, "out", "", "write JSON result to a file")
 	flags.DurationVar(&requestTimeout, "timeout", 30*time.Second, "HTTP request timeout")
@@ -223,11 +247,17 @@ func runExtract(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
-	session, err := parseSession(headerFlags, cookieFlags, sessionProvided)
+	fileSession, err := readSessionFile(sessionPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
+	directSession, err := parseSession(headerFlags, cookieFlags, sessionProvided)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	session := mergeSessions(fileSession, directSession)
 	options := executor.Options{
 		Session: session, RequestTimeout: requestTimeout, MaxResponseBytes: maxBody, UserAgent: userAgent,
 	}
@@ -326,20 +356,101 @@ func parseSession(headers, cookies []string, explicit bool) (*executor.Session, 
 	for _, raw := range headers {
 		name, value, ok := strings.Cut(raw, ":")
 		if !ok || strings.TrimSpace(name) == "" {
-			return nil, fmt.Errorf("invalid --header %q; expected Name: value", raw)
+			return nil, fmt.Errorf("invalid --header; expected Name: value")
 		}
 		session.Headers.Add(strings.TrimSpace(name), strings.TrimSpace(value))
 	}
 	for _, raw := range cookies {
 		name, value, ok := strings.Cut(raw, "=")
 		if !ok || strings.TrimSpace(name) == "" {
-			return nil, fmt.Errorf("invalid --cookie %q; expected name=value", raw)
+			return nil, fmt.Errorf("invalid --cookie; expected name=value")
 		}
 		session.Cookies = append(session.Cookies, &http.Cookie{Name: strings.TrimSpace(name), Value: value})
 	}
 	return session, nil
 }
 
+type sessionDocument struct {
+	Headers map[string][]string `json:"headers"`
+	Cookies []sessionCookie     `json:"cookies"`
+}
+
+type sessionCookie struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+func readSessionFile(path string) (*executor.Session, error) {
+	if path == "" {
+		return nil, nil
+	}
+	if path == "-" {
+		session, err := decodeSessionDocument(os.Stdin)
+		if err != nil {
+			return nil, fmt.Errorf("read session from standard input: %w", err)
+		}
+		return session, nil
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("read session file: %w", err)
+	}
+	defer file.Close()
+	session, err := decodeSessionDocument(file)
+	if err != nil {
+		return nil, fmt.Errorf("read session file: %w", err)
+	}
+	return session, nil
+}
+
+func decodeSessionDocument(reader io.Reader) (*executor.Session, error) {
+	decoder := json.NewDecoder(reader)
+	decoder.DisallowUnknownFields()
+	var document sessionDocument
+	if err := decoder.Decode(&document); err != nil {
+		return nil, fmt.Errorf("decode JSON: %w", err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return nil, fmt.Errorf("decode JSON: multiple values")
+		}
+		return nil, fmt.Errorf("decode JSON: %w", err)
+	}
+	session := &executor.Session{Headers: make(http.Header)}
+	for name, values := range document.Headers {
+		if strings.TrimSpace(name) == "" {
+			return nil, fmt.Errorf("header name must be non-empty")
+		}
+		for _, value := range values {
+			session.Headers.Add(name, value)
+		}
+	}
+	for _, cookie := range document.Cookies {
+		if strings.TrimSpace(cookie.Name) == "" {
+			return nil, fmt.Errorf("cookie name must be non-empty")
+		}
+		session.Cookies = append(session.Cookies, &http.Cookie{Name: cookie.Name, Value: cookie.Value})
+	}
+	return session, nil
+}
+
+func mergeSessions(base, extra *executor.Session) *executor.Session {
+	if base == nil {
+		return extra
+	}
+	if extra == nil {
+		return base
+	}
+	for name, values := range extra.Headers {
+		for _, value := range values {
+			base.Headers.Add(name, value)
+		}
+	}
+	base.Cookies = append(base.Cookies, extra.Cookies...)
+	return base
+}
+
 func usageExtract(w *os.File) {
-	fmt.Fprintln(w, "  scrape-kdl extract <file.kdl> [--input name=value] [--html file.html] [--header 'Name: value'] [--cookie name=value] [--out result.json]")
+	fmt.Fprintln(w, "  scrape-kdl extract <file.kdl> [--input name=value] [--html file.html] [--session-file session.json] [--out result.json]")
 }
