@@ -24,9 +24,9 @@ No accepted language-contract blocker remains after that correction and the inde
 Future wording fixes may remain on `2026-07-15` only when accepted programs, diagnostics, IR, and execution behavior do not change.
 Any change to those observable contracts requires an approved new language date and compatibility notes.
 
-## TypeScript cross-check boundary
+## TypeScript compiler parity
 
 `packages/scrape-kdl` is the future `@hsblabs/scrape-kdl` package boundary and requires Node.js 26 or later.
-The package now contains the complete documented KDL subset parser and injectable import graph. Shared parser and import cases require exact Go/TypeScript acceptance, diagnostics, UTF-8 byte spans, and ordering; the TypeScript conformance slice also runs the release-blocking import-cycle fixture. This implementation performs no network access, Go invocation, or subprocess execution.
+The package contains the complete documented KDL subset parser, injectable import graph, semantic validator, type checker, capability and reference resolver, and dated IR lowerer. Shared parser and import cases require exact Go/TypeScript acceptance, diagnostics, UTF-8 byte spans, and ordering. The release-blocking TypeScript compiler suite runs every shared valid and invalid language fixture without network access, Go invocation, or subprocess execution.
 
-Semantic validation and full IR lowering remain bounded to the representative HTTP fixture and dated-version diagnostics until Issue #13. That semantic slice is an implementation limit, not an alternate interpretation of the `2026-07-15` contract.
+For valid fixtures with golden IR, TypeScript output is compared canonically against the same frozen-schema artifact as Go. For invalid fixtures, code, severity, message, span, path, and ordering must match exactly. Compiler errors never return executable IR, and the cross-language check is part of the pull-request verification gate.

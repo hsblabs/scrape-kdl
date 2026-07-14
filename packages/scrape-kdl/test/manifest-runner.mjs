@@ -3,9 +3,11 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { canonicalJSONStringify } from "../dist/canonical-json.js";
 import { compileContractSlice } from "../dist/compiler.js";
+import { validateJSONSchema } from "../../../scripts/json-schema-validator.mjs";
 
 export async function runTypeScriptSlice({ root, manifestPath = "conformance/manifest.json", suite = "typescript-slice", job = "core" }) {
   const manifest = JSON.parse(await readFile(`${root}/${manifestPath}`, "utf8"));
+  const irSchema = JSON.parse(await readFile(`${root}/docs/ir/schema.json`, "utf8"));
   if (manifest.suites[suite] === undefined) throw new Error(`unknown suite ${JSON.stringify(suite)}`);
   const selected = manifest.cases.filter((testCase) =>
     testCase.suites.includes(suite) && executionFor(testCase, job) !== undefined,
@@ -21,7 +23,7 @@ export async function runTypeScriptSlice({ root, manifestPath = "conformance/man
     cases: [],
   };
   for (const testCase of selected) {
-    const caseResult = await runCase(root, manifest, testCase, executionFor(testCase, job));
+    const caseResult = await runCase(root, manifest, irSchema, testCase, executionFor(testCase, job));
     approveDifferences(manifest, caseResult);
     caseResult.status = caseResult.differences.some((difference) => difference.approvedBy === undefined) ? "failed" : "passed";
     if (caseResult.status === "failed") result.status = "failed";
@@ -30,7 +32,7 @@ export async function runTypeScriptSlice({ root, manifestPath = "conformance/man
   return result;
 }
 
-async function runCase(root, manifest, testCase, execution) {
+async function runCase(root, manifest, irSchema, testCase, execution) {
   const sourcePath = testCase.artifacts.find((artifact) => artifact.role === "source")?.path;
   if (sourcePath === undefined) throw new Error(`${testCase.id} has no source artifact`);
   const compiled = await compileContractSlice(
@@ -46,6 +48,8 @@ async function runCase(root, manifest, testCase, execution) {
       result.differences.push({ kind: "diagnostics", message: "expected valid program without error diagnostics" });
       return result;
     }
+    const schemaErrors = validateJSONSchema(irSchema, compiled.ir);
+    if (schemaErrors.length > 0) result.differences.push({ kind: "ir", message: `generated IR violates docs/ir/schema.json: ${schemaErrors.join("; ")}` });
   } else {
     if (compiled.ir !== undefined || !compiled.diagnostics.some((item) => item.severity === "error")) {
       result.differences.push({ kind: "diagnostics", message: "expected invalid program with error diagnostics and no IR" });
@@ -108,7 +112,7 @@ async function main() {
     return;
   }
   if (options.help) {
-    console.log(`Run the bounded TypeScript implementation through the shared conformance manifest.
+    console.log(`Run the TypeScript semantic compiler through the shared conformance manifest.
 
 Usage:
   node packages/scrape-kdl/test/manifest-runner.mjs [flags]

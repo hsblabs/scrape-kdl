@@ -10,7 +10,7 @@ The dated schemas are:
 
 ## Running suites
 
-Run the pull-request Go suite and bounded TypeScript slice, then compare their shared observations:
+Run the pull-request Go suite and complete TypeScript compiler suite, then compare their shared observations:
 
 ```bash
 make conformance
@@ -24,7 +24,7 @@ go run ./cmd/conformance-runner --suite invalid --output invalid-go.json
 go run ./cmd/conformance-runner --suite release --job browser-e2e --list
 ```
 
-Emit the bounded TypeScript result:
+Emit the complete TypeScript compiler result:
 
 ```bash
 npm run conformance:typescript-slice
@@ -52,7 +52,7 @@ A final newline in a JSON file is therefore formatting, while a newline inside a
 
 Every case declares one or more focused suites.
 `pr` is the normal pull-request selection and `release` contains every `release-blocking` case across all declared jobs.
-Other suites select language, invalid, IR, runtime, HTML, browser, or bounded TypeScript work without changing case semantics.
+Other suites select language, invalid, IR, runtime, HTML, browser, or complete TypeScript compiler work without changing case semantics.
 
 `release-blocking` means an unexplained failure blocks the release candidate.
 `provisional` is reserved for examples or observations that are still informative but not yet a compatibility gate.

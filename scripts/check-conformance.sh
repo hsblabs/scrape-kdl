@@ -10,7 +10,7 @@ npm run build:contract-slice >/dev/null
 node scripts/compare-conformance.test.mjs
 GOTOOLCHAIN=local go run ./cmd/conformance-runner \
   --manifest conformance/manifest.json \
-  --suite pr \
+  --suite release \
   --job core \
   --output "$tmp_dir/go.json"
 node packages/scrape-kdl/test/manifest-runner.mjs \

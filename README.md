@@ -141,7 +141,7 @@ See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and
 The `@hsblabs/scrape-kdl` workspace is an ESM-only, publishable package scaffold for Node.js 26 and later.
 Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
 The package independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture without invoking Go.
-The complete documented KDL parser and injectable import graph run behind this boundary with shared Go/TypeScript diagnostic fixtures. Issues #13 and #14 complete the semantic compiler and HTTP runtime; until then, `Program.extract` is intentionally unavailable at runtime.
+The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, and dated IR lowerer run behind this boundary with shared Go/TypeScript diagnostics and canonical IR fixtures. Issue #14 adds the HTTP runtime; until then, `Program.extract` is intentionally unavailable at runtime.
 The reserved `@hsblabs/scrape-kdl-playwright` workspace remains private until Issue #16 and no concrete browser library is a dependency of the core package.
 See `docs/spec/conformance-coverage.md` for the audited rule inventory and the exact slice boundary.
 
@@ -188,7 +188,7 @@ See `SECURITY.md` and `docs/security-model.md`.
 - The HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
 - The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
-- The checked-in TypeScript package has the complete parser and import loader plus a publishable boundary and package gates; semantic compilation and execution are not yet complete.
+- The checked-in TypeScript package has the complete compiler pipeline plus a publishable boundary and package gates; execution is not yet complete.
 
 See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
 

@@ -312,6 +312,6 @@ export interface DiagnosticIR {
   readonly span?: SourceSpan;
 }
 
-// Internal compatibility name used by the bounded compiler slice. The public
-// dated IR name remains ResolvedTransformCallIR.
+// Internal compatibility name retained for callers of the pre-v1 compiler.
+// The public dated IR name remains ResolvedTransformCallIR.
 export type TransformCallIR = ResolvedTransformCallIR;

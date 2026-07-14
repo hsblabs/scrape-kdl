@@ -34,7 +34,7 @@
     "runtime": { "description": "Offline extraction comparisons." },
     "html": { "description": "Pinned HTML input and observation cases." },
     "browser": { "description": "Browser-contract and official-adapter cases." },
-    "typescript-slice": { "description": "The bounded TypeScript pre-freeze cross-check." }
+    "typescript-slice": { "description": "The complete release-blocking TypeScript semantic compiler cross-check." }
   },
   "approvedDivergences": [],
   "cases": [
@@ -66,7 +66,7 @@
       "id": "valid.race-detail",
       "status": "release-blocking",
       "categories": ["valid", "ir"],
-      "suites": ["pr", "release", "language", "ir"],
+      "suites": ["pr", "release", "language", "ir", "typescript-slice"],
       "artifacts": [
         { "path": "fixtures/valid/race-detail.kdl", "role": "source" },
         { "path": "fixtures/modules/common.kdl", "role": "import" },
@@ -74,36 +74,44 @@
       ],
       "expectations": { "outcome": "valid", "ir": "fixtures/expected-ir/race-detail.ir.json" },
       "executions": [
-        { "implementation": "go", "job": "core", "stages": ["validate", "compile", "ir"] }
+        { "implementation": "go", "job": "core", "stages": ["validate", "compile", "ir"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate", "compile", "ir"] }
       ]
     },
     {
       "id": "valid.document-version-advance",
       "status": "release-blocking",
       "categories": ["valid"],
-      "suites": ["pr", "release", "language"],
+      "suites": ["pr", "release", "language", "typescript-slice"],
       "artifacts": [{ "path": "fixtures/valid/document-version-advance.kdl", "role": "source" }],
       "expectations": { "outcome": "valid" },
-      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate", "compile"] }]
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate", "compile"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate", "compile"] }
+      ]
     },
     {
       "id": "valid.browser-js",
       "status": "release-blocking",
       "categories": ["valid", "browser"],
-      "suites": ["pr", "release", "language", "browser"],
+      "suites": ["pr", "release", "language", "browser", "typescript-slice"],
       "artifacts": [{ "path": "fixtures/valid/browser-js.kdl", "role": "source" }],
       "expectations": { "outcome": "valid" },
-      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate", "compile"] }]
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate", "compile"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate", "compile"] }
+      ]
     },
     {
       "id": "valid.rod-browser-e2e",
       "status": "release-blocking",
       "categories": ["valid", "browser"],
-      "suites": ["release", "browser"],
+      "suites": ["release", "browser", "typescript-slice"],
       "artifacts": [{ "path": "fixtures/valid/rod-browser-e2e.kdl", "role": "source" }],
       "expectations": { "outcome": "valid" },
       "executions": [
         { "implementation": "go", "job": "core", "stages": ["validate", "compile"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate", "compile"] },
         { "implementation": "go", "job": "browser-e2e", "stages": ["browser"] }
       ]
     },
@@ -112,25 +120,31 @@
       "id": "invalid.duplicate-property",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
       "artifacts": [
         { "path": "fixtures/invalid/duplicate-property.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
       ],
       "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "duplicate-property.kdl" } },
-      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
     },
     {
       "id": "invalid.http-js",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
       "artifacts": [
         { "path": "fixtures/invalid/http-js.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
       ],
       "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "http-js.kdl" } },
-      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
     },
     {
       "id": "invalid.import-cycle",
@@ -153,25 +167,31 @@
       "id": "invalid.timeout-overflow",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
       "artifacts": [
         { "path": "fixtures/invalid/timeout-overflow.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
       ],
       "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "timeout-overflow.kdl" } },
-      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
     },
     {
       "id": "invalid.transform-type-mismatch",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
       "artifacts": [
         { "path": "fixtures/invalid/transform-type-mismatch.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
       ],
       "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "transform-type-mismatch.kdl" } },
-      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
     },
 
     {
