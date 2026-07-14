@@ -45,3 +45,4 @@ Within IR 0.1:
 - Output member order is retained.
 - Field `successfulType` is separated from `effectiveType`; optional missing may lift the effective type to nullable.
 - DOM value-source `rawType` describes a successful read. Selector/attribute absence is represented as missing control flow, not as nullable transform input.
+- Millisecond durations are positive integers no greater than `9223372036854`, so every conforming value converts to Go `time.Duration` without overflow.

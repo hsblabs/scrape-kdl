@@ -13,8 +13,32 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
+	"github.com/go-rod/rod/lib/launcher/flags"
 	scrapekdl "github.com/hsblabs/scrape-kdl"
 )
+
+func newE2ELauncher() *launcher.Launcher {
+	browserLauncher := launcher.New().Headless(true)
+	if os.Getenv("GITHUB_ACTIONS") == "true" {
+		// GitHub-hosted Linux runners do not provide a usable Chromium sandbox.
+		// This is limited to the localhost-only E2E fixture and never affects the
+		// adapter or browser instances supplied by library users.
+		browserLauncher.NoSandbox(true)
+	}
+	return browserLauncher
+}
+
+func TestE2ELauncherDisablesSandboxOnlyOnGitHubActions(t *testing.T) {
+	t.Setenv("GITHUB_ACTIONS", "")
+	if newE2ELauncher().Has(flags.NoSandbox) {
+		t.Fatal("local E2E launcher unexpectedly disables the Chromium sandbox")
+	}
+
+	t.Setenv("GITHUB_ACTIONS", "true")
+	if !newE2ELauncher().Has(flags.NoSandbox) {
+		t.Fatal("GitHub Actions E2E launcher must disable the unavailable Chromium sandbox")
+	}
+}
 
 func TestBrowserExtractionE2E(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +94,7 @@ func TestBrowserExtractionE2E(t *testing.T) {
 		t.Fatalf("compile diagnostics: %+v", diagnostics)
 	}
 
-	controlURL := launcher.New().Headless(true).MustLaunch()
+	controlURL := newE2ELauncher().MustLaunch()
 	browser := rod.New().ControlURL(controlURL).MustConnect()
 	defer browser.MustClose()
 	adapter, err := NewBrowser(browser)

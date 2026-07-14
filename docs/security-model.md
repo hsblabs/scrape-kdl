@@ -18,6 +18,10 @@ Hosts should apply:
 - separate browser contexts for unrelated tenants;
 - explicit review before enabling JavaScript or external transforms.
 
+`session policy="none"` suppresses only the explicit runtime `Session`. It does not clear an `http.Client` cookie jar or an existing browser context. Hosts that require credential-free execution must provide isolated stateless clients or contexts.
+
+CLI users should pass cookies and sensitive headers through `--session-file` or `--session-file -` rather than command-line values. Files should be readable only by the intended user and removed or rotated according to the host application's secret-management policy.
+
 ## Runtime safeguards
 
 The reference runtime provides:

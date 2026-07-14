@@ -170,6 +170,46 @@ func TestExecuteFieldWarningAndExternalTransform(t *testing.T) {
 	}
 }
 
+func TestExecuteHTMLCancellationBoundaries(t *testing.T) {
+	path := compileTestSpec(t, `extractor "offline-cancellation" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  transform "cancel" input="string" output="string" { external symbol="cancel" }
+  field "first" type="string" required=#true {
+    select ".first"; value "text"; apply "cancel"
+  }
+  field "second" type="string" required=#true {
+    select ".second"; value "text"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := ExecuteHTML(ctx, extractor, `<span class="first">one</span>`, Options{ExternalTransforms: map[string]ExternalTransform{
+		"cancel": func(_ context.Context, value any) (any, error) { return value, nil },
+	}})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_EXECUTION_CANCELED" || !errors.Is(err, context.Canceled) {
+		t.Fatalf("pre-parse cancellation error = %#v", err)
+	}
+
+	ctx, cancel = context.WithCancel(context.Background())
+	_, err = ExecuteHTML(ctx, extractor, `<span class="first">one</span><span class="second">two</span>`, Options{
+		ExternalTransforms: map[string]ExternalTransform{
+			"cancel": func(_ context.Context, value any) (any, error) {
+				cancel()
+				return value, nil
+			},
+		},
+	})
+	if !errors.As(err, &execution) || execution.Code != "E_EXECUTION_CANCELED" || !errors.Is(err, context.Canceled) {
+		t.Fatalf("between-field cancellation error = %#v", err)
+	}
+}
+
 func TestExecuteHTMLFieldRecoveryPolicies(t *testing.T) {
 	path := compileTestSpec(t, `extractor "http-recovery" version=1 {
   source "html" { fetch mode="http" url="https://example.invalid/" }

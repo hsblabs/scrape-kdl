@@ -249,7 +249,8 @@
             },
             "timeoutMs": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 9223372036854
             },
             "span": {
               "$ref": "#/$defs/sourceSpan"
@@ -274,7 +275,8 @@
             },
             "timeoutMs": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 9223372036854
             },
             "span": {
               "$ref": "#/$defs/sourceSpan"
@@ -301,7 +303,8 @@
             },
             "timeoutMs": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 9223372036854
             },
             "span": {
               "$ref": "#/$defs/sourceSpan"
@@ -329,7 +332,8 @@
             },
             "timeoutMs": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 9223372036854
             },
             "span": {
               "$ref": "#/$defs/sourceSpan"
@@ -375,11 +379,13 @@
             },
             "idleMs": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 9223372036854
             },
             "timeoutMs": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 9223372036854
             },
             "span": {
               "$ref": "#/$defs/sourceSpan"
@@ -403,7 +409,8 @@
             },
             "timeoutMs": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 9223372036854
             },
             "span": {
               "$ref": "#/$defs/sourceSpan"
@@ -594,7 +601,8 @@
             },
             "timeoutMs": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 9223372036854
             },
             "span": {
               "$ref": "#/$defs/sourceSpan"

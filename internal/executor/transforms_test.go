@@ -526,3 +526,20 @@ func TestTransformRuntimePreservesExternalError(t *testing.T) {
 		t.Fatalf("error = %#v", err)
 	}
 }
+
+func TestTransformRuntimeRejectsExternalResultType(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	external := ir.ExternalTransform{
+		Kind:          "external",
+		TransformBase: ir.TransformBase{SymbolID: "transform:external", Name: "external", Input: stringType, Output: stringType},
+		Symbol:        "external_symbol",
+	}
+	runtime := newTransformRuntime(context.Background(), &ir.Extractor{Transforms: []ir.Transform{external}}, map[string]ExternalTransform{
+		"external_symbol": func(context.Context, any) (any, error) { return int64(1), nil },
+	})
+	_, err := runtime.applyDeclared(external.SymbolID, "input", "output.value")
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_EXTERNAL_TRANSFORM_RESULT_TYPE" || execution.Path != "output.value" {
+		t.Fatalf("error = %#v", err)
+	}
+}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/hsblabs/scrape-kdl/internal/compiler"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/limits"
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
@@ -428,6 +429,20 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			wantCode:        "E_IR_INVALID",
 		},
 		{
+			name: "overflowing JavaScript timeout",
+			mutate: func(extractor *ir.Extractor) {
+				collection := extractor.Output.Members[0].(ir.Collection)
+				field := collection.Row.Members[0].(ir.Field)
+				timeoutMS := int(limits.MaxMilliseconds) + 1
+				field.Selection = nil
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: "current", Source: `() => "value"`, Returns: field.SuccessfulType, TimeoutMS: &timeoutMS}
+				collection.Row.Members[0] = field
+				extractor.Output.Members[0] = collection
+			},
+			allowJavaScript: true,
+			wantCode:        "E_IR_INVALID",
+		},
+		{
 			name: "document JavaScript with selection",
 			mutate: func(extractor *ir.Extractor) {
 				collection := extractor.Output.Members[0].(ir.Collection)
@@ -543,9 +558,26 @@ func TestExecuteBrowserPreflightsMalformedWorkflowBeforeAcquire(t *testing.T) {
 			wantCode: "E_IR_INVALID",
 		},
 		{
+			name: "timeout overflow",
+			mutate: func(extractor *ir.Extractor) {
+				step := extractor.Source.Workflow[0].(ir.WaitForStep)
+				value := int(limits.MaxMilliseconds) + 1
+				step.TimeoutMS = &value
+				extractor.Source.Workflow[0] = step
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "network idle",
 			mutate: func(extractor *ir.Extractor) {
 				extractor.Source.Workflow[0] = ir.NetworkIdleStep{Kind: "wait-for-network-idle", IdleMS: 0}
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "network idle overflow",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.Workflow[0] = ir.NetworkIdleStep{Kind: "wait-for-network-idle", IdleMS: int(limits.MaxMilliseconds) + 1}
 			},
 			wantCode: "E_IR_INVALID",
 		},

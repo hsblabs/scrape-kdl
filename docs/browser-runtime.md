@@ -60,7 +60,17 @@ A nil element passed to `QueryAll` means document scope. For `evaluate-js`:
 - `scope="document"` passes a nil scope;
 - `scope="current"` passes the selected field element or collection row.
 
-Adapters must return only JSON-compatible values from `Evaluate`.
+Adapters must return only these concrete Go representations from `Evaluate`:
+
+- `nil`, `bool`, `string`;
+- signed or unsigned built-in integer types;
+- finite `float32` or `float64`, or a valid finite `json.Number`;
+- `[]string` or `[]any`, recursively containing accepted values;
+- `map[string]any`, recursively containing accepted values.
+
+Typed containers such as `[]map[string]any` and `map[string]string`, structs, and custom JSON marshalers are not part of the adapter contract. Adapters can call `scrapekdl.NormalizeBrowserResult` before returning a value; it validates the contract, copies recursive containers, and converts `[]string` to `[]any` without reflection or `json.Marshaler` invocation. The runtime then normalizes numbers to the declared `returns` type.
+
+For `session policy="none"`, the runtime passes no explicit `Session` to `Navigate`. It does not clear cookies, storage, or authentication already held by the adapter's browser context. Hosts that require stateless execution must provide an isolated context.
 
 ## URL policy
 

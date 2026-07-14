@@ -191,11 +191,11 @@ Default: `none`.
 
 Semantics:
 
-- `none`: runtime session input is ignored;
+- `none`: the explicitly supplied runtime session input is ignored;
 - `optional`: runtime session is used when supplied;
 - `required`: missing runtime session fails before fetch/navigation.
 
-The concrete cookie, storage, authentication, and header representation is runtime-specific.
+The concrete cookie, storage, authentication, and header representation is runtime-specific. Host-owned ambient state, including an HTTP client cookie jar or an existing browser context, is not runtime session input and is not cleared by `none`. A host that requires credential-free execution MUST supply an isolated stateless client or browser context.
 
 ## Inputs
 
@@ -249,6 +249,7 @@ Detailed rules:
 - `scroll` uses numeric positional arguments `x` and `y` in CSS pixels and performs a window-relative scroll;
 - `wait-for-network-idle` means no tracked HTTP request is active for `idle-ms`; WebSocket and EventSource connections are excluded; `idle-ms` defaults to 500;
 - workflow `evaluate-js` script MUST evaluate to a callable function; async functions are allowed; resolved return value is discarded;
+- `timeout-ms` and `idle-ms` MUST be between 1 and 9,223,372,036,854 milliseconds, inclusive;
 - timeout expiry is an extraction error;
 - workflow steps are browser-only.
 
@@ -388,7 +389,7 @@ Properties:
 
 - `scope`: REQUIRED, `document` or `current`;
 - `returns`: REQUIRED type expression for the raw JavaScript result;
-- `timeout-ms`: optional positive integer.
+- `timeout-ms`: optional integer from 1 through 9,223,372,036,854 milliseconds.
 
 Invocation:
 
@@ -522,7 +523,7 @@ transform "decrypt_payload" input="string" output="object" {
 }
 ```
 
-External transforms are host functions resolved from a runtime registry. They do not receive browser handles in v0.1. A missing symbol fails capability validation before fetch/navigation.
+External transforms are host functions resolved from a runtime registry. They do not receive browser handles in v0.1. A missing symbol fails capability validation before fetch/navigation. After a callback returns successfully, its result MUST be checked immediately against the transform's declared output type. A mismatch fails with `E_EXTERNAL_TRANSFORM_RESULT_TYPE` before any downstream transform runs.
 
 ## Built-in transforms
 

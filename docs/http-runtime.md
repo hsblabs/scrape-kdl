@@ -28,6 +28,8 @@ Selector parsing, external-transform availability, browser-only value sources, a
 
 The runtime adds `Session` headers and cookies only to the initial request; it does not manually re-inject them after redirects. Go's `http.Client` redirect rules therefore control propagation. By default, sensitive headers such as `Authorization` and `Cookie` are copied only to the same domain or its subdomains, while a configured cookie jar applies each cookie's own scope. A custom `CheckRedirect` may further restrict or mutate the redirected request.
 
+For `session policy="none"`, the explicit `Options.Session` is ignored. The supplied `http.Client` and its cookie jar are preserved, so ambient cookies and response `Set-Cookie` updates remain active. Hosts that require stateless execution must supply an isolated client with no jar or other ambient authentication behavior.
+
 ## Charset decoding
 
 Built in:
@@ -66,3 +68,7 @@ Transform, selector cardinality, output type, and external-transform errors use 
 - `default`.
 
 A collection with `on-row-error="skip"` drops only rows containing an unrecovered child error. Dropped rows append `W_ROW_SKIPPED` and set `partial=true`.
+
+## Offline HTML cancellation
+
+`Program.ExtractHTML` checks its context before in-memory HTML parsing and before each output member and collection row. Cancellation at these runtime-managed boundaries returns `E_EXECUTION_CANCELED`, preserves `context.Canceled` or `context.DeadlineExceeded` as the cause, and is not recoverable through field or row error policies. One in-progress parser call is not interrupted; cancellation is observed at the next boundary after it returns.

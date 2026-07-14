@@ -80,6 +80,12 @@ type BrowserAdapterLease = executor.BrowserAdapterLease
 type CharsetDecoder func(body []byte, charset string) (string, error)
 type URLPolicy = executor.URLPolicy
 
+// NormalizeBrowserResult validates and normalizes a value before an adapter
+// returns it from BrowserAdapter.Evaluate.
+func NormalizeBrowserResult(value any) (any, error) {
+	return executor.NormalizeBrowserResult(value)
+}
+
 type Session struct {
 	Headers http.Header
 	Cookies []*http.Cookie

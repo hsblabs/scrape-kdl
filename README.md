@@ -72,9 +72,24 @@ Extract over HTTP:
 ```bash
 scrape-kdl extract ./extractor.kdl \
   --input item_id=123 \
-  --header 'Accept-Language: ja' \
-  --cookie session=example
+  --session-file ./session.json
 ```
+
+Session files use JSON and should be protected as secrets:
+
+```json
+{
+  "headers": {
+    "Accept-Language": ["ja"],
+    "Authorization": ["Bearer example"]
+  },
+  "cookies": [
+    {"name": "session", "value": "example"}
+  ]
+}
+```
+
+Use `--session-file -` to read the document from standard input without creating a file. Direct `--header` and `--cookie` values remain accepted for compatibility but are deprecated because they can leak through shell history or process inspection. When combined temporarily during migration, direct values are appended after file values.
 
 Print build metadata:
 
@@ -114,6 +129,7 @@ The public API includes:
 - custom charset decoding;
 - initial-target and HTTP-redirect URL policy hooks;
 - browser adapter injection.
+- adapter-facing `NormalizeBrowserResult` validation and normalization.
 
 ## Browser mode
 
