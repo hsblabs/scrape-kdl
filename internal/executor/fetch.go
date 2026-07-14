@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/hsblabs/scrape-kdl/internal/dom"
 )
 
 func fetchDocument(ctx context.Context, targetURL string, options Options) (*dom.Node, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, &ExecutionError{Code: operationErrorCode("E_HTTP_FETCH", err), Message: err.Error(), Cause: err}
+	}
 	requestContext, cancel := context.WithTimeout(ctx, options.RequestTimeout)
 	defer cancel()
 
@@ -19,12 +23,21 @@ func fetchDocument(ctx context.Context, targetURL string, options Options) (*dom
 		return nil, &ExecutionError{Code: "E_HTTP_REQUEST", Message: err.Error(), Cause: err}
 	}
 	if options.Session != nil {
-		for name, values := range options.Session.Headers {
+		headerNames := make([]string, 0, len(options.Session.Headers))
+		for name := range options.Session.Headers {
+			headerNames = append(headerNames, name)
+		}
+		sort.Strings(headerNames)
+		for _, name := range headerNames {
+			values := options.Session.Headers[name]
 			for _, value := range values {
 				request.Header.Add(name, value)
 			}
 		}
 		for _, cookie := range options.Session.Cookies {
+			if cookie == nil {
+				continue
+			}
 			request.AddCookie(cookie)
 		}
 	}

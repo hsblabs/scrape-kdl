@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 )
 
 func decodeJSON(raw json.RawMessage) (any, error) {
@@ -11,6 +12,13 @@ func decodeJSON(raw json.RawMessage) (any, error) {
 	decoder.UseNumber()
 	var value any
 	if err := decoder.Decode(&value); err != nil {
+		return nil, fmt.Errorf("decode IR literal: %w", err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return nil, fmt.Errorf("decode IR literal: multiple JSON values")
+		}
 		return nil, fmt.Errorf("decode IR literal: %w", err)
 	}
 	return value, nil

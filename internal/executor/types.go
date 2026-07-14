@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -96,11 +95,4 @@ func (o Options) withDefaults() Options {
 		o.ExternalTransforms = map[string]ExternalTransform{}
 	}
 	return o
-}
-
-func decodeJSONValue(raw *json.RawMessage) (any, error) {
-	if raw == nil {
-		return nil, nil
-	}
-	return decodeJSON(*raw)
 }

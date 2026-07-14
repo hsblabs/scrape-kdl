@@ -2,10 +2,16 @@ package executor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"math"
+	"math/big"
+	"strconv"
 	"time"
 
+	"github.com/hsblabs/scrape-kdl/internal/dom"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
 // BrowserElement is an opaque element handle owned by a BrowserAdapter.
@@ -69,8 +75,27 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	if options.Browser == nil {
 		return nil, &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: "browser-mode extractor requires Options.Browser"}
 	}
-	if options.AllowJavaScript == false && containsJavaScript(extractor) {
+	if !options.AllowJavaScript && containsJavaScript(extractor) {
 		return nil, &ExecutionError{Code: "E_JAVASCRIPT_DISABLED", Message: "extractor contains JavaScript; set AllowJavaScript=true for trusted specs"}
+	}
+	if err := preflightExtractorStructure(extractor); err != nil {
+		return nil, err
+	}
+	if err := preflightSourceStructure(extractor.Source); err != nil {
+		return nil, err
+	}
+	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
+	if err := transforms.preflight(); err != nil {
+		return nil, err
+	}
+	if err := preflightOutputStructure(extractor.Output); err != nil {
+		return nil, err
+	}
+	if err := preflightBrowserWorkflow(extractor.Source.Workflow); err != nil {
+		return nil, err
+	}
+	if err := preflightBrowserOutput(extractor.Output); err != nil {
+		return nil, err
 	}
 	resolved, err := resolveInputs(extractor.Inputs, inputs)
 	if err != nil {
@@ -103,10 +128,6 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	if err := options.Browser.Navigate(ctx, target, BrowserNavigateOptions{Timeout: options.RequestTimeout, Session: session, UserAgent: options.UserAgent}); err != nil {
 		return nil, &ExecutionError{Code: operationErrorCode("E_BROWSER_NAVIGATE", err), Message: err.Error(), Cause: err}
 	}
-	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
-	if err := transforms.preflight(); err != nil {
-		return nil, err
-	}
 	e := &browserEngine{ctx: ctx, extractor: extractor, options: options, adapter: options.Browser, transforms: transforms}
 	if err := e.runWorkflow(); err != nil {
 		return nil, err
@@ -116,6 +137,111 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 		return nil, err
 	}
 	return finalizeResult(value, e.warnings, e.partial), nil
+}
+
+func preflightBrowserWorkflow(steps []ir.WorkflowStep) error {
+	for index, step := range steps {
+		path := fmt.Sprintf("source.workflow[%d]", index)
+		selector := ""
+		var timeoutMS *int
+		waitState := ""
+		hasSelector := false
+		isWait := false
+		switch typed := step.(type) {
+		case ir.WaitForStep:
+			if typed.Kind != "wait-for" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid wait-for step kind %q", typed.Kind), Path: path}
+			}
+			selector = typed.Selector
+			timeoutMS = typed.TimeoutMS
+			waitState = typed.State
+			hasSelector = true
+			isWait = true
+		case ir.ClickStep:
+			if typed.Kind != "click" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid click step kind %q", typed.Kind), Path: path}
+			}
+			selector = typed.Selector
+			timeoutMS = typed.TimeoutMS
+			hasSelector = true
+		case ir.FillStep:
+			if typed.Kind != "fill" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid fill step kind %q", typed.Kind), Path: path}
+			}
+			selector = typed.Selector
+			timeoutMS = typed.TimeoutMS
+			hasSelector = true
+		case ir.PressStep:
+			if typed.Kind != "press" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid press step kind %q", typed.Kind), Path: path}
+			}
+			selector = typed.Selector
+			timeoutMS = typed.TimeoutMS
+			hasSelector = true
+		case ir.ScrollStep:
+			if typed.Kind != "scroll" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid scroll step kind %q", typed.Kind), Path: path}
+			}
+			if math.IsNaN(typed.X) || math.IsInf(typed.X, 0) || math.IsNaN(typed.Y) || math.IsInf(typed.Y, 0) {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: "scroll coordinates must be finite", Path: path}
+			}
+		case ir.NetworkIdleStep:
+			if typed.Kind != "wait-for-network-idle" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid network-idle step kind %q", typed.Kind), Path: path}
+			}
+			if typed.IdleMS < 1 {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: "network idleMs must be positive", Path: path}
+			}
+			timeoutMS = typed.TimeoutMS
+		case ir.EvaluateJavaScriptStep:
+			if typed.Kind != "evaluate-js" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid evaluate-js step kind %q", typed.Kind), Path: path}
+			}
+			timeoutMS = typed.TimeoutMS
+		default:
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown workflow step %T", step), Path: path}
+		}
+		if hasSelector {
+			if _, err := dom.ParseSelector(selector); err != nil {
+				return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: path, Cause: err}
+			}
+		}
+		if isWait && waitState != "attached" && waitState != "visible" && waitState != "hidden" && waitState != "detached" {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid wait-for state %q", waitState), Path: path}
+		}
+		if timeoutMS != nil && *timeoutMS < 1 {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: "workflow timeoutMs must be positive", Path: path}
+		}
+	}
+	return nil
+}
+
+func preflightBrowserOutput(object ir.OutputObject) error {
+	for _, member := range object.Members {
+		switch typed := member.(type) {
+		case ir.Field:
+			if typed.Selection != nil {
+				if _, err := dom.ParseSelector(typed.Selection.Selector); err != nil {
+					return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: typed.ID, Cause: err}
+				}
+			}
+			switch typed.ValueSource.(type) {
+			case ir.TextValueSource, ir.HTMLValueSource, ir.AttributeValueSource, ir.JavaScriptValueSource:
+			default:
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown value source %T", typed.ValueSource), Path: typed.ID}
+			}
+		case ir.Collection:
+			if _, err := dom.ParseSelector(typed.Selector); err != nil {
+				return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: typed.ID, Cause: err}
+			}
+			if err := preflightBrowserOutput(typed.Row); err != nil {
+				return err
+			}
+		default:
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown output member %T", member)}
+		}
+	}
+	return nil
 }
 
 func timeout(ms *int, fallback time.Duration) time.Duration {
@@ -253,8 +379,9 @@ func (e *browserEngine) readField(scope BrowserElement, field ir.Field, path str
 		if err != nil {
 			return nil, &ExecutionError{Code: operationErrorCode("E_JAVASCRIPT_EVALUATION", err), Message: err.Error(), Path: path, Cause: err}
 		}
-		if !isJSONCompatible(v) {
-			return nil, &ExecutionError{Code: "E_JAVASCRIPT_RESULT_TYPE", Message: fmt.Sprintf("JavaScript returned non-JSON-compatible value %T", v), Path: path}
+		v, ok := normalizeJSONResult(v, s.Returns)
+		if !ok {
+			return nil, &ExecutionError{Code: "E_JAVASCRIPT_RESULT_TYPE", Message: fmt.Sprintf("JavaScript result of type %T is not compatible with returns=%s", v, s.Returns.String()), Path: path}
 		}
 		return v, nil
 	default:
@@ -262,16 +389,223 @@ func (e *browserEngine) readField(scope BrowserElement, field ir.Field, path str
 	}
 }
 
+func normalizeJSONResult(value any, target typesys.Type) (any, bool) {
+	if !isJSONCompatible(value) {
+		return value, false
+	}
+	if target.Kind == typesys.KindNullable {
+		if value == nil {
+			return nil, true
+		}
+		if target.Inner == nil {
+			return value, false
+		}
+		return normalizeJSONResult(value, *target.Inner)
+	}
+	if value == nil {
+		return value, target.Kind == typesys.KindPrimitive && target.Name == "unknown"
+	}
+	if target.Kind == typesys.KindArray {
+		if target.Element == nil {
+			return value, false
+		}
+		var values []any
+		switch typed := value.(type) {
+		case []any:
+			values = typed
+		case []string:
+			values = make([]any, len(typed))
+			for i := range typed {
+				values[i] = typed[i]
+			}
+		default:
+			return value, false
+		}
+		normalized := make([]any, len(values))
+		for i := range values {
+			var ok bool
+			normalized[i], ok = normalizeJSONResult(values[i], *target.Element)
+			if !ok {
+				return value, false
+			}
+		}
+		return normalized, true
+	}
+	if target.Kind != typesys.KindPrimitive {
+		return value, false
+	}
+	switch target.Name {
+	case "unknown":
+		return value, true
+	case "object":
+		_, ok := value.(map[string]any)
+		return value, ok
+	case "string":
+		_, ok := value.(string)
+		return value, ok
+	case "bool":
+		_, ok := value.(bool)
+		return value, ok
+	case "int", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64":
+		return normalizeJSONInteger(value, target.Name)
+	case "float", "f32", "f64":
+		return normalizeJSONFloat(value, target.Name)
+	default:
+		return value, false
+	}
+}
+
+func normalizeJSONInteger(value any, target string) (any, bool) {
+	integer, ok := jsonInteger(value)
+	if !ok {
+		return value, false
+	}
+	if target == "u64" {
+		if !integer.IsUint64() {
+			return value, false
+		}
+		return integer.Uint64(), true
+	}
+	if target[0] == 'u' {
+		if !integer.IsUint64() {
+			return value, false
+		}
+		converted := integer.Uint64()
+		switch target {
+		case "u8":
+			if converted <= math.MaxUint8 {
+				return uint8(converted), true
+			}
+		case "u16":
+			if converted <= math.MaxUint16 {
+				return uint16(converted), true
+			}
+		case "u32":
+			if converted <= math.MaxUint32 {
+				return uint32(converted), true
+			}
+		}
+		return value, false
+	}
+	if !integer.IsInt64() {
+		return value, false
+	}
+	converted := integer.Int64()
+	switch target {
+	case "int", "i64":
+		return converted, true
+	case "i8":
+		if converted >= math.MinInt8 && converted <= math.MaxInt8 {
+			return int8(converted), true
+		}
+	case "i16":
+		if converted >= math.MinInt16 && converted <= math.MaxInt16 {
+			return int16(converted), true
+		}
+	case "i32":
+		if converted >= math.MinInt32 && converted <= math.MaxInt32 {
+			return int32(converted), true
+		}
+	}
+	return value, false
+}
+
+func jsonInteger(value any) (*big.Int, bool) {
+	switch typed := value.(type) {
+	case int:
+		return big.NewInt(int64(typed)), true
+	case int8:
+		return big.NewInt(int64(typed)), true
+	case int16:
+		return big.NewInt(int64(typed)), true
+	case int32:
+		return big.NewInt(int64(typed)), true
+	case int64:
+		return big.NewInt(typed), true
+	case uint:
+		return new(big.Int).SetUint64(uint64(typed)), true
+	case uint8:
+		return new(big.Int).SetUint64(uint64(typed)), true
+	case uint16:
+		return new(big.Int).SetUint64(uint64(typed)), true
+	case uint32:
+		return new(big.Int).SetUint64(uint64(typed)), true
+	case uint64:
+		return new(big.Int).SetUint64(typed), true
+	case float32:
+		return integerFromDecimal(strconv.FormatFloat(float64(typed), 'g', -1, 32))
+	case float64:
+		return integerFromDecimal(strconv.FormatFloat(typed, 'g', -1, 64))
+	case json.Number:
+		return integerFromDecimal(typed.String())
+	default:
+		return nil, false
+	}
+}
+
+func integerFromDecimal(value string) (*big.Int, bool) {
+	rational, ok := new(big.Rat).SetString(value)
+	if !ok || !rational.IsInt() {
+		return nil, false
+	}
+	return new(big.Int).Set(rational.Num()), true
+}
+
+func normalizeJSONFloat(value any, target string) (any, bool) {
+	var converted float64
+	switch typed := value.(type) {
+	case int:
+		converted = float64(typed)
+	case int8:
+		converted = float64(typed)
+	case int16:
+		converted = float64(typed)
+	case int32:
+		converted = float64(typed)
+	case int64:
+		converted = float64(typed)
+	case uint:
+		converted = float64(typed)
+	case uint8:
+		converted = float64(typed)
+	case uint16:
+		converted = float64(typed)
+	case uint32:
+		converted = float64(typed)
+	case uint64:
+		converted = float64(typed)
+	case float32:
+		converted = float64(typed)
+	case float64:
+		converted = typed
+	case json.Number:
+		var err error
+		converted, err = typed.Float64()
+		if err != nil {
+			return value, false
+		}
+	default:
+		return value, false
+	}
+	if math.IsNaN(converted) || math.IsInf(converted, 0) {
+		return value, false
+	}
+	if target == "f32" {
+		narrowed := float32(converted)
+		if float32IsInvalid(narrowed) {
+			return value, false
+		}
+		return narrowed, true
+	}
+	return converted, true
+}
+
 func (e *browserEngine) handleMissing(field ir.Field, path, message string) (any, error) {
 	if field.Required {
 		return nil, &ExecutionError{Code: "E_REQUIRED_VALUE_MISSING", Message: message, Path: path}
 	}
 	if field.Default != nil {
-		v, err := decodeJSON(*field.Default)
-		if err != nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
-		}
-		return v, nil
+		return decodeFieldDefault(field, path)
 	}
 	return nil, nil
 }
@@ -299,10 +633,7 @@ func (e *browserEngine) recoverField(field ir.Field, path string, cause error) (
 		e.warnings = append(e.warnings, Warning{Code: "W_ERROR_RECOVERED", Message: cause.Error(), Path: path})
 		return nil, nil
 	case "default":
-		if field.Default == nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "on-error default requires a field default", Path: path}
-		}
-		v, err := decodeJSON(*field.Default)
+		v, err := decodeFieldDefault(field, path)
 		if err != nil {
 			return nil, err
 		}

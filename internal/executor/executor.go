@@ -85,8 +85,17 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 	if extractor.Source.Fetch.Mode != "http" {
 		return nil, &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: fmt.Sprintf("HTTP runtime cannot execute fetch mode %q", extractor.Source.Fetch.Mode)}
 	}
+	if err := preflightExtractorStructure(extractor); err != nil {
+		return nil, err
+	}
+	if err := preflightSourceStructure(extractor.Source); err != nil {
+		return nil, err
+	}
 	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
 	if err := transforms.preflight(); err != nil {
+		return nil, err
+	}
+	if err := preflightOutputStructure(extractor.Output); err != nil {
 		return nil, err
 	}
 	result := &engine{
@@ -99,6 +108,198 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 	return result, nil
 }
 
+func preflightExtractorStructure(extractor *ir.Extractor) error {
+	if extractor.Kind != "extractor" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown extractor kind %q", extractor.Kind), Path: "extractor"}
+	}
+	if extractor.IRVersion != "0.1" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unsupported IR version %q", extractor.IRVersion), Path: "irVersion"}
+	}
+	if extractor.LanguageVersion != "0.1" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unsupported language version %q", extractor.LanguageVersion), Path: "languageVersion"}
+	}
+	if extractor.Version < 1 {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: "extractor version must be positive", Path: "version"}
+	}
+	return nil
+}
+
+func preflightSourceStructure(source ir.Source) error {
+	if source.Kind != "html" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown source kind %q", source.Kind), Path: "source"}
+	}
+	if source.SessionPolicy != "none" && source.SessionPolicy != "optional" && source.SessionPolicy != "required" {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown session policy %q", source.SessionPolicy), Path: "source.session"}
+	}
+	for index, segment := range source.Fetch.URLTemplate.Segments {
+		switch typed := segment.(type) {
+		case ir.LiteralTemplateSegment:
+			if typed.Kind != "literal" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid literal URL template segment kind %q", typed.Kind), Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
+			}
+		case ir.InputTemplateSegment:
+			if typed.Kind != "input" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid input URL template segment kind %q", typed.Kind), Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
+			}
+			if typed.Name == "" {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: "URL template input segment name must be non-empty", Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
+			}
+		default:
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown URL template segment %T", segment), Path: fmt.Sprintf("source.fetch.urlTemplate.segments[%d]", index)}
+		}
+	}
+	return nil
+}
+
+func preflightOutputStructure(root ir.OutputObject) error {
+	seenIDs := map[string]struct{}{}
+	var walk func(ir.OutputObject, string) error
+	walk = func(object ir.OutputObject, path string) error {
+		if object.Kind != "object" {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid output object kind %q", object.Kind), Path: path}
+		}
+		seenNames := map[string]struct{}{}
+		for _, member := range object.Members {
+			var name, id string
+			var row *ir.OutputObject
+			switch typed := member.(type) {
+			case ir.Field:
+				name, id = typed.Name, typed.ID
+				if typed.Kind != "field" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid field kind %q", typed.Kind), Path: typed.ID}
+				}
+				if !validRuntimeType(typed.SuccessfulType) {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "field has an invalid successful type", Path: typed.ID}
+				}
+				if !validRuntimeType(typed.EffectiveType) {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "field has an invalid effective type", Path: typed.ID}
+				}
+				if typed.Selection != nil && typed.Selection.Match != "one" && typed.Selection.Match != "first" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid selection match mode %q", typed.Selection.Match), Path: typed.ID}
+				}
+				switch source := typed.ValueSource.(type) {
+				case ir.TextValueSource:
+					if source.Kind != "text" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid text value-source kind %q", source.Kind), Path: typed.ID}
+					}
+					if !typesys.Equal(source.RawType, typesys.Primitive("string")) {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "text value-source rawType must be string", Path: typed.ID}
+					}
+					if typed.Selection == nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
+					}
+				case ir.HTMLValueSource:
+					if source.Kind != "html" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid HTML value-source kind %q", source.Kind), Path: typed.ID}
+					}
+					if !typesys.Equal(source.RawType, typesys.Primitive("string")) {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "HTML value-source rawType must be string", Path: typed.ID}
+					}
+					if typed.Selection == nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
+					}
+				case ir.AttributeValueSource:
+					if source.Kind != "attribute" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid attribute value-source kind %q", source.Kind), Path: typed.ID}
+					}
+					if !typesys.Equal(source.RawType, typesys.Primitive("string")) {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "attribute value-source rawType must be string", Path: typed.ID}
+					}
+					if typed.Selection == nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
+					}
+					if source.Name == "" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "attribute value source requires a non-empty name", Path: typed.ID}
+					}
+				case ir.JavaScriptValueSource:
+					if source.Kind != "javascript" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid JavaScript value-source kind %q", source.Kind), Path: typed.ID}
+					}
+					if !validRuntimeType(source.Returns) {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "JavaScript value source has an invalid returns type", Path: typed.ID}
+					}
+					if source.Scope != "document" && source.Scope != "current" {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid JavaScript scope %q", source.Scope), Path: typed.ID}
+					}
+					if source.TimeoutMS != nil && *source.TimeoutMS < 1 {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "JavaScript timeoutMs must be positive", Path: typed.ID}
+					}
+					if source.Scope == "document" && typed.Selection != nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "document-scoped JavaScript forbids a selection", Path: typed.ID}
+					}
+					if source.Scope == "current" && typed.Selection == nil && !strings.Contains(path, "[]") {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: "top-level current-scoped JavaScript requires a selection", Path: typed.ID}
+					}
+				}
+				if typed.Required && typed.Default != nil {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "required field must not declare a default", Path: typed.ID}
+				}
+				if typed.Default != nil {
+					value, err := decodeJSON(*typed.Default)
+					if err != nil {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: typed.ID, Cause: err}
+					}
+					if _, ok := normalizeJSONResult(value, typed.SuccessfulType); !ok {
+						return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("field default of type %T is not assignable to %s", value, typed.SuccessfulType.String()), Path: typed.ID}
+					}
+				}
+				if typed.OnError != "" && typed.OnError != "fail" && typed.OnError != "null" && typed.OnError != "warn" && typed.OnError != "default" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown on-error policy %q", typed.OnError), Path: typed.ID}
+				}
+				if (typed.OnError == "null" || typed.OnError == "warn") && !typesys.IsNullable(typed.EffectiveType) {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: typed.OnError + " requires nullable effective type", Path: typed.ID}
+				}
+				if typed.OnError == "default" && typed.Default == nil {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "default policy requires a field default", Path: typed.ID}
+				}
+			case ir.Collection:
+				name, id, row = typed.Name, typed.ID, &typed.Row
+				if typed.Kind != "collection" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid collection kind %q", typed.Kind), Path: typed.ID}
+				}
+				if typed.MinItems < 0 {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "collection minItems must be non-negative", Path: typed.ID}
+				}
+				effectiveMinimum := typed.MinItems
+				if typed.Required && effectiveMinimum < 1 {
+					effectiveMinimum = 1
+				}
+				if typed.MaxItems != nil && *typed.MaxItems < effectiveMinimum {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("collection maxItems %d is less than effective minItems %d", *typed.MaxItems, effectiveMinimum), Path: typed.ID}
+				}
+				if typed.OnRowError != "fail" && typed.OnRowError != "skip" {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown on-row-error policy %q", typed.OnRowError), Path: typed.ID}
+				}
+				if len(typed.Row.Members) == 0 {
+					return &ExecutionError{Code: "E_IR_INVALID", Message: "collection row requires at least one output member", Path: typed.ID}
+				}
+			default:
+				continue
+			}
+			if _, exists := seenNames[name]; exists {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate output member name %q", name), Path: path}
+			}
+			seenNames[name] = struct{}{}
+			if _, exists := seenIDs[id]; exists {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate output member ID %q", id), Path: path}
+			}
+			seenIDs[id] = struct{}{}
+			if row != nil {
+				if err := walk(*row, id+"[]"); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return walk(root, "output")
+}
+
+func validRuntimeType(value typesys.Type) bool {
+	parsed, err := typesys.Parse(value.String())
+	return err == nil && typesys.Equal(parsed, value)
+}
+
 func (e *engine) preflightOutput(object ir.OutputObject) error {
 	for _, member := range object.Members {
 		switch typed := member.(type) {
@@ -108,8 +309,12 @@ func (e *engine) preflightOutput(object ir.OutputObject) error {
 					return &ExecutionError{Code: "E_SELECTOR_INVALID", Message: err.Error(), Path: typed.ID, Cause: err}
 				}
 			}
-			if _, ok := typed.ValueSource.(ir.JavaScriptValueSource); ok {
+			switch typed.ValueSource.(type) {
+			case ir.TextValueSource, ir.HTMLValueSource, ir.AttributeValueSource:
+			case ir.JavaScriptValueSource:
 				return &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: "HTTP runtime cannot execute JavaScript value sources", Path: typed.ID}
+			default:
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown value source %T", typed.ValueSource), Path: typed.ID}
 			}
 		case ir.Collection:
 			if _, err := e.selector(typed.Selector); err != nil {
@@ -231,13 +436,24 @@ func (e *engine) handleMissing(field ir.Field, path, message string) (any, error
 		return nil, &ExecutionError{Code: "E_REQUIRED_VALUE_MISSING", Message: message, Path: path}
 	}
 	if field.Default != nil {
-		value, err := decodeJSON(*field.Default)
-		if err != nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
-		}
-		return value, nil
+		return decodeFieldDefault(field, path)
 	}
 	return nil, nil
+}
+
+func decodeFieldDefault(field ir.Field, path string) (any, error) {
+	if field.Default == nil {
+		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "on-error default requires a field default", Path: path}
+	}
+	value, err := decodeJSON(*field.Default)
+	if err != nil {
+		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
+	}
+	normalized, ok := normalizeJSONResult(value, field.SuccessfulType)
+	if !ok {
+		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("field default of type %T is not assignable to %s", value, field.SuccessfulType.String()), Path: path}
+	}
+	return normalized, nil
 }
 
 func (e *engine) recoverField(field ir.Field, path string, cause error) (any, error) {
@@ -263,12 +479,9 @@ func (e *engine) recoverField(field ir.Field, path string, cause error) (any, er
 		e.warnings = append(e.warnings, Warning{Code: "W_ERROR_RECOVERED", Message: cause.Error(), Path: path})
 		return nil, nil
 	case "default":
-		if field.Default == nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "on-error default requires a field default", Path: path}
-		}
-		value, err := decodeJSON(*field.Default)
+		value, err := decodeFieldDefault(field, path)
 		if err != nil {
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: err.Error(), Path: path, Cause: err}
+			return nil, err
 		}
 		e.partial = true
 		return value, nil
@@ -305,13 +518,6 @@ func (e *engine) executeCollection(scope *dom.Node, collection ir.Collection, pa
 		return nil, &ExecutionError{Code: "E_COLLECTION_CARDINALITY", Message: fmt.Sprintf("collection has %d rows; maximum is %d", len(result), *collection.MaxItems), Path: path}
 	}
 	return result, nil
-}
-
-func executionCode(err error, fallback string) string {
-	if execution, ok := err.(*ExecutionError); ok && execution.Code != "" {
-		return execution.Code
-	}
-	return fallback
 }
 
 func matchesRuntimeType(value any, target typesys.Type) bool {
@@ -404,8 +610,14 @@ func float32IsInvalid(value float32) bool {
 
 func isJSONCompatible(value any) bool {
 	switch typed := value.(type) {
-	case nil, string, bool, json.Number, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+	case nil, string, bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return true
+	case json.Number:
+		if _, err := json.Marshal(typed); err != nil {
+			return false
+		}
+		number, err := typed.Float64()
+		return err == nil && !math.IsNaN(number) && !math.IsInf(number, 0)
 	case float32:
 		return !float32IsInvalid(typed)
 	case float64:

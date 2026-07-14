@@ -25,6 +25,10 @@ func FuzzParseHTMLNeverPanics(f *testing.F) {
 		"<table><tr><td>A<td>B</table>",
 		"<div title='x'>&amp;<span>text</span></div>",
 		"<script>const x = '<tag>';</script>",
+		"<script>before</scriptx><b>inside</b></ScRiPt >",
+		"<table><thead><tr><th>H<tbody><tr><td>A<td>B<tfoot><tr><td>F</table>",
+		"<dl><dt>Term<dd>Definition<dt>Next</dl>",
+		"<select><optgroup><option>A<option>B<optgroup><option>C</select>",
 	} {
 		f.Add(seed)
 	}

@@ -1,6 +1,6 @@
 # Validation
 
-Validated on 2026-07-13 with Go 1.26.4.
+Validated on 2026-07-14 with Go 1.26.5 on macOS arm64.
 
 ## Integrated release check
 
@@ -27,48 +27,60 @@ This includes:
 Passed three independent short fuzz runs:
 
 ```bash
-GOMAXPROCS=2 go test ./internal/kdl -run=^$ \
-  -fuzz=FuzzParseNeverPanics -fuzztime=3s
-GOMAXPROCS=2 go test ./internal/dom -run=^$ \
-  -fuzz=FuzzParseSelectorNeverPanics -fuzztime=3s
-GOMAXPROCS=2 go test ./internal/dom -run=^$ \
-  -fuzz=FuzzParseHTMLNeverPanics -fuzztime=3s
+go test ./internal/kdl -run=^$ \
+  -fuzz=FuzzParseNeverPanics -fuzztime=10s
+go test ./internal/dom -run=^$ \
+  -fuzz=FuzzParseSelectorNeverPanics -fuzztime=10s
+go test ./internal/dom -run=^$ \
+  -fuzz=FuzzParseHTMLNeverPanics -fuzztime=20s
 ```
 
-No crash or hang was found. Scheduled CI runs each target for two minutes.
+The HTML run first found an invalid-UTF-8 raw-text offset panic; the minimized input is now a committed fuzz corpus entry. After the fix, the 20-second rerun completed approximately 1.64 million executions without a crash or hang. Scheduled CI runs each target for two minutes.
 
 ## Release archive smoke
 
 The release builder produced and verified both archive formats:
 
 ```bash
-SCRAPE_KDL_RELEASE_TARGETS='linux/amd64 darwin/amd64' \
+SCRAPE_KDL_RELEASE_TARGETS='linux/amd64 darwin/arm64' \
   ./scripts/build-release.sh v0.1.0 /tmp/scrape-kdl-dist-smoke
-sha256sum -c /tmp/scrape-kdl-dist-smoke/checksums.txt
+cd /tmp/scrape-kdl-dist-smoke
+shasum -a 256 -c checksums.txt
 ```
 
-Linux and macOS tar archives passed archive-integrity checks. The default release matrix contains four supported targets. Windows targets are rejected explicitly.
+Linux and macOS tar archives passed archive-integrity checks. Checksum generation is covered for both `sha256sum` on Linux and `shasum` on macOS, including the no-utility failure path. Temporary release stages are removed after both successful and failed builds. The default release matrix contains four supported targets. Windows targets are rejected explicitly.
 
 ## Workflow and metadata checks
 
 Passed:
 
 - all `.github/**/*.yml` files parsed as YAML;
+- `actionlint` validation of all GitHub Actions workflows;
 - core and adapter semantic-version tag validation;
 - `manifest.json` JSON parsing;
 - source ZIP integrity and post-extraction root-module tests.
 
-## External dependency boundary
+## Static, module, and vulnerability checks
 
-The environment cannot resolve an external Go module proxy. Therefore the actual `github.com/go-rod/rod` dependency and Chromium E2E were not executed locally.
+Passed:
 
-The repository contains:
+- `go mod verify` and `go mod tidy -diff` for the root module;
+- `go mod verify` for the go-rod adapter through an isolated local workspace;
+- `staticcheck` from `honnef.co/go/tools v0.7.0` for the root module and go-rod adapter;
+- `govulncheck` from `golang.org/x/vuln v1.6.0` for the root module and go-rod adapter, with no reachable vulnerabilities found;
+- ten shuffled repetitions of the root test suite.
 
-- real-dependency compilation and vet jobs in `.github/workflows/ci.yml`;
-- scheduled Chromium E2E in `.github/workflows/browser-e2e.yml`;
-- a local API contract stub used only for offline build verification.
+The scan tools were run through temporary `go install ...@latest` binaries. Adapter scans used a temporary source copy with a local root-module replacement so the committed release-clean `adapters/rod/go.mod` and `go.sum` remained unchanged.
 
-Before the first public tag, the real-dependency and browser workflows must pass in GitHub Actions.
+## External adapter and browser checks
+
+The environment resolved `github.com/go-rod/rod v0.116.2` and provided a downloadable Chromium build. Passed:
+
+- `make test-rod-contract`;
+- `make test-rod` against the real dependency;
+- `make test-rod-e2e` with Chromium, including workflow interaction, document- and current-scoped JavaScript, JavaScript failure propagation, integer result normalization, live-DOM reads, and collection extraction.
+
+The real-dependency and browser workflows remain the CI gates for Linux before the first public tag.
 
 ## Platform support
 

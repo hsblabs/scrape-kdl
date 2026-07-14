@@ -30,14 +30,13 @@ for target in $targets; do
   goarch="${target#*/}"
   name="scrape-kdl_${plain}_${goos}_${goarch}"
   echo "building ${goos}/${goarch}"
-  stage="$(mktemp -d)"
-  binary="scrape-kdl"
-  CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags "$ldflags" -o "$stage/$binary" ./cmd/scrape-kdl
-  cp LICENSE README.md "$stage/"
-  tar -C "$stage" -czf "$out_abs/$name.tar.gz" "$binary" LICENSE README.md
-  rm -rf "$stage"
+  (
+    stage="$(mktemp -d)"
+    trap 'rm -rf "$stage"' EXIT
+    binary="scrape-kdl"
+    CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags "$ldflags" -o "$stage/$binary" ./cmd/scrape-kdl
+    cp LICENSE README.md "$stage/"
+    tar -C "$stage" -czf "$out_abs/$name.tar.gz" "$binary" LICENSE README.md
+  )
 done
-(
-  cd "$out_abs"
-  sha256sum ./* > checksums.txt
-)
+"$root/scripts/write-release-checksums.sh" "$out_abs"

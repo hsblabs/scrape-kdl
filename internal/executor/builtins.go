@@ -9,10 +9,47 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
+
+type builtinRuntimeSignature struct {
+	allowed       string
+	required      string
+	minPositional int
+	maxPositional int
+}
+
+var builtinRuntimeSignatures = map[string]builtinRuntimeSignature{
+	"trim": {}, "normalize-whitespace": {}, "lowercase": {}, "uppercase": {},
+	"replace":        {allowed: "old new count", required: "old new"},
+	"regex-replace":  {allowed: "pattern replacement flags count", required: "pattern replacement"},
+	"regex-capture":  {allowed: "pattern group flags", required: "pattern"},
+	"substring":      {allowed: "start end", required: "start"},
+	"split":          {allowed: "separator limit", required: "separator"},
+	"join":           {allowed: "separator", required: "separator"},
+	"prepend":        {allowed: "value", required: "value"},
+	"append":         {allowed: "value", required: "value"},
+	"parse-int":      {allowed: "as radix", required: "as"},
+	"parse-float":    {allowed: "as", required: "as"},
+	"parse-bool":     {allowed: "case-sensitive true false"},
+	"to-string":      {},
+	"empty-to-null":  {},
+	"coalesce":       {allowed: "value", required: "value"},
+	"url-resolve":    {allowed: "base", required: "base"},
+	"url-query":      {allowed: "name index", required: "name"},
+	"url-path":       {},
+	"path-segment":   {allowed: "index", required: "index"},
+	"assert-matches": {allowed: "pattern flags", required: "pattern"},
+	"assert-enum":    {minPositional: 1, maxPositional: -1},
+	"assert-min":     {allowed: "value", required: "value"},
+	"assert-max":     {allowed: "value", required: "value"},
+}
+
+func isKnownBuiltinRuntime(name string) bool {
+	_, ok := builtinRuntimeSignatures[name]
+	return ok
+}
 
 func applyBuiltinRuntime(name string, input any, call ir.TransformCall) (any, error) {
 	arguments := make(map[string]json.RawMessage, len(call.NamedArguments))
@@ -86,7 +123,11 @@ func applyBuiltinRuntime(name string, input any, call ir.TransformCall) (any, er
 		if err != nil || !ok {
 			return nil, argumentError("coalesce requires value", err)
 		}
-		return value, nil
+		normalized, compatible := normalizeJSONResult(value, call.Output)
+		if !compatible {
+			return nil, fmt.Errorf("coalesce value of type %T is not assignable to %s", value, call.Output.String())
+		}
+		return normalized, nil
 	case "url-resolve":
 		return builtinURLResolve(input, arguments)
 	case "url-query":
@@ -128,6 +169,21 @@ func requiredStringArgument(arguments map[string]json.RawMessage, name string) (
 	return stringValue, nil
 }
 
+func requiredIntArgument(arguments map[string]json.RawMessage, name string) (int, error) {
+	value, ok, err := namedArgument(arguments, name)
+	if err != nil {
+		return 0, err
+	}
+	if !ok {
+		return 0, fmt.Errorf("argument %q is required", name)
+	}
+	parsed, err := literalInt(value)
+	if err != nil {
+		return 0, fmt.Errorf("argument %q: %w", name, err)
+	}
+	return parsed, nil
+}
+
 func optionalIntArgument(arguments map[string]json.RawMessage, name string, fallback int) (int, error) {
 	value, ok, err := namedArgument(arguments, name)
 	if err != nil || !ok {
@@ -140,6 +196,21 @@ func optionalIntArgument(arguments map[string]json.RawMessage, name string, fall
 	return parsed, nil
 }
 
+func optionalNonNegativeIntArgument(arguments map[string]json.RawMessage, name string, fallback int) (int, error) {
+	value, ok, err := namedArgument(arguments, name)
+	if err != nil || !ok {
+		return fallback, err
+	}
+	parsed, err := literalInt(value)
+	if err != nil {
+		return 0, fmt.Errorf("argument %q: %w", name, err)
+	}
+	if parsed < 0 {
+		return 0, fmt.Errorf("argument %q must be non-negative", name)
+	}
+	return parsed, nil
+}
+
 func optionalBoolArgument(arguments map[string]json.RawMessage, name string, fallback bool) (bool, error) {
 	value, ok, err := namedArgument(arguments, name)
 	if err != nil || !ok {
@@ -148,6 +219,18 @@ func optionalBoolArgument(arguments map[string]json.RawMessage, name string, fal
 	parsed, ok := value.(bool)
 	if !ok {
 		return false, fmt.Errorf("argument %q must be boolean", name)
+	}
+	return parsed, nil
+}
+
+func optionalStringArgument(arguments map[string]json.RawMessage, name, fallback string) (string, error) {
+	value, ok, err := namedArgument(arguments, name)
+	if err != nil || !ok {
+		return fallback, err
+	}
+	parsed, ok := value.(string)
+	if !ok {
+		return "", fmt.Errorf("argument %q must be a string", name)
 	}
 	return parsed, nil
 }
@@ -184,7 +267,7 @@ func builtinReplace(input any, arguments map[string]json.RawMessage) (any, error
 	if err != nil {
 		return nil, err
 	}
-	count, err := optionalIntArgument(arguments, "count", -1)
+	count, err := optionalNonNegativeIntArgument(arguments, "count", -1)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +290,20 @@ func compileRuntimeRegex(arguments map[string]json.RawMessage) (*regexp.Regexp, 
 		}
 	}
 	if flags != "" {
+		seen := map[rune]bool{}
+		for _, flag := range flags {
+			if flag != 'i' && flag != 'm' && flag != 's' {
+				return nil, fmt.Errorf("unsupported regex flag %q", flag)
+			}
+			if seen[flag] {
+				return nil, fmt.Errorf("duplicate regex flag %q", flag)
+			}
+			seen[flag] = true
+		}
 		pattern = "(?" + flags + ")" + pattern
+	}
+	if strings.Contains(pattern, "(?P<") || strings.Contains(pattern, "(?<") {
+		return nil, fmt.Errorf("named capture groups are outside the portable RE2 profile")
 	}
 	compiled, err := regexp.Compile(pattern)
 	if err != nil {
@@ -229,7 +325,7 @@ func builtinRegexReplace(input any, arguments map[string]json.RawMessage) (any, 
 	if err != nil {
 		return nil, err
 	}
-	count, err := optionalIntArgument(arguments, "count", -1)
+	count, err := optionalNonNegativeIntArgument(arguments, "count", -1)
 	if err != nil {
 		return nil, err
 	}
@@ -267,8 +363,14 @@ func builtinRegexCapture(input any, arguments map[string]json.RawMessage) (any, 
 	if err != nil {
 		return nil, err
 	}
+	if group < 0 {
+		return nil, fmt.Errorf("argument %q must be non-negative", "group")
+	}
+	if group > compiled.NumSubexp() {
+		return nil, fmt.Errorf("capture group %d exceeds pattern capture count %d", group, compiled.NumSubexp())
+	}
 	indexes := compiled.FindStringSubmatchIndex(value)
-	if len(indexes) == 0 || group*2+1 >= len(indexes) || indexes[group*2] < 0 {
+	if len(indexes) == 0 || indexes[group*2] < 0 {
 		return nil, nil
 	}
 	return value[indexes[group*2]:indexes[group*2+1]], nil
@@ -279,7 +381,7 @@ func builtinSubstring(input any, arguments map[string]json.RawMessage) (any, err
 	if err != nil {
 		return nil, err
 	}
-	start, err := optionalIntArgument(arguments, "start", 0)
+	start, err := requiredIntArgument(arguments, "start")
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +420,7 @@ func builtinSplit(input any, arguments map[string]json.RawMessage) (any, error) 
 	if err != nil {
 		return nil, err
 	}
-	limit, err := optionalIntArgument(arguments, "limit", -1)
+	limit, err := optionalNonNegativeIntArgument(arguments, "limit", -1)
 	if err != nil {
 		return nil, err
 	}
@@ -461,15 +563,13 @@ func builtinParseBool(input any, arguments map[string]json.RawMessage) (any, err
 	}
 	trueValue := "true"
 	falseValue := "false"
-	if candidate, ok, err := namedArgument(arguments, "true"); err != nil {
+	trueValue, err = optionalStringArgument(arguments, "true", trueValue)
+	if err != nil {
 		return nil, err
-	} else if ok {
-		trueValue, _ = candidate.(string)
 	}
-	if candidate, ok, err := namedArgument(arguments, "false"); err != nil {
+	falseValue, err = optionalStringArgument(arguments, "false", falseValue)
+	if err != nil {
 		return nil, err
-	} else if ok {
-		falseValue, _ = candidate.(string)
 	}
 	compare := value
 	if !caseSensitive {
@@ -513,6 +613,9 @@ func builtinToString(input any) (any, error) {
 	case uint64:
 		return strconv.FormatUint(value, 10), nil
 	case float32:
+		if float32IsInvalid(value) {
+			return nil, fmt.Errorf("float must be finite")
+		}
 		return strconv.FormatFloat(float64(value), 'g', -1, 32), nil
 	case float64:
 		if math.IsNaN(value) || math.IsInf(value, 0) {
@@ -557,12 +660,19 @@ func builtinURLQuery(input any, arguments map[string]json.RawMessage) (any, erro
 	if err != nil {
 		return nil, err
 	}
+	if index < 0 {
+		return nil, fmt.Errorf("argument %q must be non-negative", "index")
+	}
 	parsed, err := url.Parse(value)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL %q: %w", value, err)
 	}
-	values := parsed.Query()[name]
-	if index < 0 || index >= len(values) {
+	query, err := url.ParseQuery(parsed.RawQuery)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL query in %q: %w", value, err)
+	}
+	values := query[name]
+	if index >= len(values) {
 		return nil, nil
 	}
 	return values[index], nil
@@ -589,7 +699,7 @@ func builtinPathSegment(input any, arguments map[string]json.RawMessage) (any, e
 	if err != nil {
 		return nil, err
 	}
-	index, err := optionalIntArgument(arguments, "index", 0)
+	index, err := requiredIntArgument(arguments, "index")
 	if err != nil {
 		return nil, err
 	}
@@ -682,6 +792,9 @@ func numericBigFloat(value any) (*big.Float, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid number %q: %w", text, err)
 	}
+	if parsed.IsInf() {
+		return nil, fmt.Errorf("number must be finite")
+	}
 	return parsed, nil
 }
 
@@ -691,5 +804,3 @@ func argumentError(message string, cause error) error {
 	}
 	return fmt.Errorf("%s: %w", message, cause)
 }
-
-var _ = utf8.RuneCountInString

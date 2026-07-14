@@ -213,7 +213,7 @@ func (c *Compiler) compileTemplate(raw string, n *kdl.Node, inputs map[string]ir
 		}
 	}
 	parsed, err := url.Parse(probe.String())
-	if err != nil || parsed.IsAbs() == false || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+	if err != nil || !parsed.IsAbs() || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		c.diags.Add("E_TEMPLATE_INVALID", diagnostic.SeverityError, "expanded URL template must be an absolute http or https URL", n.Span, "source.fetch.url")
 	}
 	return ir.Template{Raw: raw, Segments: segments}

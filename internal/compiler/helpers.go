@@ -67,14 +67,6 @@ func stringArg(n *kdl.Node, idx int) (string, bool) {
 	return s, ok
 }
 
-func intArg(n *kdl.Node, idx int) (int, bool) {
-	if idx < 0 || idx >= len(n.Arguments) || n.Arguments[idx].Kind != kdl.ValueInt {
-		return 0, false
-	}
-	i, ok := n.Arguments[idx].Value.(int64)
-	return int(i), ok
-}
-
 func floatArg(n *kdl.Node, idx int) (float64, bool) {
 	if idx < 0 || idx >= len(n.Arguments) {
 		return 0, false

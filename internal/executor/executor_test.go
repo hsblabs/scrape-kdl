@@ -2,9 +2,12 @@ package executor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -15,6 +18,8 @@ import (
 	"time"
 
 	"github.com/hsblabs/scrape-kdl/internal/compiler"
+	"github.com/hsblabs/scrape-kdl/internal/ir"
+	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
 func compileTestSpec(t *testing.T, source string) string {
@@ -165,6 +170,140 @@ func TestExecuteFieldWarningAndExternalTransform(t *testing.T) {
 	}
 }
 
+func TestExecuteHTMLFieldRecoveryPolicies(t *testing.T) {
+	path := compileTestSpec(t, `extractor "http-recovery" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "nulled" type="u8" required=#false {
+    select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "null"
+  }
+  field "warned" type="u8" required=#false {
+    select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "warn"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := ExecuteHTML(context.Background(), extractor, `<span class="bad">invalid</span>`, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Value["nulled"] != nil || result.Value["warned"] != nil || !result.Partial {
+		t.Fatalf("result = %#v", result)
+	}
+	if len(result.Warnings) != 2 || result.Warnings[0].Code != "W_ERROR_RECOVERED" || result.Warnings[0].Path != "output.warned" || result.Warnings[1].Code != "W_PARTIAL_EXTRACTION" {
+		t.Fatalf("warnings = %#v", result.Warnings)
+	}
+}
+
+func TestExecuteHTMLFieldRecoveryFail(t *testing.T) {
+	path := compileTestSpec(t, `extractor "http-recovery-fail" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "value" type="u8" required=#true {
+    select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "fail"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	_, err := ExecuteHTML(context.Background(), extractor, `<span class="bad">invalid</span>`, Options{})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM" || execution.Path != "output.value" || execution.Cause == nil {
+		t.Fatalf("error = %#v", err)
+	}
+}
+
+func TestExecuteHTMLRequiredMissingIsNotRecovered(t *testing.T) {
+	path := compileTestSpec(t, `extractor "http-required-missing" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "value" type="string" required=#true {
+    select ".missing" match="first"; value "text"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	_, err := ExecuteHTML(context.Background(), extractor, `<span>present</span>`, Options{})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_REQUIRED_VALUE_MISSING" || execution.Path != "output.value" {
+		t.Fatalf("error = %#v", err)
+	}
+}
+
+func TestExecuteHTMLNormalizesNumericFieldDefaults(t *testing.T) {
+	path := compileTestSpec(t, `extractor "numeric-defaults" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "missing_count" type="int" required=#false default=7 {
+    select ".missing"; value "text"; apply "parse-int" as="int"; on-error "default"
+  }
+  field "recovered_count" type="int" required=#false default=8 {
+    select ".bad"; value "text"; apply "parse-int" as="int"; on-error "default"
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := ExecuteHTML(context.Background(), extractor, `<span class="bad">invalid</span>`, Options{})
+	if err != nil || result.Value["missing_count"] != int64(7) || result.Value["recovered_count"] != int64(8) || !result.Partial {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+
+	field := extractor.Output.Members[1].(ir.Field)
+	outOfRange := json.RawMessage(`9223372036854775808`)
+	field.Default = &outOfRange
+	extractor.Output.Members[1] = field
+	_, err = ExecuteHTML(context.Background(), extractor, `<span class="bad">invalid</span>`, Options{})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "output.recovered_count" {
+		t.Fatalf("malformed default error = %#v", err)
+	}
+}
+
+func TestExecuteNormalizesNumericTransformLiterals(t *testing.T) {
+	path := compileTestSpec(t, `extractor "numeric-literals" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  transform "maybe_count" input="string" output="int?" {
+    match {
+      case "one" 1
+      default #null
+    }
+  }
+  field "matched" type="int" required=#true {
+    select ".matched"
+    value "text"
+    apply "maybe_count"
+    apply "coalesce" value=3
+  }
+  field "defaulted" type="int" required=#true {
+    select ".defaulted"
+    value "text"
+    apply "maybe_count"
+    apply "coalesce" value=3
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	html := `<div class="matched">one</div><div class="defaulted">other</div>`
+	result, err := ExecuteHTML(context.Background(), extractor, html, Options{})
+	if err != nil || result.Value["matched"] != int64(1) || result.Value["defaulted"] != int64(3) {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+
+	match := extractor.Transforms[0].(ir.MatchTransform)
+	match.Cases[0].Then = json.RawMessage(`"invalid"`)
+	extractor.Transforms[0] = match
+	_, err = ExecuteHTML(context.Background(), extractor, html, Options{})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_TRANSFORM" || execution.Path != "maybe_count" || !strings.Contains(execution.Message, "not assignable to int?") {
+		t.Fatalf("invalid match result error = %v", err)
+	}
+}
+
 func TestExecuteRejectsMissingExternalBeforeFetch(t *testing.T) {
 	requested := false
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -231,6 +370,55 @@ func TestSessionNoneIsIgnored(t *testing.T) {
 	_, err := Execute(context.Background(), extractor, nil, Options{Session: &Session{Headers: http.Header{"X-Secret": []string{"value"}}}})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestExecuteHTTPSessionConstructionIsDeterministic(t *testing.T) {
+	path := compileTestSpec(t, `extractor "session-order" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/"; session policy="optional" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	wantHeaders := []string{"upper", "lower-one", "lower-two"}
+	wantCookies := []string{"first", "second"}
+	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if got := request.Header.Values("X-Order"); !reflect.DeepEqual(got, wantHeaders) {
+			t.Fatalf("header value order = %v", got)
+		}
+		cookies := request.Cookies()
+		gotCookies := make([]string, 0, len(cookies))
+		for _, cookie := range cookies {
+			if cookie.Name == "duplicate" {
+				gotCookies = append(gotCookies, cookie.Value)
+			}
+		}
+		if !reflect.DeepEqual(gotCookies, wantCookies) {
+			t.Fatalf("cookie value order = %v", gotCookies)
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header),
+			Body: io.NopCloser(strings.NewReader(`<h1>ok</h1>`)), Request: request,
+		}, nil
+	})}
+	session := &Session{
+		Headers: http.Header{
+			"x-order": []string{"lower-one", "lower-two"},
+			"X-Order": []string{"upper"},
+		},
+		Cookies: []*http.Cookie{
+			nil,
+			{Name: "duplicate", Value: "first"},
+			{Name: "duplicate", Value: "second"},
+		},
+	}
+	for range 100 {
+		result, err := Execute(context.Background(), extractor, nil, Options{HTTPClient: client, Session: session})
+		if err != nil || result.Value["title"] != "ok" {
+			t.Fatalf("result = %#v, error = %v", result, err)
+		}
 	}
 }
 
@@ -346,6 +534,592 @@ func TestExecuteURLPolicyRejectsBeforeFetch(t *testing.T) {
 	}
 }
 
+func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
+	const spec = `extractor "http-preflight" version=1 {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/{id}"
+    session policy="required"
+  }
+  input "id" type="int" required=#true
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`
+	tests := []struct {
+		name     string
+		mutate   func(*ir.Extractor)
+		inputs   map[string]any
+		session  *Session
+		wantCode string
+	}{
+		{name: "success", inputs: map[string]any{"id": int64(1)}, session: &Session{}},
+		{
+			name: "invalid extractor kind",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Kind = "program"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unsupported IR version",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.IRVersion = "1.0"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unsupported language version",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.LanguageVersion = "1.0"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "non-positive extractor version",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Version = 0
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "external transform",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Transforms = append(extractor.Transforms, ir.ExternalTransform{
+					Kind: "external", TransformBase: ir.TransformBase{SymbolID: "external", Name: "external"}, Symbol: "missing",
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_EXTERNAL_TRANSFORM_MISSING",
+		},
+		{
+			name: "empty external transform symbol",
+			mutate: func(extractor *ir.Extractor) {
+				stringType := typesys.Primitive("string")
+				extractor.Transforms = append(extractor.Transforms, ir.ExternalTransform{
+					Kind:          "external",
+					TransformBase: ir.TransformBase{SymbolID: "external", Name: "external", Input: stringType, Output: stringType},
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "non-scalar match transform",
+			mutate: func(extractor *ir.Extractor) {
+				stringType := typesys.Primitive("string")
+				extractor.Transforms = append(extractor.Transforms, ir.MatchTransform{
+					Kind:          "match",
+					TransformBase: ir.TransformBase{SymbolID: "match", Name: "match", Input: typesys.Array(stringType), Output: stringType},
+					Default:       json.RawMessage(`"fallback"`),
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid selector",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Selection.Selector = "["
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_SELECTOR_INVALID",
+		},
+		{
+			name: "browser value source",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Selection = nil
+				field.ValueSource = ir.JavaScriptValueSource{Kind: "javascript", Scope: "document", Source: `() => "value"`, Returns: field.SuccessfulType}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_BROWSER_RUNTIME_MISSING",
+		},
+		{
+			name: "unknown value source",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ValueSource = nil
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unknown builtin transform",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{Target: ir.BuiltinTarget{Kind: "builtin", Name: "missing"}}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM",
+		},
+		{
+			name: "missing declared transform",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{Target: ir.DeclaredTarget{Kind: "declared", SymbolID: "transform:missing"}}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM_MISSING",
+		},
+		{
+			name: "declared transform output mismatch",
+			mutate: func(extractor *ir.Extractor) {
+				stringType := typesys.Primitive("string")
+				boolType := typesys.Primitive("bool")
+				extractor.Transforms = []ir.Transform{ir.MatchTransform{
+					Kind:          "match",
+					TransformBase: ir.TransformBase{SymbolID: "transform:declared", Name: "declared", Input: stringType, Output: boolType},
+					Default:       json.RawMessage(`true`),
+				}}
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{
+					Target: ir.DeclaredTarget{Kind: "declared", SymbolID: "transform:declared"}, Input: stringType, Output: stringType,
+				}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "duplicate transform argument",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{
+					Target: ir.BuiltinTarget{Kind: "builtin", Name: "prepend"},
+					NamedArguments: []ir.NamedArgument{
+						{Name: "value", Value: json.RawMessage(`"first"`)},
+						{Name: "value", Value: json.RawMessage(`"second"`)},
+					},
+				}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM",
+		},
+		{
+			name: "malformed transform argument",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{
+					Target:              ir.BuiltinTarget{Kind: "builtin", Name: "assert-enum"},
+					PositionalArguments: []json.RawMessage{json.RawMessage(`not-json`)},
+				}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM",
+		},
+		{
+			name: "field transform input discontinuity",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{
+					Target: ir.BuiltinTarget{Kind: "builtin", Name: "trim"},
+					Input:  typesys.Primitive("bool"), Output: typesys.Primitive("string"),
+				}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid transform target kind",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				stringType := typesys.Primitive("string")
+				field.Transforms = []ir.TransformCall{{
+					Target: ir.BuiltinTarget{Kind: "native", Name: "trim"}, Input: stringType, Output: stringType,
+				}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "malformed match literal",
+			mutate: func(extractor *ir.Extractor) {
+				stringType := typesys.Primitive("string")
+				extractor.Transforms = append(extractor.Transforms, ir.MatchTransform{
+					Kind:          "match",
+					TransformBase: ir.TransformBase{SymbolID: "transform:match", Name: "match", Input: stringType, Output: stringType},
+					Default:       json.RawMessage(`not-json`),
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM",
+		},
+		{
+			name: "unknown transform argument",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Transforms = []ir.TransformCall{{
+					Target:         ir.BuiltinTarget{Kind: "builtin", Name: "trim"},
+					NamedArguments: []ir.NamedArgument{{Name: "unknown", Value: json.RawMessage(`true`)}},
+				}}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_TRANSFORM",
+		},
+		{
+			name: "duplicate transform symbol",
+			mutate: func(extractor *ir.Extractor) {
+				base := ir.TransformBase{SymbolID: "transform:duplicate", Name: "duplicate"}
+				extractor.Transforms = append(extractor.Transforms,
+					ir.PipelineTransform{Kind: "pipeline", TransformBase: base},
+					ir.PipelineTransform{Kind: "pipeline", TransformBase: base},
+				)
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "duplicate input declaration",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Inputs = append(extractor.Inputs, extractor.Inputs[0])
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "empty input declaration name",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Inputs[0].Name = ""
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "empty URL template input name",
+			mutate: func(extractor *ir.Extractor) {
+				for index, segment := range extractor.Source.Fetch.URLTemplate.Segments {
+					if typed, ok := segment.(ir.InputTemplateSegment); ok {
+						typed.Name = ""
+						extractor.Source.Fetch.URLTemplate.Segments[index] = typed
+					}
+				}
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "malformed hidden input default",
+			mutate: func(extractor *ir.Extractor) {
+				value := json.RawMessage(`not-json`)
+				extractor.Inputs[0].Required = false
+				extractor.Inputs[0].Default = &value
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_INPUT_DEFAULT",
+		},
+		{
+			name: "unknown source kind",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.Kind = "json"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unknown session policy",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.SessionPolicy = "ambient"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid URL literal segment kind",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.Fetch.URLTemplate.Segments[0] = ir.LiteralTemplateSegment{Kind: "text", Value: "https://example.invalid/"}
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "duplicate output name",
+			mutate: func(extractor *ir.Extractor) {
+				first := extractor.Output.Members[0].(ir.Field)
+				second := first
+				second.ID = "output.other"
+				extractor.Output.Members = append(extractor.Output.Members, second)
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid output object kind",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Output.Kind = "map"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid field kind",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Kind = "value"
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "duplicate output ID",
+			mutate: func(extractor *ir.Extractor) {
+				first := extractor.Output.Members[0].(ir.Field)
+				second := first
+				second.Name = "other"
+				extractor.Output.Members = append(extractor.Output.Members, second)
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "negative collection minimum",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ID, field.Name = "output.rows[].title", "title"
+				extractor.Output.Members = append(extractor.Output.Members, ir.Collection{
+					Kind: "collection", ID: "output.rows", Name: "rows", Selector: "h1", MinItems: -1,
+					OnRowError: "fail", Row: ir.OutputObject{Kind: "object", Members: []ir.OutputMember{field}},
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unknown collection row policy",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ID, field.Name = "output.rows[].title", "title"
+				extractor.Output.Members = append(extractor.Output.Members, ir.Collection{
+					Kind: "collection", ID: "output.rows", Name: "rows", Selector: "h1", OnRowError: "ignore",
+					Row: ir.OutputObject{Kind: "object", Members: []ir.OutputMember{field}},
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "empty collection row schema",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Output.Members = append(extractor.Output.Members, ir.Collection{
+					Kind: "collection", ID: "output.rows", Name: "rows", Selector: "h1", OnRowError: "fail",
+					Row: ir.OutputObject{Kind: "object"},
+				})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unknown field recovery policy",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.OnError = "ignore"
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "required field default",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				value := json.RawMessage(`"fallback"`)
+				field.Default = &value
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "malformed field default",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				value := json.RawMessage(`not-json`)
+				field.Required = false
+				field.Default = &value
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "default policy without default",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Required = false
+				field.OnError = "default"
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "warn policy with non-nullable output",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.OnError = "warn"
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unknown selection match mode",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Selection.Match = "any"
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "malformed field successful type",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.SuccessfulType = typesys.Type{Kind: typesys.KindArray}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "malformed field effective type",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.EffectiveType = typesys.Type{Kind: typesys.KindNullable}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "text source without selection",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.Selection = nil
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "attribute source without name",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ValueSource = ir.AttributeValueSource{Kind: "attribute"}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid text source kind",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ValueSource = ir.TextValueSource{Kind: "content", RawType: typesys.Primitive("string")}
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid DOM source raw type",
+			mutate: func(extractor *ir.Extractor) {
+				field := extractor.Output.Members[0].(ir.Field)
+				field.ValueSource = ir.TextValueSource{Kind: "text", RawType: typesys.Primitive("bool")}
+				field.SuccessfulType = typesys.Primitive("bool")
+				field.EffectiveType = typesys.Primitive("bool")
+				extractor.Output.Members[0] = field
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{name: "required input", session: &Session{}, wantCode: "E_INPUT_REQUIRED"},
+		{name: "input type", inputs: map[string]any{"id": "wrong"}, session: &Session{}, wantCode: "E_INPUT_TYPE"},
+		{name: "required session", inputs: map[string]any{"id": int64(1)}, wantCode: "E_SESSION_REQUIRED"},
+		{
+			name: "expanded URL",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Source.Fetch.URLTemplate = ir.Template{Segments: []ir.TemplateSegment{
+					ir.LiteralTemplateSegment{Kind: "literal", Value: "ftp://example.invalid/"},
+				}}
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_URL_INVALID",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := compileTestSpec(t, spec)
+			extractor, diagnostics := compiler.CompileFile(path)
+			if diagnostics.HasErrors() {
+				t.Fatalf("compile diagnostics = %#v", diagnostics)
+			}
+			if tt.mutate != nil {
+				tt.mutate(extractor)
+			}
+			transportCalls := 0
+			client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				transportCalls++
+				return &http.Response{
+					StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header),
+					Body: io.NopCloser(strings.NewReader(`<h1>ready</h1>`)), Request: request,
+				}, nil
+			})}
+			result, err := Execute(context.Background(), extractor, tt.inputs, Options{HTTPClient: client, Session: tt.session})
+			if tt.wantCode == "" {
+				if err != nil || result.Value["title"] != "ready" || transportCalls != 1 {
+					t.Fatalf("result = %#v, error = %v, transport calls = %d", result, err, transportCalls)
+				}
+				return
+			}
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode {
+				t.Fatalf("error = %#v", err)
+			}
+			if transportCalls != 0 {
+				t.Fatalf("transport called %d times before %s", transportCalls, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestPreflightOutputStructureValidatesDOMRawTypes(t *testing.T) {
+	stringType := typesys.Primitive("string")
+	boolType := typesys.Primitive("bool")
+	tests := []struct {
+		name    string
+		valid   ir.ValueSource
+		invalid ir.ValueSource
+	}{
+		{name: "text", valid: ir.TextValueSource{Kind: "text", RawType: stringType}, invalid: ir.TextValueSource{Kind: "text", RawType: boolType}},
+		{name: "HTML", valid: ir.HTMLValueSource{Kind: "html", RawType: stringType}, invalid: ir.HTMLValueSource{Kind: "html", RawType: boolType}},
+		{name: "attribute", valid: ir.AttributeValueSource{Kind: "attribute", Name: "href", RawType: stringType}, invalid: ir.AttributeValueSource{Kind: "attribute", Name: "href", RawType: boolType}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := func(source ir.ValueSource) ir.OutputObject {
+				return ir.OutputObject{Kind: "object", Members: []ir.OutputMember{ir.Field{
+					Kind: "field", ID: "output.value", Name: "value",
+					Selection:   &ir.FieldSelection{Selector: "#value", Match: "one"},
+					ValueSource: source, SuccessfulType: stringType, EffectiveType: stringType, OnError: "fail",
+				}}}
+			}
+			if err := preflightOutputStructure(root(tt.valid)); err != nil {
+				t.Fatalf("valid raw type error = %v", err)
+			}
+			var execution *ExecutionError
+			if err := preflightOutputStructure(root(tt.invalid)); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" || execution.Path != "output.value" {
+				t.Fatalf("invalid raw type error = %#v", err)
+			}
+		})
+	}
+}
+
+func TestPreflightSourceStructure(t *testing.T) {
+	valid := ir.Source{
+		Kind: "html", SessionPolicy: "optional",
+		Fetch: ir.Fetch{URLTemplate: ir.Template{Segments: []ir.TemplateSegment{
+			ir.LiteralTemplateSegment{Kind: "literal", Value: "https://example.invalid/"},
+			ir.InputTemplateSegment{Kind: "input", Name: "id"},
+		}}},
+	}
+	if err := preflightSourceStructure(valid); err != nil {
+		t.Fatalf("valid source preflight error = %v", err)
+	}
+	tests := []struct {
+		name   string
+		mutate func(*ir.Source)
+	}{
+		{name: "source kind", mutate: func(source *ir.Source) { source.Kind = "json" }},
+		{name: "session policy", mutate: func(source *ir.Source) { source.SessionPolicy = "ambient" }},
+		{name: "literal discriminator", mutate: func(source *ir.Source) {
+			source.Fetch.URLTemplate.Segments[0] = ir.LiteralTemplateSegment{Kind: "text"}
+		}},
+		{name: "input discriminator", mutate: func(source *ir.Source) {
+			source.Fetch.URLTemplate.Segments[1] = ir.InputTemplateSegment{Kind: "parameter", Name: "id"}
+		}},
+		{name: "unknown segment", mutate: func(source *ir.Source) { source.Fetch.URLTemplate.Segments[1] = nil }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := valid
+			source.Fetch.URLTemplate.Segments = append([]ir.TemplateSegment(nil), valid.Fetch.URLTemplate.Segments...)
+			tt.mutate(&source)
+			var execution *ExecutionError
+			if err := preflightSourceStructure(source); !errors.As(err, &execution) || execution.Code != "E_IR_INVALID" {
+				t.Fatalf("preflight error = %#v", err)
+			}
+		})
+	}
+}
+
 func TestExecuteURLPolicyChecksRedirects(t *testing.T) {
 	var requests []string
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -401,5 +1175,456 @@ func TestExecuteHTTPTimeoutUsesStableCode(t *testing.T) {
 	var execution *ExecutionError
 	if !errors.As(err, &execution) || execution.Code != "E_TIMEOUT" {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (function roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return function(request)
+}
+
+func cookieNames(cookies []*http.Cookie) map[string]bool {
+	present := make(map[string]bool, len(cookies))
+	for _, cookie := range cookies {
+		present[cookie.Name] = true
+	}
+	return present
+}
+
+type trackingBody struct {
+	reader io.Reader
+	closed bool
+}
+
+func (body *trackingBody) Read(buffer []byte) (int, error) { return body.reader.Read(buffer) }
+func (body *trackingBody) Close() error {
+	body.closed = true
+	return nil
+}
+
+type errorReader struct{ err error }
+
+func (reader errorReader) Read([]byte) (int, error) { return 0, reader.err }
+
+type contextReader struct{ ctx context.Context }
+
+func (reader contextReader) Read([]byte) (int, error) {
+	<-reader.ctx.Done()
+	return 0, reader.ctx.Err()
+}
+
+func compileHTTPRuntimeSpec(t *testing.T, target string) *ir.Extractor {
+	t.Helper()
+	path := compileTestSpec(t, fmt.Sprintf(`extractor "http-cleanup" version=1 {
+  source "html" { fetch mode="http" url=%q }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`, target))
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	return extractor
+}
+
+func TestExecuteHTTPClosesResponseBodies(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		status     string
+		reader     io.Reader
+		maxBody    int64
+		wantCode   string
+	}{
+		{name: "success", statusCode: http.StatusOK, status: "200 OK", reader: strings.NewReader(`<h1>ok</h1>`)},
+		{name: "status error", statusCode: http.StatusInternalServerError, status: "500 Internal Server Error", reader: strings.NewReader("error"), wantCode: "E_HTTP_STATUS"},
+		{name: "read error", statusCode: http.StatusOK, status: "200 OK", reader: errorReader{err: io.ErrUnexpectedEOF}, wantCode: "E_HTTP_READ"},
+		{name: "body too large", statusCode: http.StatusOK, status: "200 OK", reader: strings.NewReader("12345"), maxBody: 4, wantCode: "E_HTTP_BODY_TOO_LARGE"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := &trackingBody{reader: tt.reader}
+			client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: tt.statusCode, Status: tt.status, Header: make(http.Header), Body: body, Request: request}, nil
+			})}
+			result, err := Execute(context.Background(), compileHTTPRuntimeSpec(t, "https://example.invalid/"), nil, Options{HTTPClient: client, MaxResponseBytes: tt.maxBody})
+			if !body.closed {
+				t.Fatal("response body was not closed")
+			}
+			if tt.wantCode == "" {
+				if err != nil || result.Value["title"] != "ok" {
+					t.Fatalf("result = %#v, error = %v", result, err)
+				}
+				return
+			}
+			var execution *ExecutionError
+			if !errors.As(err, &execution) || execution.Code != tt.wantCode {
+				t.Fatalf("error = %#v", err)
+			}
+		})
+	}
+}
+
+func TestExecuteHTTPClosesBodyAfterReadCancellation(t *testing.T) {
+	var body *trackingBody
+	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		body = &trackingBody{reader: contextReader{ctx: request.Context()}}
+		return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header), Body: body, Request: request}, nil
+	})}
+	_, err := Execute(context.Background(), compileHTTPRuntimeSpec(t, "https://example.invalid/"), nil, Options{HTTPClient: client, RequestTimeout: 10 * time.Millisecond})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_HTTP_READ" || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("error = %#v", err)
+	}
+	if body == nil || !body.closed {
+		t.Fatal("canceled response body was not closed")
+	}
+}
+
+func TestExecuteHTTPRedirectPolicyOrderAndBodyCleanup(t *testing.T) {
+	var bodies []*trackingBody
+	var events []string
+	client := &http.Client{
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			events = append(events, "request:"+request.URL.Path)
+			if request.URL.Path == "/start" {
+				body := &trackingBody{reader: strings.NewReader("")}
+				bodies = append(bodies, body)
+				return &http.Response{
+					StatusCode: http.StatusFound, Status: "302 Found", Header: http.Header{"Location": []string{"/end"}}, Body: body, Request: request,
+				}, nil
+			}
+			body := &trackingBody{reader: strings.NewReader(`<h1>redirected</h1>`)}
+			bodies = append(bodies, body)
+			return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header), Body: body, Request: request}, nil
+		}),
+		CheckRedirect: func(request *http.Request, via []*http.Request) error {
+			events = append(events, "client-policy:"+request.URL.Path)
+			return nil
+		},
+	}
+	result, err := Execute(context.Background(), compileHTTPRuntimeSpec(t, "https://example.invalid/start"), nil, Options{
+		HTTPClient: client,
+		URLPolicy: func(_ context.Context, target *url.URL) error {
+			events = append(events, "url-policy:"+target.Path)
+			return nil
+		},
+	})
+	if err != nil || result.Value["title"] != "redirected" {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	wantEvents := []string{"url-policy:/start", "request:/start", "url-policy:/end", "client-policy:/end", "request:/end"}
+	if !reflect.DeepEqual(events, wantEvents) {
+		t.Fatalf("events = %v, want %v", events, wantEvents)
+	}
+	if len(bodies) != 2 || !bodies[0].closed || !bodies[1].closed {
+		t.Fatalf("response bodies = %#v", bodies)
+	}
+}
+
+func TestExecuteHTTPRedirectRejectionClosesBodyBeforeClientPolicy(t *testing.T) {
+	body := &trackingBody{reader: strings.NewReader("")}
+	clientPolicyCalled := false
+	client := &http.Client{
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusFound, Status: "302 Found", Header: http.Header{"Location": []string{"/blocked"}}, Body: body, Request: request,
+			}, nil
+		}),
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			clientPolicyCalled = true
+			return nil
+		},
+	}
+	blocked := errors.New("redirect blocked")
+	_, err := Execute(context.Background(), compileHTTPRuntimeSpec(t, "https://example.invalid/start"), nil, Options{
+		HTTPClient: client,
+		URLPolicy: func(_ context.Context, target *url.URL) error {
+			if target.Path == "/blocked" {
+				return blocked
+			}
+			return nil
+		},
+	})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_URL_POLICY" || !errors.Is(err, blocked) {
+		t.Fatalf("error = %#v", err)
+	}
+	if !body.closed || clientPolicyCalled {
+		t.Fatalf("body closed = %v, client policy called = %v", body.closed, clientPolicyCalled)
+	}
+}
+
+func TestExecuteHTTPSessionHeadersFollowRedirectSecurityRules(t *testing.T) {
+	type observation struct {
+		host          string
+		authorization bool
+		cookie        bool
+		trace         bool
+	}
+	tests := []struct {
+		name          string
+		destination   string
+		wantSensitive bool
+	}{
+		{name: "same host", destination: "https://example.invalid/end", wantSensitive: true},
+		{name: "subdomain", destination: "https://sub.example.invalid/end", wantSensitive: true},
+		{name: "different domain", destination: "https://other.invalid/end", wantSensitive: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var observations []observation
+			client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				observations = append(observations, observation{
+					host: request.URL.Host, authorization: request.Header.Get("Authorization") != "",
+					cookie: request.Header.Get("Cookie") != "", trace: request.Header.Get("X-Trace") != "",
+				})
+				if request.URL.Path == "/start" {
+					return &http.Response{
+						StatusCode: http.StatusFound, Status: "302 Found", Header: http.Header{"Location": []string{tt.destination}},
+						Body: io.NopCloser(strings.NewReader("")), Request: request,
+					}, nil
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header),
+					Body: io.NopCloser(strings.NewReader(`<h1>redirected</h1>`)), Request: request,
+				}, nil
+			})}
+			path := compileTestSpec(t, `extractor "redirect-session" version=1 {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/start"
+    session policy="optional"
+  }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+			extractor, diagnostics := compiler.CompileFile(path)
+			if diagnostics.HasErrors() {
+				t.Fatalf("compile diagnostics = %#v", diagnostics)
+			}
+			result, err := Execute(context.Background(), extractor, nil, Options{
+				HTTPClient: client,
+				Session: &Session{
+					Headers: http.Header{"Authorization": []string{"Bearer test-value"}, "X-Trace": []string{"test-value"}},
+					Cookies: []*http.Cookie{{Name: "session", Value: "test-value"}},
+				},
+			})
+			if err != nil || result.Value["title"] != "redirected" {
+				t.Fatalf("result = %#v, error = %v", result, err)
+			}
+			if len(observations) != 2 {
+				t.Fatalf("request count = %d", len(observations))
+			}
+			initial, redirected := observations[0], observations[1]
+			if !initial.authorization || !initial.cookie || !initial.trace || redirected.authorization != tt.wantSensitive || redirected.cookie != tt.wantSensitive || !redirected.trace {
+				t.Fatalf("header presence initial=%+v redirected=%+v", initial, redirected)
+			}
+		})
+	}
+}
+
+func TestExecuteHTTPCookieJarAppliesRedirectScope(t *testing.T) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := &url.URL{Scheme: "https", Host: "example.invalid", Path: "/"}
+	subdomain := &url.URL{Scheme: "https", Host: "sub.example.invalid", Path: "/"}
+	jar.SetCookies(root, []*http.Cookie{
+		{Name: "host", Value: "test-value", Path: "/"},
+		{Name: "domain", Value: "test-value", Domain: "example.invalid", Path: "/"},
+	})
+	jar.SetCookies(subdomain, []*http.Cookie{{Name: "subdomain", Value: "test-value", Path: "/"}})
+
+	var observations []map[string]bool
+	client := &http.Client{
+		Jar: jar,
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			observations = append(observations, cookieNames(request.Cookies()))
+			if request.URL.Path == "/start" {
+				return &http.Response{
+					StatusCode: http.StatusFound, Status: "302 Found",
+					Header: http.Header{"Location": []string{"https://sub.example.invalid/end"}},
+					Body:   io.NopCloser(strings.NewReader("")), Request: request,
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header),
+				Body: io.NopCloser(strings.NewReader(`<h1>redirected</h1>`)), Request: request,
+			}, nil
+		}),
+	}
+	path := compileTestSpec(t, `extractor "redirect-jar" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/start" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := Execute(context.Background(), extractor, nil, Options{
+		HTTPClient: client,
+		URLPolicy:  func(context.Context, *url.URL) error { return nil },
+	})
+	if err != nil || result.Value["title"] != "redirected" {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	want := []map[string]bool{
+		{"host": true, "domain": true},
+		{"domain": true, "subdomain": true},
+	}
+	if !reflect.DeepEqual(observations, want) {
+		t.Fatalf("cookie names = %#v, want %#v", observations, want)
+	}
+}
+
+func TestExecuteHTTPClientJarPersistsResponseCookies(t *testing.T) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := &url.URL{Scheme: "https", Host: "example.invalid", Path: "/"}
+	subdomain := &url.URL{Scheme: "https", Host: "sub.example.invalid", Path: "/"}
+	var observations []map[string]bool
+	client := &http.Client{
+		Jar: jar,
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			observations = append(observations, cookieNames(request.Cookies()))
+			if request.URL.Path == "/start" {
+				return &http.Response{
+					StatusCode: http.StatusFound, Status: "302 Found",
+					Header: http.Header{
+						"Location":   []string{"https://sub.example.invalid/end"},
+						"Set-Cookie": []string{"root-only=test-value; Path=/", "shared=test-value; Domain=example.invalid; Path=/"},
+					},
+					Body: io.NopCloser(strings.NewReader("")), Request: request,
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK, Status: "200 OK",
+				Header: http.Header{"Set-Cookie": []string{"subdomain-only=test-value; Path=/"}},
+				Body:   io.NopCloser(strings.NewReader(`<h1>redirected</h1>`)), Request: request,
+			}, nil
+		}),
+	}
+	path := compileTestSpec(t, `extractor "redirect-set-cookie" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/start" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := Execute(context.Background(), extractor, nil, Options{
+		HTTPClient: client,
+		URLPolicy:  func(context.Context, *url.URL) error { return nil },
+	})
+	if err != nil || result.Value["title"] != "redirected" {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	wantRequests := []map[string]bool{{}, {"shared": true}}
+	if !reflect.DeepEqual(observations, wantRequests) {
+		t.Fatalf("request cookie names = %#v, want %#v", observations, wantRequests)
+	}
+	wantRoot := map[string]bool{"root-only": true, "shared": true}
+	wantSubdomain := map[string]bool{"shared": true, "subdomain-only": true}
+	if got := cookieNames(jar.Cookies(root)); !reflect.DeepEqual(got, wantRoot) {
+		t.Fatalf("root cookie names = %#v, want %#v", got, wantRoot)
+	}
+	if got := cookieNames(jar.Cookies(subdomain)); !reflect.DeepEqual(got, wantSubdomain) {
+		t.Fatalf("subdomain cookie names = %#v, want %#v", got, wantSubdomain)
+	}
+}
+
+func TestExecuteHTTPCustomRedirectCanStripSessionHeaders(t *testing.T) {
+	type observation struct {
+		authorization bool
+		cookie        bool
+		trace         bool
+	}
+	var observations []observation
+	redirectCalls := 0
+	client := &http.Client{
+		Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			observations = append(observations, observation{
+				authorization: request.Header.Get("Authorization") != "",
+				cookie:        request.Header.Get("Cookie") != "",
+				trace:         request.Header.Get("X-Trace") != "",
+			})
+			if request.URL.Path == "/start" {
+				return &http.Response{
+					StatusCode: http.StatusFound, Status: "302 Found", Header: http.Header{"Location": []string{"/end"}},
+					Body: io.NopCloser(strings.NewReader("")), Request: request,
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header),
+				Body: io.NopCloser(strings.NewReader(`<h1>redirected</h1>`)), Request: request,
+			}, nil
+		}),
+		CheckRedirect: func(request *http.Request, _ []*http.Request) error {
+			redirectCalls++
+			request.Header.Del("Authorization")
+			request.Header.Del("Cookie")
+			request.Header.Del("X-Trace")
+			return nil
+		},
+	}
+	path := compileTestSpec(t, `extractor "redirect-mutation" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid/start"; session policy="optional" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	policyCalls := 0
+	result, err := Execute(context.Background(), extractor, nil, Options{
+		HTTPClient: client,
+		Session: &Session{
+			Headers: http.Header{"Authorization": []string{"Bearer test-value"}, "X-Trace": []string{"test-value"}},
+			Cookies: []*http.Cookie{{Name: "session", Value: "test-value"}},
+		},
+		URLPolicy: func(context.Context, *url.URL) error {
+			policyCalls++
+			return nil
+		},
+	})
+	if err != nil || result.Value["title"] != "redirected" {
+		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	want := []observation{{authorization: true, cookie: true, trace: true}, {}}
+	if !reflect.DeepEqual(observations, want) || redirectCalls != 1 || policyCalls != 2 {
+		t.Fatalf("headers = %+v, redirect calls = %d, policy calls = %d", observations, redirectCalls, policyCalls)
+	}
+}
+
+func TestExecuteHTTPPreservesParentCancellation(t *testing.T) {
+	spec := `extractor "canceled" version=1 {
+  source "html" { fetch mode="http" url="https://example.invalid" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`
+	path := compileTestSpec(t, spec)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatal("compile failed")
+	}
+	transportCalled := false
+	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		transportCalled = true
+		return nil, request.Context().Err()
+	})}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := Execute(ctx, extractor, nil, Options{HTTPClient: client})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_HTTP_FETCH" {
+		t.Fatalf("error = %v", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error does not preserve context cancellation: %v", err)
+	}
+	if transportCalled {
+		t.Fatal("HTTP transport was called after parent context cancellation")
 	}
 }

@@ -26,6 +26,8 @@ Selector parsing, external-transform availability, browser-only value sources, a
 - default User-Agent: `scrape-kdl/0.1`;
 - redirect behavior: delegated to the supplied `http.Client`.
 
+The runtime adds `Session` headers and cookies only to the initial request; it does not manually re-inject them after redirects. Go's `http.Client` redirect rules therefore control propagation. By default, sensitive headers such as `Authorization` and `Cookie` are copied only to the same domain or its subdomains, while a configured cookie jar applies each cookie's own scope. A custom `CheckRedirect` may further restrict or mutate the redirected request.
+
 ## Charset decoding
 
 Built in:
@@ -35,7 +37,7 @@ Built in:
 - Windows-1252;
 - UTF-16LE / UTF-16BE.
 
-Charset is selected from HTTP `Content-Type`, then an early `<meta charset>` declaration, then BOM, with UTF-8 as the default.
+Charset is selected from HTTP `Content-Type`, then an early `<meta charset>` declaration, with UTF-8 as the default. A recognized UTF-8 or UTF-16 byte-order mark overrides the declared charset.
 
 Other encodings are supported through `Options.CharsetDecoder`. This keeps encodings such as Shift_JIS and EUC-JP optional.
 
