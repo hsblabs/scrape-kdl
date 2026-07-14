@@ -1,6 +1,6 @@
 # Roadmap to v1.0.0
 
-Status: Approved on 2026-07-14.
+Status: Approved on 2026-07-14; implementation decisions updated on 2026-07-15.
 
 This roadmap defines the compatibility contracts and release gates required before `scrape-kdl` reaches `v1.0.0`.
 The primary v1 products are the Go library and the TypeScript library.
@@ -36,7 +36,23 @@ The following surfaces are stable contracts at v1:
 Type generation, a language server, an inspector UI, and a browser authoring extension are not v1 release requirements.
 The stable core contract is the browser-library-neutral adapter interface.
 The v1 distribution MUST also include at least one official adapter for each language so the browser contract can be tested and used without a downstream adapter project.
-The planned adapters are go-rod for Go and Playwright for TypeScript, but the TypeScript implementation choice remains open until the browser milestone begins.
+The official adapters are go-rod for Go and Playwright for TypeScript.
+Chromium is the supported browser target at v1; Playwright Firefox and WebKit coverage is best effort.
+
+## Distribution and public API policy
+
+The TypeScript implementation is distributed as ESM-only npm packages in an npm-workspaces monorepo:
+
+- `@hsblabs/scrape-kdl` contains the compiler, diagnostics, IR, HTTP runtime, and browser-library-neutral interfaces;
+- `@hsblabs/scrape-kdl-playwright` contains the official Playwright adapter.
+
+The complete TypeScript pipeline targets Node.js 26 or later.
+A compiler or runtime bundled for direct execution in a web browser is outside the v1 scope.
+
+Go and TypeScript MUST expose the same language semantics, Validated IR, diagnostics, extraction behavior, and extension capabilities.
+Their public APIs SHOULD remain idiomatic to each language instead of being mechanically identical.
+TypeScript loading, compilation, and execution APIs are asynchronous by default, source loading is injectable, and Node.js filesystem conveniences are exposed through a Node.js entry point.
+The Go API remains context-first and MUST NOT expose internal package types.
 
 ## Dated compatibility versions
 
@@ -75,11 +91,24 @@ The identifiers have these meanings:
 The initial values are equal because the first documents, language contract, and IR contract are published together.
 Later document, language, and IR revisions may advance independently.
 
+`2026-07-15` is the planned first v1 language contract, not a temporary identifier that must be replaced or re-frozen at a later milestone.
+It remains the current language version unless an approved semantic change alters accepted programs, diagnostics, IR lowering, or execution semantics.
+Completing the contract documentation at `v0.2.0` does not by itself create a new date.
+
 Implementations MUST treat these dates as exact identifiers rather than assuming that an earlier date is compatible with a later date.
 Each implementation MUST publish the set of language and IR versions it accepts.
 An implementation MUST reject a malformed document version or an unknown or malformed language or IR version before network or browser activity.
 The migration to `2026-07-15` replaces the untagged working-draft identifiers `version=1` and `0.1`; they do not remain supported identifiers unless a later compatibility decision explicitly restores them.
 Editorial corrections do not create a new dated version, but a semantic change requires a new date and compatibility notes.
+
+The initial Validated IR schema uses this permanent project-owned identifier:
+
+```text
+https://hsblabs.github.io/scrape-kdl/ir/2026-07-15/schema.json
+```
+
+The schema is published at that project-owned static path.
+Canonical JSON comparison uses UTF-8, emits object member names in lexicographic Unicode code-point order, preserves array order, rejects non-finite numbers, normalizes negative zero to zero, and distinguishes an omitted optional property from a property whose value is `null`.
 
 ## Cross-language conformance
 
@@ -165,20 +194,23 @@ Live-site smoke tests are opt-in or scheduled because remote pages can change wi
 ## CLI completion at v0.5.0
 
 The `scrape-kdl` CLI is feature complete at `v0.5.0` when `validate`, `compile`, `extract`, and `version` have documented human and automation contract candidates.
+The Go CLI is the only v1 command-line distribution; a TypeScript CLI is not required.
 
 The completion gate includes:
 
 - `-h` and `--help` on the root command and every subcommand;
 - useful concise help for missing arguments and complete help when requested;
 - primary results on standard output and diagnostics, warnings, and progress on standard error;
-- stable JSON output that contains no human-oriented messages;
+- `--json` output as exactly one JSON document on standard output with no human-oriented messages;
 - `-` where a command accepts a streamable input or output;
 - non-interactive behavior that never waits for a prompt in CI;
-- documented exit status classes for usage, validation, compilation, execution, and cancellation failures;
-- secret input through protected files or standard input rather than required command-line values;
+- exit status `0` for success, `1` for processing failure, `2` for usage error, `130` for `SIGINT`, and `143` for `SIGTERM`;
+- secret input through `--session-file` or standard input rather than command-line values;
 - context cancellation and predictable `SIGINT` and `SIGTERM` behavior;
-- a deprecation and removal decision for direct `--header` and `--cookie` values;
+- removal of direct `--header` and `--cookie` values;
 - install and smoke tests for released binaries.
+
+When output is not attached to a TTY, the CLI disables color, progress rendering, and prompts.
 
 New CLI dependencies are optional.
 The public behavior matters more than the argument-parsing implementation.
@@ -187,30 +219,35 @@ The contract freezes at `v0.9.0` and receives Semantic Versioning guarantees at 
 
 ## Release milestones
 
-### v0.1.0: public preview
+### v0.1.0: contract foundation
 
 - adopt dated document, language, and IR identifiers;
 - establish a Go-backed `examples/` harness with provisional goldens and an extension point for TypeScript;
 - validate the Go HTML parser replacement against the initial checked-in HTML compatibility manifest;
-- publish the repository and the first core and go-rod releases;
-- verify installation through the Go module proxy and release archives.
+- establish repeatable verification for the core module and go-rod adapter.
 
-### v0.2.0: specification freeze
+Repository publicization and every public pre-v1 release are intentionally outside this roadmap until the project owner gives a separate instruction.
 
-- publish the `2026-07-15` language, built-in, selector, diagnostic, and IR contracts;
+### v0.2.0: contract completion
+
+- complete the `2026-07-15` language, built-in, selector, diagnostic, and IR contracts;
 - establish the minimal TypeScript package scaffold and runtime policy needed for an independent implementation slice;
-- pass that TypeScript parser and compiler slice over representative valid and invalid fixtures before freezing the contracts;
+- pass that TypeScript parser and compiler slice over representative valid and invalid fixtures before declaring the contracts complete;
 - close every accepted specification blocker for the initial contract;
 - define canonical IR comparison and the cross-language conformance manifest;
+- define the approved Go and TypeScript public API principles;
 - require a new dated language or IR version for later semantic changes.
+
+Issue #8 owns the bounded TypeScript package and parser/compiler slice used to cross-check the contract at this milestone.
+Issues #11 through #13 expand that slice into the complete TypeScript compiler implementation after contract completion; issues #14 and #16 add the HTTP and browser runtimes.
 
 After this milestone, the `2026-07-15` contracts receive errata and clarifications that do not alter observable behavior.
 An ambiguity discovered by later parity work requires a new dated version when resolving it changes accepted programs, diagnostics, IR, or execution semantics.
 
 ### v0.3.0: TypeScript compiler foundation
 
-- expand the pre-freeze TypeScript scaffold into the publishable package and finalize its supported-runtime policy;
-- expand the pre-freeze TypeScript slice into the complete KDL subset parser and source loader;
+- expand the contract-completion TypeScript scaffold into the publishable packages;
+- expand the initial TypeScript slice into the complete KDL subset parser and source loader;
 - resolve relative imports and document kinds;
 - compile the first shared fixtures to canonical IR without invoking Go.
 
@@ -226,18 +263,19 @@ An ambiguity discovered by later parity work requires a new dated version when r
 - satisfy the CLI feature-completion gate defined above;
 - make compilation and extraction suitable for both human use and build automation;
 - document all stable commands with copyable examples;
-- remove or explicitly retain every pre-v0.5 deprecated behavior.
+- remove direct `--header` and `--cookie` input and every other behavior scheduled for removal by v0.5.
 
 ### v0.6.0 through v0.8.0: browser parity and field validation
 
 - implement the TypeScript browser adapter contract and trusted JavaScript opt-in;
-- ship and test at least one official TypeScript browser adapter;
+- ship and test `@hsblabs/scrape-kdl-playwright` as the official TypeScript adapter;
 - complete browser workflow, lease, timeout, cancellation, and result-normalization parity;
 - expand examples across HTTP and browser modes;
 - complete HTML differential testing and the scheduled upstream conformance suite;
 - establish performance, resource-limit, fuzzing, and security regression gates;
-- validate Go and TypeScript use from independent example applications.
-- publish the draft Go, Node.js, operating-system, architecture, browser, and adapter support matrix used by release-candidate CI.
+- validate Go and TypeScript use from independent example applications;
+- publish the draft Go, Node.js 26+, operating-system, architecture, browser, and adapter support matrix used by release-candidate CI;
+- establish evidence-based performance regression gates against measured baselines without introducing an absolute speed SLA.
 
 ### v0.9.0: release candidate
 
@@ -258,6 +296,25 @@ The candidate period lasts for at least 14 consecutive days with no unresolved r
 - begin the documented Semantic Versioning compatibility guarantees;
 - publish the supported-version matrix and maintenance policy.
 
+Publishing stable v1 artifacts remains an explicit project-owner approval gate.
+The sequence is: complete issue #18's pre-publication checklist, obtain explicit project-owner approval, publish the stable artifacts, and then close issue #18.
+
+## Dependency and support policy
+
+Implementations prefer standard-library or platform APIs and small explicit abstractions.
+Go may use `golang.org/x/*` packages as quasi-standard dependencies where they materially improve correctness.
+The approved v1 runtime dependencies include `golang.org/x/net/html`, `parse5`, and Playwright in the separate TypeScript adapter package.
+A new third-party runtime dependency outside these approved choices requires project-owner review; minimal build and test dependencies may be selected without review when they follow established ecosystem practice.
+
+The support matrix is:
+
+- Linux and macOS are supported; Windows remains out of scope;
+- Node.js 26 is the minimum supported Node.js version;
+- Chromium is supported for browser execution;
+- Firefox and WebKit through Playwright are best effort;
+- v1 has no absolute performance SLA, but measured regressions against checked-in or recorded baselines may block a release;
+- resource limits, cancellation, URL policy, response-size bounds, and security defaults remain hard contracts.
+
 ## Tracking issues
 
 ### v0.1.0
@@ -265,17 +322,17 @@ The candidate period lasts for at least 14 consecutive days with no unresolved r
 - [#4 Adopt dated document, language, and IR compatibility identifiers](https://github.com/hsblabs/scrape-kdl/issues/4)
 - [#5 Establish the executable examples acceptance harness](https://github.com/hsblabs/scrape-kdl/issues/5)
 - [#6 Replace the Go HTTP parser with WHATWG tree construction](https://github.com/hsblabs/scrape-kdl/issues/6)
-- [#7 Publish the public preview and first core and rod releases](https://github.com/hsblabs/scrape-kdl/issues/7)
 
 ### v0.2.0
 
-- [#8 Freeze the 2026-07-15 language contract](https://github.com/hsblabs/scrape-kdl/issues/8)
-- [#9 Freeze the 2026-07-15 Validated IR and canonical JSON contract](https://github.com/hsblabs/scrape-kdl/issues/9)
+- [#8 Complete the 2026-07-15 language contract](https://github.com/hsblabs/scrape-kdl/issues/8)
+- [#9 Complete the 2026-07-15 Validated IR and canonical JSON contract](https://github.com/hsblabs/scrape-kdl/issues/9)
 - [#10 Define the cross-language conformance manifest and runners](https://github.com/hsblabs/scrape-kdl/issues/10)
+- [#19 Define Go and TypeScript public API principles](https://github.com/hsblabs/scrape-kdl/issues/19)
 
 ### v0.3.0 and v0.4.0
 
-- [#11 Publish the TypeScript library scaffold, public API, and CI](https://github.com/hsblabs/scrape-kdl/issues/11)
+- [#11 Publish the TypeScript package scaffold and CI](https://github.com/hsblabs/scrape-kdl/issues/11)
 - [#12 Implement the TypeScript KDL parser, source loader, and imports](https://github.com/hsblabs/scrape-kdl/issues/12)
 - [#13 Implement the TypeScript semantic compiler and diagnostic parity](https://github.com/hsblabs/scrape-kdl/issues/13)
 - [#14 Implement the TypeScript HTTP runtime and extraction parity](https://github.com/hsblabs/scrape-kdl/issues/14)
@@ -289,6 +346,26 @@ The candidate period lasts for at least 14 consecutive days with no unresolved r
 - [#16 Implement the TypeScript browser runtime and official adapter](https://github.com/hsblabs/scrape-kdl/issues/16)
 - [#17 Complete cross-runtime examples and hardening gates](https://github.com/hsblabs/scrape-kdl/issues/17)
 - [#18 Freeze APIs, run the release candidate, and publish v1](https://github.com/hsblabs/scrape-kdl/issues/18)
+
+## Agent execution policy
+
+An implementation agent proceeds without further project-owner approval when a task stays inside this roadmap, the normative specifications, the IR schema, and the approved API, dependency, CLI, and support policies.
+The normative specification remains the source of truth.
+A Go and TypeScript mismatch MUST first be reduced to a fixture and then corrected as an implementation defect unless the fixture exposes a genuine specification ambiguity.
+An observable difference inside the portable profile is a defect, not an implementation choice.
+
+Project-owner approval is required only for:
+
+- a semantic change that requires a new `language-version`;
+- an IR semantic or schema change that requires a new `irVersion`;
+- a new public contract outside the approved Go and TypeScript API principles;
+- a new unapproved third-party runtime dependency;
+- promotion of a best-effort target to supported status;
+- making the repository public;
+- publishing any public pre-v1 release or release artifact;
+- publishing stable v1 artifacts after issue #18's pre-publication checklist passes.
+
+While one of these decisions is pending, agents continue independent roadmap work that does not depend on it.
 
 ## v1 release gate
 

@@ -2,7 +2,8 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Status: pre-release, language specification v0.1 working draft, implementation milestone M5.
+Status: pre-release working draft, implementation milestone M5.
+The normative specification documents currently use the v0.1 document series; the planned first v1 compatibility identifier is `language-version="2026-07-15"`.
 
 ```text
 KDL source
@@ -160,8 +161,8 @@ See `SECURITY.md` and `docs/security-model.md`.
 
 ## Supported platforms
 
-- Linux: supported; release artifacts are provided for amd64 and arm64.
-- macOS: supported; release artifacts are provided for amd64 and arm64.
+- Linux: supported; amd64 and arm64 release artifacts will be provided after an approved release.
+- macOS: supported; amd64 and arm64 release artifacts will be provided after an approved release.
 - Windows: explicitly unsupported. No CI coverage, release artifact, compatibility guarantee, or Windows-specific bug support is provided. Incidental compilation does not make Windows supported.
 
 ## Compatibility and known limits
@@ -169,10 +170,10 @@ See `SECURITY.md` and `docs/security-model.md`.
 - Supported operating systems: Linux and macOS only. Windows is out of scope.
 - Minimum Go version: 1.26.
 - CI targets Go 1.26 on Linux and macOS.
-- The language is built on the KDL 2 data model but the reference parser intentionally supports the subset required by Scraping KDL v0.1.
+- The language is built on the KDL 2 data model but the reference parser intentionally supports the subset defined by the Scraping KDL v0.1 specification document series.
 - The HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
-- TypeScript runtime, code generation, language server, inspector UI, and browser extension are future milestones.
+- The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
 
 See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
 
