@@ -1,4 +1,4 @@
-.PHONY: test race vet build format-check module-check golden diagnostics ir-contract api-contract typescript-contract conformance-coverage conformance validate-example extract-example verify
+.PHONY: test race vet build format-check module-check golden diagnostics ir-contract api-contract typescript-contract typescript-package conformance-coverage conformance validate-example extract-example verify
 .PHONY: test-rod-contract test-rod test-rod-e2e release-check release-dist
 
 test:
@@ -36,6 +36,9 @@ api-contract:
 typescript-contract:
 	npm run test:contract-slice
 
+typescript-package:
+	npm run verify:typescript
+
 conformance-coverage:
 	GOTOOLCHAIN=local go test ./scripts -run TestConformanceCoverage
 
@@ -57,7 +60,7 @@ test-rod:
 test-rod-e2e:
 	./scripts/verify-rod.sh --e2e
 
-verify: format-check module-check golden diagnostics ir-contract api-contract typescript-contract conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract
+verify: format-check module-check golden diagnostics ir-contract api-contract typescript-package conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract
 
 release-check:
 	./scripts/verify-release.sh

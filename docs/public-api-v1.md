@@ -23,7 +23,7 @@ Go and TypeScript expose the same observable capabilities:
 | inspect extraction results | `Result`, `Warning`, `ExecutionError` | `ExtractionResult`, `Warning`, `ExecutionError` |
 | discover compatibility | `SupportedLanguageVersions`, `SupportedIRVersions` | `supportedLanguageVersions`, `supportedIRVersions` |
 
-The checked proposal declarations are in `docs/api/typescript/`. They define a consumer contract for Issue #19, not a shipped npm implementation. The implementation introduced by the TypeScript roadmap issues must satisfy these declarations in the approved package boundary.
+The contract snapshot remains in `docs/api/typescript/`. The publishable implementation boundary is checked directly through `@hsblabs/scrape-kdl` and `@hsblabs/scrape-kdl/node`; declaration-to-schema and clean-consumer gates keep the package aligned with the approved Issue #19 surface. The v0.3 scaffold exposes this complete surface while Issues #12 through #14 fill in the complete compiler and runtime behavior.
 
 The core declarations map to `@hsblabs/scrape-kdl`; Node.js file conveniences map to `@hsblabs/scrape-kdl/node`. The separate `@hsblabs/scrape-kdl-playwright` package supplies an official `BrowserAdapter` without adding Playwright to the core package's runtime dependencies.
 

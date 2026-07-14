@@ -1,7 +1,7 @@
-import { parse, type Node, type Property, type Span, type Value } from "./parser.js";
+import { parse, type Node, type Property, type Span } from "./parser.js";
 import type {
   CollectionIR, ExtractorIR, FieldIR, InputIR, OutputObjectIR, PrimitiveTypeName,
-  SourceIR, TransformCallIR, TypeRef,
+  SourceIR, TemplateSegmentIR, TransformCallIR, TypeRef,
 } from "./ir.js";
 
 const LANGUAGE_VERSION = "2026-07-15";
@@ -149,7 +149,7 @@ function compileSource(node: Node, diagnostics: Diagnostic[]): SourceIR | undefi
   const raw = stringProperty(fetch, "url");
   if (mode !== "http") diagnostics.push(diagnostic("E_BROWSER_CAPABILITY_REQUIRED", "contract slice requires HTTP fetch mode", fetch.span, "source.fetch"));
   if (raw === undefined || raw === "") diagnostics.push(diagnostic("E_TEMPLATE_INVALID", "fetch requires non-empty string url", fetch.span, "source.fetch"));
-  const segments: { kind: "literal" | "input"; value?: string; name?: string }[] = [];
+  const segments: TemplateSegmentIR[] = [];
   if (raw !== undefined) {
     let cursor = 0;
     for (const match of raw.matchAll(/\{([a-z][a-z0-9_]*)\}/gu)) {

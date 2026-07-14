@@ -3,15 +3,17 @@
 | Area | Minimum | CI target |
 |---|---:|---:|
 | Go | 1.26 | 1.26.x |
+| Node.js | 26 | 26.x |
+| TypeScript package format | ESM-only | npm pack and clean Node.js consumer |
 | KDL lexical base | KDL 2.0 concepts | Scraping KDL supported subset |
 | Scraping KDL language | `2026-07-15` | `2026-07-15` |
 | Validated IR | `2026-07-15` | `2026-07-15` |
 | go-rod adapter | go-rod v0.116.2 | v0.116.2 |
 | Operating system | Linux or macOS | Linux and macOS |
 
-The core module intentionally has no browser-library dependency. Browser integrations are separate modules.
+The Go and TypeScript core packages intentionally have no browser-library dependency. Browser integrations are separate modules or packages. Chromium is the supported v1 browser target; Firefox and WebKit through Playwright remain best effort.
 
-The Go library publishes its exact accepted sets through `SupportedLanguageVersions` and `SupportedIRVersions`. These values are opaque identifiers; an earlier date is not implicitly compatible with a later date.
+The Go and TypeScript libraries publish their exact accepted sets through `SupportedLanguageVersions` / `SupportedIRVersions` and `supportedLanguageVersions` / `supportedIRVersions`. These values are opaque identifiers; an earlier date is not implicitly compatible with a later date.
 
 ## Migration from the untagged working draft
 

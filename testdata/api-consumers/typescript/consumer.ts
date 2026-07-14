@@ -5,8 +5,8 @@ import {
   type ExecutionOptions,
   type JsonValue,
   type SourceLoader,
-} from "../../../docs/api/typescript/index.js";
-import { compileFile } from "../../../docs/api/typescript/node.js";
+} from "@hsblabs/scrape-kdl";
+import { compileFile } from "@hsblabs/scrape-kdl/node";
 
 const files = new Map<string, string>([
   ["spec/common.kdl", `module "common" version="2026-07-15" language-version="2026-07-15" {}`],
