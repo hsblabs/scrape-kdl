@@ -1,0 +1,53 @@
+{
+  "duplicate-property.kdl": [
+    {
+      "code": "E_DUPLICATE_PROPERTY",
+      "severity": "error",
+      "message": "duplicate property \"version\"",
+      "span": { "file": "duplicate-property.kdl", "start": { "offset": 52, "line": 1, "column": 53 }, "end": { "offset": 72, "line": 1, "column": 73 } },
+      "path": "extractor"
+    }
+  ],
+  "http-js.kdl": [
+    {
+      "code": "W_JAVASCRIPT_PRESENT",
+      "severity": "warning",
+      "message": "specification contains trusted JavaScript execution",
+      "span": { "file": "http-js.kdl", "start": { "offset": 0, "line": 1, "column": 1 }, "end": { "offset": 274, "line": 9, "column": 2 } },
+      "path": "source"
+    },
+    {
+      "code": "E_BROWSER_CAPABILITY_REQUIRED",
+      "severity": "error",
+      "message": "evaluate-js requires browser fetch mode",
+      "span": { "file": "http-js.kdl", "start": { "offset": 200, "line": 7, "column": 5 }, "end": { "offset": 234, "line": 7, "column": 39 } },
+      "path": "output.title.valueSource"
+    }
+  ],
+  "import-cycle.kdl": [
+    {
+      "code": "E_IMPORT_CYCLE",
+      "severity": "error",
+      "message": "import cycle includes \"cycle/a.kdl\"",
+      "span": { "file": "cycle/a.kdl", "start": { "offset": 0, "line": 1, "column": 1 }, "end": { "offset": 0, "line": 1, "column": 1 } }
+    }
+  ],
+  "timeout-overflow.kdl": [
+    {
+      "code": "E_TYPE_MISMATCH",
+      "severity": "error",
+      "message": "timeout-ms must not exceed 9223372036854",
+      "span": { "file": "timeout-overflow.kdl", "start": { "offset": 177, "line": 5, "column": 7 }, "end": { "offset": 194, "line": 5, "column": 24 } },
+      "path": "source.workflow[0]"
+    }
+  ],
+  "transform-type-mismatch.kdl": [
+    {
+      "code": "E_TRANSFORM_TYPE_MISMATCH",
+      "severity": "error",
+      "message": "empty-to-null: requires string input, got string?",
+      "span": { "file": "transform-type-mismatch.kdl", "start": { "offset": 289, "line": 9, "column": 7 }, "end": { "offset": 310, "line": 9, "column": 28 } },
+      "path": "transforms.bad.pipeline.calls[1]"
+    }
+  ]
+}

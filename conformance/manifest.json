@@ -1,0 +1,252 @@
+{
+  "$schema": "./manifest.schema.json",
+  "schemaVersion": "2026-07-15",
+  "contract": {
+    "languageVersion": "2026-07-15",
+    "irVersion": "2026-07-15"
+  },
+  "normalization": {
+    "paths": "repository-relative-forward-slash",
+    "sourceBytes": "exact-no-newline-normalization",
+    "json": "canonical-unicode-code-point-order-finite-binary64",
+    "diagnostics": "exact-code-severity-message-span-path-order",
+    "spans": "utf8-byte-offset-one-based-line-column-exclusive-end"
+  },
+  "suites": {
+    "pr": { "description": "Release-blocking cases executed by pull-request jobs." },
+    "release": { "description": "Every release-blocking case across core and browser jobs." },
+    "language": { "description": "Parser, compiler, diagnostic, and IR language cases." },
+    "invalid": { "description": "Shared rejected-program diagnostic cases." },
+    "ir": { "description": "Canonical Validated IR comparisons." },
+    "runtime": { "description": "Offline extraction comparisons." },
+    "html": { "description": "Pinned HTML input and observation cases." },
+    "browser": { "description": "Browser-contract and official-adapter cases." },
+    "typescript-slice": { "description": "The bounded TypeScript pre-freeze cross-check." }
+  },
+  "approvedDivergences": [],
+  "cases": [
+    {
+      "id": "valid.basic-http",
+      "status": "release-blocking",
+      "categories": ["valid", "ir", "runtime", "html"],
+      "suites": ["pr", "release", "language", "ir", "runtime", "html", "typescript-slice"],
+      "artifacts": [
+        { "path": "fixtures/valid/basic-http.kdl", "role": "source" },
+        { "path": "fixtures/expected-ir/basic-http.ir.json", "role": "expected-ir" },
+        { "path": "fixtures/inputs/basic-http.json", "role": "inputs" },
+        { "path": "fixtures/html/basic-http.html", "role": "html" },
+        { "path": "fixtures/expected-output/basic-http.json", "role": "expected-output" }
+      ],
+      "expectations": {
+        "outcome": "valid",
+        "ir": "fixtures/expected-ir/basic-http.ir.json",
+        "html": "fixtures/html/basic-http.html",
+        "inputs": "fixtures/inputs/basic-http.json",
+        "output": "fixtures/expected-output/basic-http.json"
+      },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate", "compile", "ir", "runtime"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate", "compile", "ir"] }
+      ]
+    },
+    {
+      "id": "valid.race-detail",
+      "status": "release-blocking",
+      "categories": ["valid", "ir"],
+      "suites": ["pr", "release", "language", "ir"],
+      "artifacts": [
+        { "path": "fixtures/valid/race-detail.kdl", "role": "source" },
+        { "path": "fixtures/modules/common.kdl", "role": "import" },
+        { "path": "fixtures/expected-ir/race-detail.ir.json", "role": "expected-ir" }
+      ],
+      "expectations": { "outcome": "valid", "ir": "fixtures/expected-ir/race-detail.ir.json" },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate", "compile", "ir"] }
+      ]
+    },
+    {
+      "id": "valid.document-version-advance",
+      "status": "release-blocking",
+      "categories": ["valid"],
+      "suites": ["pr", "release", "language"],
+      "artifacts": [{ "path": "fixtures/valid/document-version-advance.kdl", "role": "source" }],
+      "expectations": { "outcome": "valid" },
+      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate", "compile"] }]
+    },
+    {
+      "id": "valid.browser-js",
+      "status": "release-blocking",
+      "categories": ["valid", "browser"],
+      "suites": ["pr", "release", "language", "browser"],
+      "artifacts": [{ "path": "fixtures/valid/browser-js.kdl", "role": "source" }],
+      "expectations": { "outcome": "valid" },
+      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate", "compile"] }]
+    },
+    {
+      "id": "valid.rod-browser-e2e",
+      "status": "release-blocking",
+      "categories": ["valid", "browser"],
+      "suites": ["release", "browser"],
+      "artifacts": [{ "path": "fixtures/valid/rod-browser-e2e.kdl", "role": "source" }],
+      "expectations": { "outcome": "valid" },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate", "compile"] },
+        { "implementation": "go", "job": "browser-e2e", "stages": ["browser"] }
+      ]
+    },
+
+    {
+      "id": "invalid.duplicate-property",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid"],
+      "artifacts": [
+        { "path": "fixtures/invalid/duplicate-property.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "duplicate-property.kdl" } },
+      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+    },
+    {
+      "id": "invalid.http-js",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid"],
+      "artifacts": [
+        { "path": "fixtures/invalid/http-js.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "http-js.kdl" } },
+      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+    },
+    {
+      "id": "invalid.import-cycle",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid"],
+      "artifacts": [
+        { "path": "fixtures/invalid/import-cycle.kdl", "role": "source" },
+        { "path": "fixtures/invalid/cycle/a.kdl", "role": "import" },
+        { "path": "fixtures/invalid/cycle/b.kdl", "role": "import" },
+        { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "import-cycle.kdl" } },
+      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+    },
+    {
+      "id": "invalid.timeout-overflow",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid"],
+      "artifacts": [
+        { "path": "fixtures/invalid/timeout-overflow.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "timeout-overflow.kdl" } },
+      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+    },
+    {
+      "id": "invalid.transform-type-mismatch",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid"],
+      "artifacts": [
+        { "path": "fixtures/invalid/transform-type-mismatch.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "transform-type-mismatch.kdl" } },
+      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+    },
+
+    {
+      "id": "invalid.integer-version",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "artifacts": [
+        { "path": "fixtures/invalid/integer-version.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/version-contract.json", "key": "integer-version.kdl" } },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
+    },
+    {
+      "id": "invalid.missing-document-version",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "artifacts": [
+        { "path": "fixtures/invalid/missing-document-version.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/version-contract.json", "key": "missing-document-version.kdl" } },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
+    },
+    {
+      "id": "invalid.malformed-document-version",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "artifacts": [
+        { "path": "fixtures/invalid/malformed-document-version.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/version-contract.json", "key": "malformed-document-version.kdl" } },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
+    },
+    {
+      "id": "invalid.missing-language-version",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "artifacts": [
+        { "path": "fixtures/invalid/missing-language-version.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/version-contract.json", "key": "missing-language-version.kdl" } },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
+    },
+    {
+      "id": "invalid.malformed-language-version",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "artifacts": [
+        { "path": "fixtures/invalid/malformed-language-version.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/version-contract.json", "key": "malformed-language-version.kdl" } },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
+    },
+    {
+      "id": "invalid.unknown-language-version",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "artifacts": [
+        { "path": "fixtures/invalid/unknown-language-version.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/version-contract.json", "key": "unknown-language-version.kdl" } },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
+    }
+  ]
+}

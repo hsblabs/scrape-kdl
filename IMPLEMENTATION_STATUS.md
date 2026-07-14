@@ -79,6 +79,8 @@ Implemented:
 - exact dated-version grammar and shared Go/TypeScript diagnostic fixtures;
 - a private Node.js 26 npm workspace containing the bounded independent TypeScript parser/compiler cross-check;
 - canonical Go/TypeScript IR equality for the representative static HTTP fixture.
+- a machine-readable fixture manifest, dated result schema, focused suite selection, Go runner, and exact Go/TypeScript slice comparator;
+- CI rejection of unregistered fixtures, missing expected artifacts, schema drift, and unapproved implementation differences.
 
 The TypeScript slice deliberately covers the v0.2 contract cross-check only.
 The complete source loader, import resolver, semantic compiler, HTTP runtime, and Playwright adapter remain later roadmap work.

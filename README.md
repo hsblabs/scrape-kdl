@@ -210,6 +210,16 @@ Chromium E2E:
 make test-rod-e2e
 ```
 
+Cross-language conformance:
+
+```bash
+make conformance
+go run ./cmd/conformance-runner --suite invalid --output invalid-go.json
+npm run conformance:typescript-slice
+```
+
+See `conformance/README.md` for suite selection, the language-neutral result format, normalization, and divergence policy.
+
 Release preparation:
 
 ```bash

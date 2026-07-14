@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hsblabs.github.io/scrape-kdl/conformance/2026-07-15/result.schema.json",
+  "title": "Scraping KDL conformance result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "manifestVersion", "implementation", "suite", "job", "status", "cases"],
+  "properties": {
+    "schemaVersion": { "const": "2026-07-15" },
+    "manifestVersion": { "const": "2026-07-15" },
+    "implementation": { "enum": ["go", "typescript"] },
+    "suite": { "type": "string", "minLength": 1 },
+    "job": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["passed", "failed"] },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "observations", "differences"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["passed", "failed"] },
+          "observations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "value"],
+              "properties": {
+                "kind": { "enum": ["diagnostics", "ir", "runtime", "browser"] },
+                "value": true
+              }
+            }
+          },
+          "differences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "message"],
+              "properties": {
+                "kind": { "enum": ["manifest", "diagnostics", "ir", "runtime", "browser"] },
+                "message": { "type": "string", "minLength": 1 },
+                "approvedBy": { "type": "string", "pattern": "^DIV-[0-9]{4}$" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

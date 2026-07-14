@@ -50,7 +50,7 @@
     { "id": "language.extraction-result", "source": "docs/spec/language-v0.1.md#extraction-result", "evidence": ["internal/executor/executor_test.go#TestExecuteHTTP", "fixtures/expected-output/basic-http.json"] },
     { "id": "language.validation-phases", "source": "docs/spec/language-v0.1.md#validation-phases", "evidence": ["internal/executor/executor_test.go#TestExecuteHTTPPreflightRejectsBeforeTransport", "internal/executor/browser_test.go#TestExecuteBrowserPreflightsExternalTransformsBeforeAcquire"] },
     { "id": "language.capability-model", "source": "docs/spec/language-v0.1.md#capability-model", "evidence": ["internal/executor/browser_test.go#TestExecuteBrowserPreflightsMalformedWorkflowBeforeAcquire", "fixtures/invalid/http-js.kdl"] },
-    { "id": "language.portability", "source": "docs/spec/language-v0.1.md#portability", "evidence": ["internal/dom/selector_test.go", "internal/executor/builtins_test.go", "packages/scrape-kdl/test/contract.test.mjs"] },
+    { "id": "language.portability", "source": "docs/spec/language-v0.1.md#portability", "evidence": ["internal/dom/selector_test.go", "internal/executor/builtins_test.go", "conformance/manifest.json", "scripts/check-conformance.sh"] },
     { "id": "language.diagnostics", "source": "docs/spec/language-v0.1.md#diagnostics", "evidence": ["internal/diagnostic/diagnostic_test.go", "scripts/check-diagnostics.sh", "docs/spec/diagnostics.md"] },
 
     { "id": "builtins.common", "source": "docs/spec/builtins-v0.1.md#common-rules", "evidence": ["internal/executor/builtins_test.go#TestBuiltins", "internal/executor/builtins_test.go#TestBuiltinFailures"] },
