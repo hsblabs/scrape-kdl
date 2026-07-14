@@ -8,7 +8,7 @@ flowchart LR
     Loader[Import graph loader]
     Symbols[Symbol collection]
     Semantic[Semantic validation and type checking]
-    IR[Validated IR 0.1]
+    IR[Validated IR 2026-07-15]
 
     Source --> Parser --> KDLAST --> Loader --> Symbols --> Semantic --> IR
 ```

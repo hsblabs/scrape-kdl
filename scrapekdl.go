@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hsblabs/scrape-kdl/internal/compatibility"
 	"github.com/hsblabs/scrape-kdl/internal/compiler"
 	"github.com/hsblabs/scrape-kdl/internal/diagnostic"
 	"github.com/hsblabs/scrape-kdl/internal/executor"
@@ -61,10 +62,18 @@ func ValidateFile(path string) Diagnostics {
 	return convertDiagnostics(compiler.ValidateFile(path))
 }
 
-func (program *Program) Name() string { return program.extractor.Name }
-func (program *Program) Version() int { return program.extractor.Version }
+func (program *Program) Name() string    { return program.extractor.Name }
+func (program *Program) Version() string { return program.extractor.Version }
 func (program *Program) Capabilities() []string {
 	return append([]string(nil), program.extractor.Capabilities...)
+}
+
+func SupportedLanguageVersions() []string {
+	return compatibility.SupportedLanguageVersions()
+}
+
+func SupportedIRVersions() []string {
+	return compatibility.SupportedIRVersions()
 }
 
 func (program *Program) IRJSON() ([]byte, error) {

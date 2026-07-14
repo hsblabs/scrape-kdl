@@ -47,7 +47,7 @@ func TestDecodeJSONRequiresSingleValue(t *testing.T) {
 }
 
 func TestExecuteHTMLRejectsTrailingDataInDefault(t *testing.T) {
-	path := compileTestSpec(t, `extractor "offline-default" version=1 {
+	path := compileTestSpec(t, `extractor "offline-default" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "value" type="string" required=#false default="fallback" { select ".missing"; value "text"; on-error "default" }
 }`)

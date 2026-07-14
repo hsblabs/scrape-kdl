@@ -1,6 +1,6 @@
 # Built-in Transform Registry v0.1
 
-This document is normative for Scraping KDL language version 0.1.
+This document is normative for Scraping KDL language version `2026-07-15`.
 
 ## Common rules
 

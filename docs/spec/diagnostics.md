@@ -35,6 +35,11 @@ Runtime warnings MUST be ordered by actual extraction execution order.
 
 - `E_KDL_SYNTAX`: base KDL parse failure.
 - `E_DOCUMENT_ROOT`: invalid number or kind of root nodes.
+- `E_DOCUMENT_VERSION_REQUIRED`: extractor or module root lacks `version`.
+- `E_DOCUMENT_VERSION_INVALID`: document `version` is not a real calendar date in exact `YYYY-MM-DD` form.
+- `E_LANGUAGE_VERSION_REQUIRED`: extractor or module root lacks `language-version`.
+- `E_LANGUAGE_VERSION_INVALID`: `language-version` is not a real calendar date in exact `YYYY-MM-DD` form.
+- `E_LANGUAGE_VERSION_UNSUPPORTED`: `language-version` is well formed but not in the implementation's explicit supported-version registry.
 - `E_TYPE_ANNOTATION_UNSUPPORTED`: KDL type annotation is present.
 - `E_UNKNOWN_NODE`: node is not allowed in its context.
 - `E_UNKNOWN_PROPERTY`: property is not allowed on a node.

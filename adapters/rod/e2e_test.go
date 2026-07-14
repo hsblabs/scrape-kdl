@@ -53,7 +53,7 @@ func TestBrowserExtractionE2E(t *testing.T) {
 
 	dir := t.TempDir()
 	spec := filepath.Join(dir, "e2e.kdl")
-	content := `extractor "rod-e2e" version=1 {
+	content := `extractor "rod-e2e" version="2026-07-15" language-version="2026-07-15" {
 		source "html" {
 			fetch mode="browser" url="` + server.URL + `"
 			workflow {
@@ -132,7 +132,7 @@ func TestBrowserExtractionE2E(t *testing.T) {
 		t.Fatalf("items[0].dataset = %#v", first["dataset"])
 	}
 
-	failureContent := `extractor "rod-js-failure" version=1 {
+	failureContent := `extractor "rod-js-failure" version="2026-07-15" language-version="2026-07-15" {
 		source "html" { fetch mode="browser" url="` + server.URL + `" }
 		field "failure" type="string" required=#true {
 			evaluate-js #"""

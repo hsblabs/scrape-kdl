@@ -66,6 +66,7 @@ Implemented:
 - release archive generation and checksum script;
 - module-path, formatting, and golden-IR checks.
 - diagnostic registry drift checks and stable partial-result warnings;
+- dated document, language, and Validated IR compatibility identifiers with explicit supported-version registries;
 - release tag validation and scheduled parser fuzzing;
 - host URL policy for initial targets and HTTP redirects;
 - raw-text/RCDATA, truncated HTML, and common optional-end-tag recovery.

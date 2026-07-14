@@ -29,6 +29,18 @@ Scraping KDL v0.1 adds these restrictions:
 
 Canonical formatting uses two-space indentation, one node per line, KDL booleans `#true/#false`, KDL null `#null`, and raw multiline strings for JavaScript.
 
+## Compatibility identifiers
+
+The language contract defined by this document series is identified by the opaque calendar-date string `2026-07-15`.
+Every extractor and transform module root MUST declare both `version` and `language-version` properties:
+
+- `version` identifies that document revision and MUST be a real calendar date in the exact `YYYY-MM-DD` form;
+- `language-version` selects the language contract and MUST be `2026-07-15`;
+- implementations MUST reject missing, malformed, or unknown identifiers without ordering dates or assuming compatibility between them;
+- a document `version` MAY advance independently without changing `language-version`.
+
+The `v0.1` suffix in specification filenames identifies the document series; it is not an accepted serialized language identifier.
+
 ## Document kinds
 
 A document MUST be exactly one of:
@@ -43,7 +55,7 @@ Both document kinds MAY contain `import` nodes before the root node.
 ```kdl
 import "./modules/common.kdl" as="common"
 
-extractor "race-detail" version=1 {
+extractor "race-detail" version="2026-07-15" language-version="2026-07-15" {
   // ...
 }
 ```
@@ -53,7 +65,7 @@ It MUST contain exactly one top-level `extractor` node and MUST NOT contain a to
 ### Transform module document
 
 ```kdl
-module "netkeiba-common" version=1 {
+module "netkeiba-common" version="2026-07-15" language-version="2026-07-15" {
   transform "extract_horse_id" input="string" output="string?" {
     pipeline {
       apply "regex-capture" pattern=#"/horse/([^/?#]+)"# group=1
@@ -87,14 +99,14 @@ Rules:
 ## Extractor
 
 ```kdl
-extractor "race-detail" version=1 {
+extractor "race-detail" version="2026-07-15" language-version="2026-07-15" {
 }
 ```
 
 Rules:
 
 - name MUST be non-empty and match the extractor name grammar;
-- `version` MUST be a positive integer;
+- `version` and `language-version` MUST satisfy the compatibility identifier rules above;
 - exactly one `source` child is REQUIRED;
 - zero or more `input`, `transform`, `field`, and `collection` children are allowed;
 - these child categories MAY appear in any source order;
@@ -105,14 +117,14 @@ Rules:
 ## Module
 
 ```kdl
-module "common-transforms" version=1 {
+module "common-transforms" version="2026-07-15" language-version="2026-07-15" {
 }
 ```
 
 Rules:
 
 - name MUST match the module name grammar;
-- `version` MUST be a positive integer;
+- `version` and `language-version` MUST satisfy the compatibility identifier rules above;
 - only `transform` children are allowed;
 - transform names MUST be unique and MUST NOT collide with built-in names.
 
@@ -527,7 +539,7 @@ External transforms are host functions resolved from a runtime registry. They do
 
 ## Built-in transforms
 
-The normative built-in registry is defined in `builtins-v0.1.md`. Implementations MUST NOT change signatures or semantics under language version 0.1.
+The normative built-in registry is defined in `builtins-v0.1.md`. Implementations MUST NOT change signatures or semantics under language version `2026-07-15`.
 
 Regex-taking built-ins MUST use the portable RE2 profile defined there. Native JavaScript RegExp semantics are not the language semantics.
 

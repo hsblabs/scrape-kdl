@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/hsblabs/scrape-kdl/internal/compatibility"
 	"github.com/hsblabs/scrape-kdl/internal/dom"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 	"github.com/hsblabs/scrape-kdl/internal/limits"
@@ -116,14 +117,20 @@ func preflightExtractorStructure(extractor *ir.Extractor) error {
 	if extractor.Kind != "extractor" {
 		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown extractor kind %q", extractor.Kind), Path: "extractor"}
 	}
-	if extractor.IRVersion != "0.1" {
+	if !compatibility.IsDateIdentifier(extractor.IRVersion) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("malformed IR version %q", extractor.IRVersion), Path: "irVersion"}
+	}
+	if !compatibility.IsSupportedIRVersion(extractor.IRVersion) {
 		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unsupported IR version %q", extractor.IRVersion), Path: "irVersion"}
 	}
-	if extractor.LanguageVersion != "0.1" {
+	if !compatibility.IsDateIdentifier(extractor.LanguageVersion) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("malformed language version %q", extractor.LanguageVersion), Path: "languageVersion"}
+	}
+	if !compatibility.IsSupportedLanguageVersion(extractor.LanguageVersion) {
 		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unsupported language version %q", extractor.LanguageVersion), Path: "languageVersion"}
 	}
-	if extractor.Version < 1 {
-		return &ExecutionError{Code: "E_IR_INVALID", Message: "extractor version must be positive", Path: "version"}
+	if !compatibility.IsDateIdentifier(extractor.Version) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: "extractor version must be a real calendar date in YYYY-MM-DD form", Path: "version"}
 	}
 	return nil
 }

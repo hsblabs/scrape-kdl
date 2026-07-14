@@ -4,11 +4,23 @@
 |---|---:|---:|
 | Go | 1.26 | 1.26.x |
 | KDL lexical base | KDL 2.0 concepts | Scraping KDL supported subset |
-| Scraping KDL language | v0.1 working draft | v0.1 |
+| Scraping KDL language | `2026-07-15` | `2026-07-15` |
+| Validated IR | `2026-07-15` | `2026-07-15` |
 | go-rod adapter | go-rod v0.116.2 | v0.116.2 |
 | Operating system | Linux or macOS | Linux and macOS |
 
 The core module intentionally has no browser-library dependency. Browser integrations are separate modules.
+
+The Go library publishes its exact accepted sets through `SupportedLanguageVersions` and `SupportedIRVersions`. These values are opaque identifiers; an earlier date is not implicitly compatible with a later date.
+
+## Migration from the untagged working draft
+
+- Replace integer root properties such as `version=1` with a real document revision such as `version="2026-07-15"`.
+- Add `language-version="2026-07-15"` to every extractor and transform module root.
+- Regenerate Validated IR with `languageVersion` and `irVersion` set to `2026-07-15`; serialized `0.1` IR is rejected before acquisition.
+- Update Go callers for `Program.Version()` returning `string` instead of `int`.
+
+The former identifiers are not accepted as aliases because doing so would obscure the selected language and IR contracts.
 
 ## v0.1 contract decisions
 

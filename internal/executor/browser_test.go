@@ -131,7 +131,7 @@ func TestExecuteBrowserRequiresJavaScriptOptIn(t *testing.T) {
 }
 
 func TestExecuteBrowserPreflightsExternalTransformsBeforeAcquire(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-external" version=1 {
+	path := compileTestSpec(t, `extractor "browser-external" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   transform "decorate" input="string" output="string" { external symbol="decorate" }
   field "title" type="string" required=#true {
@@ -166,7 +166,7 @@ func TestExecuteBrowserPreflightsExternalTransformsBeforeAcquire(t *testing.T) {
 }
 
 func TestExecuteBrowserPreflightsInputsAndSessionBeforeAcquire(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-preflight" version=1 {
+	path := compileTestSpec(t, `extractor "browser-preflight" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="browser" url="https://example.invalid/{id}"
     session policy="required"
@@ -204,7 +204,7 @@ func TestExecuteBrowserPreflightsInputsAndSessionBeforeAcquire(t *testing.T) {
 }
 
 func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
-	const spec = `extractor "browser-output-preflight" version=1 {
+	const spec = `extractor "browser-output-preflight" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   collection "rows" { select ".rows"; field "value" type="string" required=#true { select ".value"; value "text" } }
 }`
@@ -218,7 +218,7 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 		{
 			name: "unsupported IR version",
 			mutate: func(extractor *ir.Extractor) {
-				extractor.IRVersion = "1.0"
+				extractor.IRVersion = "2026-07-16"
 			},
 			wantCode: "E_IR_INVALID",
 		},
@@ -512,7 +512,7 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 }
 
 func TestExecuteBrowserPreflightsMalformedWorkflowBeforeAcquire(t *testing.T) {
-	const spec = `extractor "browser-workflow-preflight" version=1 {
+	const spec = `extractor "browser-workflow-preflight" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/"; workflow { wait-for "#ready" } }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`
@@ -711,7 +711,7 @@ func (b *leaseTrackingBrowser) Acquire(context.Context) (func(), error) {
 }
 
 func TestExecuteBrowserRejectsNilLeaseRelease(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-nil-release" version=1 {
+	path := compileTestSpec(t, `extractor "browser-nil-release" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
@@ -741,7 +741,7 @@ func TestExecuteBrowserReleasesLeaseAfterPostNavigationFailures(t *testing.T) {
 	}{
 		{
 			name: "workflow",
-			source: `extractor "browser-workflow-release" version=1 {
+			source: `extractor "browser-workflow-release" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/"; workflow { wait-for "#ready" } }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`,
@@ -749,7 +749,7 @@ func TestExecuteBrowserReleasesLeaseAfterPostNavigationFailures(t *testing.T) {
 		},
 		{
 			name: "output query",
-			source: `extractor "browser-query-release" version=1 {
+			source: `extractor "browser-query-release" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`,
@@ -911,7 +911,7 @@ func TestExecuteBrowserRejectsNonJSONJavaScriptResult(t *testing.T) {
 }
 
 func TestExecuteBrowserValidatesJSONNumberResult(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-number" version=1 {
+	path := compileTestSpec(t, `extractor "browser-number" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "value" type="unknown" required=#true {
     evaluate-js "() => 1" scope="document" returns="unknown"
@@ -976,7 +976,7 @@ func TestExecuteBrowserValidatesDeclaredJavaScriptReturnType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := compileTestSpec(t, `extractor "browser-return" version=1 {
+			path := compileTestSpec(t, `extractor "browser-return" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "value" type="`+tt.returns+`" required=#true {
     evaluate-js "() => null" scope="document" returns="`+tt.returns+`"
@@ -1006,7 +1006,7 @@ func TestExecuteBrowserValidatesDeclaredJavaScriptReturnType(t *testing.T) {
 }
 
 func TestExecuteBrowserMissingAndFieldRecovery(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-recovery" version=1 {
+	path := compileTestSpec(t, `extractor "browser-recovery" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "missing" type="string" required=#false {
     select ".missing" match="first"
@@ -1044,7 +1044,7 @@ func TestExecuteBrowserMissingAndFieldRecovery(t *testing.T) {
 }
 
 func TestExecuteBrowserNormalizesNumericFieldDefaults(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-numeric-defaults" version=1 {
+	path := compileTestSpec(t, `extractor "browser-numeric-defaults" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "missing_count" type="int" required=#false default=7 {
     select ".missing"; value "text"; apply "parse-int" as="int"; on-error "default"
@@ -1074,7 +1074,7 @@ func TestExecuteBrowserNormalizesNumericFieldDefaults(t *testing.T) {
 }
 
 func TestExecuteBrowserRequiredMissingIsNotRecovered(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-required-missing" version=1 {
+	path := compileTestSpec(t, `extractor "browser-required-missing" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "missing" type="string" required=#true {
     select ".missing" match="first"
@@ -1094,7 +1094,7 @@ func TestExecuteBrowserRequiredMissingIsNotRecovered(t *testing.T) {
 }
 
 func TestExecuteBrowserWrapsInvalidRecoveryDefault(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-invalid-default" version=1 {
+	path := compileTestSpec(t, `extractor "browser-invalid-default" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "value" type="string" required=#false default="fallback" {
     evaluate-js "bad" scope="document" returns="string"
@@ -1118,7 +1118,7 @@ func TestExecuteBrowserWrapsInvalidRecoveryDefault(t *testing.T) {
 }
 
 func TestExecuteBrowserCollectionRowRecovery(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-row-recovery" version=1 {
+	path := compileTestSpec(t, `extractor "browser-row-recovery" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   collection "rows" min-items=1 on-row-error="skip" {
     select ".rows"
@@ -1174,7 +1174,7 @@ func TestExecuteBrowserCollectionCardinality(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := compileTestSpec(t, `extractor "browser-cardinality" version=1 {
+			path := compileTestSpec(t, `extractor "browser-cardinality" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   `+tt.collection+`
 }`)
@@ -1204,7 +1204,7 @@ func TestExecuteBrowserValueSourceReads(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := compileTestSpec(t, `extractor "browser-read" version=1 {
+			path := compileTestSpec(t, `extractor "browser-read" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "value" type="string" required=#true {
     select "h1" match="one"
@@ -1241,7 +1241,7 @@ func TestExecuteBrowserValueSourceFailures(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := compileTestSpec(t, `extractor "browser-read-failure" version=1 {
+			path := compileTestSpec(t, `extractor "browser-read-failure" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "value" type="string" required=#true {
     select "h1" match="one"
@@ -1263,7 +1263,7 @@ func TestExecuteBrowserValueSourceFailures(t *testing.T) {
 }
 
 func TestExecuteBrowserRecoversQueryFailure(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-query-recovery" version=1 {
+	path := compileTestSpec(t, `extractor "browser-query-recovery" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "value" type="string" required=#false {
     select "h1" match="one"
@@ -1284,7 +1284,7 @@ func TestExecuteBrowserRecoversQueryFailure(t *testing.T) {
 }
 
 func TestExecuteBrowserCollectionQueryFailure(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-collection-query" version=1 {
+	path := compileTestSpec(t, `extractor "browser-collection-query" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   collection "rows" {
     select ".rows"
@@ -1346,7 +1346,7 @@ func TestExecuteBrowserWorkflowTimeoutUsesStableCode(t *testing.T) {
 }
 
 func TestExecuteBrowserWorkflowOperations(t *testing.T) {
-	path := compileTestSpec(t, `extractor "browser-workflow" version=1 {
+	path := compileTestSpec(t, `extractor "browser-workflow" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="browser" url="https://example.invalid/"
     workflow {
@@ -1404,7 +1404,7 @@ func TestExecuteBrowserWorkflowOperationFailures(t *testing.T) {
 	for _, operation := range operations {
 		for _, failure := range causes {
 			t.Run(operation.name+"/"+failure.name, func(t *testing.T) {
-				path := compileTestSpec(t, `extractor "browser-workflow-failure" version=1 {
+				path := compileTestSpec(t, `extractor "browser-workflow-failure" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="browser" url="https://example.invalid/"
     workflow { `+operation.step+` }

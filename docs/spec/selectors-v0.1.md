@@ -49,4 +49,4 @@ Scraping KDL selectors are a portability subset intended to work consistently in
 - unsupported syntax MUST fail static validation with `E_SELECTOR_UNSUPPORTED`;
 - syntactically malformed selectors MUST fail with `E_SELECTOR_INVALID`.
 
-Implementations MAY use a broader selector engine internally, but MUST reject selectors outside this profile under language version 0.1.
+Implementations MAY use a broader selector engine internally, but MUST reject selectors outside this profile under language version `2026-07-15`.

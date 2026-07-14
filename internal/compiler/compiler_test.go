@@ -49,6 +49,16 @@ func TestCompileBasicHTTP(t *testing.T) {
 	}
 }
 
+func TestCompileAllowsIndependentDocumentVersion(t *testing.T) {
+	got, diags := CompileFile(fixture("valid", "document-version-advance.kdl"))
+	if diags.HasErrors() || got == nil {
+		t.Fatalf("compile diagnostics = %#v", diags)
+	}
+	if got.Version != "2026-07-16" || got.LanguageVersion != "2026-07-15" || got.IRVersion != "2026-07-15" {
+		t.Fatalf("version metadata = %#v", got)
+	}
+}
+
 func TestCompileRaceDetailMatchesGolden(t *testing.T) {
 	got, diags := CompileFile(fixture("valid", "race-detail.kdl"))
 	if diags.HasErrors() {
@@ -79,6 +89,12 @@ func TestInvalidFixtures(t *testing.T) {
 		{name: "duplicate property", path: fixture("invalid", "duplicate-property.kdl"), code: "E_DUPLICATE_PROPERTY"},
 		{name: "import cycle", path: fixture("invalid", "import-cycle.kdl"), code: "E_IMPORT_CYCLE"},
 		{name: "timeout overflow", path: fixture("invalid", "timeout-overflow.kdl"), code: "E_TYPE_MISMATCH"},
+		{name: "integer version", path: fixture("invalid", "integer-version.kdl"), code: "E_DOCUMENT_VERSION_INVALID"},
+		{name: "missing document version", path: fixture("invalid", "missing-document-version.kdl"), code: "E_DOCUMENT_VERSION_REQUIRED"},
+		{name: "missing language version", path: fixture("invalid", "missing-language-version.kdl"), code: "E_LANGUAGE_VERSION_REQUIRED"},
+		{name: "malformed document version", path: fixture("invalid", "malformed-document-version.kdl"), code: "E_DOCUMENT_VERSION_INVALID"},
+		{name: "malformed language version", path: fixture("invalid", "malformed-language-version.kdl"), code: "E_LANGUAGE_VERSION_INVALID"},
+		{name: "unknown language version", path: fixture("invalid", "unknown-language-version.kdl"), code: "E_LANGUAGE_VERSION_UNSUPPORTED"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,6 +111,32 @@ func TestInvalidFixtures(t *testing.T) {
 			}
 			if !found {
 				t.Fatalf("expected diagnostic %s, got %#v", tt.code, diags)
+			}
+		})
+	}
+}
+
+func TestVersionFixturesHaveExactDiagnostics(t *testing.T) {
+	tests := []struct {
+		path string
+		code string
+	}{
+		{path: "integer-version.kdl", code: "E_DOCUMENT_VERSION_INVALID"},
+		{path: "missing-document-version.kdl", code: "E_DOCUMENT_VERSION_REQUIRED"},
+		{path: "malformed-document-version.kdl", code: "E_DOCUMENT_VERSION_INVALID"},
+		{path: "missing-language-version.kdl", code: "E_LANGUAGE_VERSION_REQUIRED"},
+		{path: "malformed-language-version.kdl", code: "E_LANGUAGE_VERSION_INVALID"},
+		{path: "unknown-language-version.kdl", code: "E_LANGUAGE_VERSION_UNSUPPORTED"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			diagnostics := ValidateFile(fixture("invalid", tt.path))
+			codes := make([]string, len(diagnostics))
+			for index, item := range diagnostics {
+				codes[index] = item.Code
+			}
+			if !slices.Equal(codes, []string{tt.code}) {
+				t.Fatalf("diagnostic codes = %v, want [%s]", codes, tt.code)
 			}
 		})
 	}
@@ -117,7 +159,7 @@ func TestCompileInitializesIRArrays(t *testing.T) {
 }
 
 func TestCompileBrowserWorkflowSteps(t *testing.T) {
-	extractor, codes := compileText(t, `extractor "workflow" version=1 {
+	extractor, codes := compileText(t, `extractor "workflow" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="browser" url="https://example.invalid/"
     workflow {
@@ -158,7 +200,7 @@ func TestCompileBrowserWorkflowSteps(t *testing.T) {
 }
 
 func TestCompileRejectsInvalidBrowserWorkflowSteps(t *testing.T) {
-	extractor, codes := compileText(t, `extractor "invalid-workflow" version=1 {
+	extractor, codes := compileText(t, `extractor "invalid-workflow" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="browser" url="https://example.invalid/"
     workflow {
@@ -184,7 +226,7 @@ func TestCompileRejectsInvalidBrowserWorkflowSteps(t *testing.T) {
 }
 
 func TestCompileRejectsDurationOverflow(t *testing.T) {
-	extractor, codes := compileText(t, `extractor "duration-overflow" version=1 {
+	extractor, codes := compileText(t, `extractor "duration-overflow" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="browser" url="https://example.invalid/"
     workflow {
@@ -202,7 +244,7 @@ func TestCompileRejectsDurationOverflow(t *testing.T) {
 }
 
 func TestCompileInputDefaults(t *testing.T) {
-	extractor, codes := compileText(t, `extractor "input-defaults" version=1 {
+	extractor, codes := compileText(t, `extractor "input-defaults" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/{lang}" }
   input "lang" type="string" required=#false default="ja"
   input "enabled" type="bool" required=#false default=#true
@@ -234,7 +276,7 @@ func TestCompileInputDefaults(t *testing.T) {
 }
 
 func TestCompileRejectsInvalidDefaults(t *testing.T) {
-	extractor, codes := compileText(t, `extractor "invalid-defaults" version=1 {
+	extractor, codes := compileText(t, `extractor "invalid-defaults" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   input "required_value" type="string" required=#true default="x"
   input "wrong_bool" type="bool" required=#false default="true"
@@ -255,7 +297,7 @@ func TestCompileRejectsInvalidDefaults(t *testing.T) {
 }
 
 func TestCompileTokenizesEscapedURLTemplate(t *testing.T) {
-	extractor, codes := compileText(t, `extractor "escaped-template" version=1 {
+	extractor, codes := compileText(t, `extractor "escaped-template" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/{{literal}}/{id}" }
   input "id" type="string" required=#true
   field "title" type="string" required=#true { select "h1"; value "text" }
@@ -273,7 +315,7 @@ func TestCompileTokenizesEscapedURLTemplate(t *testing.T) {
 		t.Fatalf("segments = %#v", template.Segments)
 	}
 
-	extractor, codes = compileText(t, `extractor "literal-placeholder" version=1 {
+	extractor, codes = compileText(t, `extractor "literal-placeholder" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/{{id}}" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
@@ -299,7 +341,7 @@ func TestCompileRejectsInvalidURLTemplates(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, codes := compileText(t, fmt.Sprintf(`extractor "invalid-template" version=1 {
+			_, codes := compileText(t, fmt.Sprintf(`extractor "invalid-template" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   %s
   field "title" type="string" required=#true { select "h1"; value "text" }
@@ -314,7 +356,7 @@ func TestCompileRejectsInvalidURLTemplates(t *testing.T) {
 func TestCompileClassifiesPortableSelectors(t *testing.T) {
 	compileSelector := func(t *testing.T, selector string) (*ir.Extractor, []string) {
 		t.Helper()
-		return compileText(t, fmt.Sprintf(`extractor "selector" version=1 {
+		return compileText(t, fmt.Sprintf(`extractor "selector" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "value" type="string" required=#true { select %q match="one"; value "text" }
 }`, selector))

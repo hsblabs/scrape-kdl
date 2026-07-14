@@ -1,0 +1,5 @@
+extractor "malformed-document-version" version="2026-02-30" language-version="2026-07-15" {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/"
+  }
+}
