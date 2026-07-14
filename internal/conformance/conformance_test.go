@@ -60,7 +60,7 @@ func TestManifestSuiteSelection(t *testing.T) {
 		{suite: "pr", implementation: "go", job: "core", want: 15},
 		{suite: "release", implementation: "go", job: "core", want: 16},
 		{suite: "release", implementation: "go", job: "browser-e2e", want: 1},
-		{suite: "typescript-slice", implementation: "typescript", job: "core", want: 7},
+		{suite: "typescript-slice", implementation: "typescript", job: "core", want: 8},
 		{suite: "invalid", implementation: "go", job: "core", want: 11},
 	}
 	for _, test := range tests {
@@ -93,6 +93,14 @@ func TestManifestRejectsUnregisteredFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := manifest.Validate(); err == nil || !strings.Contains(err.Error(), "unregistered fixture fixtures/unregistered.kdl") {
+		t.Fatalf("Validate() = %v", err)
+	}
+}
+
+func TestManifestRejectsMissingInventoryArtifact(t *testing.T) {
+	manifest := loadTestManifest(t, filepath.Join("..", "..", "conformance", "manifest.json"))
+	manifest.FixtureInventories[0].Artifacts[0] = "fixtures/parser/missing.json"
+	if err := manifest.Validate(); err == nil || !strings.Contains(err.Error(), "missing artifact fixtures/parser/missing.json") {
 		t.Fatalf("Validate() = %v", err)
 	}
 }

@@ -4,7 +4,7 @@
   "title": "Scraping KDL conformance manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "schemaVersion", "contract", "normalization", "suites", "approvedDivergences", "cases"],
+  "required": ["$schema", "schemaVersion", "contract", "normalization", "fixtureInventories", "suites", "approvedDivergences", "cases"],
   "properties": {
     "$schema": { "type": "string" },
     "schemaVersion": { "const": "2026-07-15" },
@@ -20,6 +20,10 @@
     "normalization": {
       "type": "object",
       "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "fixtureInventories": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fixtureInventory" }
     },
     "suites": {
       "type": "object",
@@ -42,6 +46,27 @@
     }
   },
   "$defs": {
+    "fixtureInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "purpose", "consumers", "artifacts"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+        "purpose": { "type": "string", "minLength": 1 },
+        "consumers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["go", "typescript"] }
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^fixtures/" }
+        }
+      }
+    },
     "artifact": {
       "type": "object",
       "additionalProperties": false,

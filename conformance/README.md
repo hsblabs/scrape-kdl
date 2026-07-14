@@ -1,7 +1,7 @@
 # Cross-language conformance
 
 `manifest.json` is the source of truth for release-blocking and provisional conformance cases.
-It registers every file below `fixtures/`, the implementations and jobs that own each case, focused suites, expected artifacts, and the currently empty approved-divergence registry.
+It registers every file below `fixtures/`, the implementations and jobs that own each case, focused suites, expected artifacts, and the currently empty approved-divergence registry. `fixtureInventories` registers shared non-case corpora, such as parser and fuzz inputs consumed directly by both implementations, without pretending a mixed corpus is one executable extractor case.
 
 The dated schemas are:
 
@@ -72,7 +72,7 @@ The pull request must link the owner decision and explain why no portable behavi
 
 CI fails when:
 
-- a file under `fixtures/` is absent from all manifest cases;
+- a file under `fixtures/` is absent from all manifest cases and fixture inventories;
 - a registered or expected artifact is missing;
 - a suite, case, execution, or expected diagnostic key is invalid;
 - a result violates its dated schema;

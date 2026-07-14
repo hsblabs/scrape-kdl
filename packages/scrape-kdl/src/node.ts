@@ -12,11 +12,11 @@ export * from "./public-api.js";
 export async function compileFile(path: string, options: Omit<CompileOptions, "loader"> = {}): Promise<CompileResult> {
   options.signal?.throwIfAborted();
   const data = await readFile(path);
-  return compile({ path, data }, options);
+  return compile({ path, data }, { ...options, loader: { async load(importPath) { return readFile(importPath); } } });
 }
 
 export async function validateFile(path: string, options: Omit<CompileOptions, "loader"> = {}): Promise<readonly DiagnosticIR[]> {
   options.signal?.throwIfAborted();
   const data = await readFile(path);
-  return validate({ path, data }, options);
+  return validate({ path, data }, { ...options, loader: { async load(importPath) { return readFile(importPath); } } });
 }

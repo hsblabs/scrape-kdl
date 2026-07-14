@@ -10,6 +10,7 @@ All notable implementation changes are recorded here. Formal releases will use S
 - Completed the `2026-07-15` contract audit with a drift-checked normative coverage inventory, corrected the dated grammar summary, and added a bounded independent Node.js 26 TypeScript parser/compiler slice that matches the Go IR and shared diagnostic fixtures.
 - Added the dated cross-language conformance manifest and result schemas, focused suite selection, a Go runner, the manifest-driven TypeScript slice runner, and CI failure gates for missing fixtures/artifacts and unapproved differences.
 - Added the ESM-only `@hsblabs/scrape-kdl` npm package scaffold and reserved Playwright adapter workspace, approved root and Node.js entry points, full IR declarations, Node.js 26 Linux/macOS gates, coverage and source lint checks, and packed clean-consumer verification without a core Playwright dependency.
+- Completed the TypeScript KDL subset parser and injectable source graph, added explicit Node.js filesystem loading, and introduced shared Go/TypeScript parser, invalid-UTF-8, import, cycle, and bounded-mutation fixtures with exact diagnostic parity.
 - Moved all module paths to `github.com/hsblabs/scrape-kdl`.
 - Added KDL slashdash suppression for nodes, arguments, properties, and child blocks.
 - Added hexadecimal, octal, and binary integer literals.

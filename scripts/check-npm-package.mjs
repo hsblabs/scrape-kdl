@@ -46,6 +46,7 @@ async function main() {
     /[A-Za-z]:\\/u,
     /-----BEGIN [A-Z ]*PRIVATE KEY-----/u,
     /(?:npm_|github_|ghp_)[A-Za-z0-9]{12,}/u,
+    /(?:node:child_process|Bun\.spawn|Deno\.Command)/u,
   ];
   for (const path of extractedFiles) {
     const data = await readFile(path, "utf8");
@@ -102,6 +103,19 @@ const source = await import("node:fs/promises").then(({ readFile }) => readFile(
 const memory = await compile({ path: "extractor.kdl", data: source });
 assert.equal(memory.program.metadata.name, "basic-http");
 assert.deepEqual(await validate({ path: "extractor.kdl", data: source }), []);
+const imported = await compile({
+  path: "spec/extractor.kdl",
+  data: "import \\"./common.kdl\\" as=\\"common\\"\\n" + new TextDecoder().decode(source),
+}, {
+  loader: {
+    async load(path, context) {
+      assert.equal(path, "spec/common.kdl");
+      assert.equal(context.fromPath, "spec/extractor.kdl");
+      return "module \\"common\\" version=\\"2026-07-15\\" language-version=\\"2026-07-15\\" {}";
+    },
+  },
+});
+assert.equal(imported.program.metadata.name, "basic-http");
 assert.equal((await compileFile(new URL("./extractor.kdl", import.meta.url).pathname)).program.metadata.name, "basic-http");
 assert.deepEqual(await validateFile(new URL("./extractor.kdl", import.meta.url).pathname), []);
 `;

@@ -51,7 +51,7 @@ export interface Program {
 
 export async function compile(source: Source, options: CompileOptions = {}): Promise<CompileResult> {
   options.signal?.throwIfAborted();
-  const result = await compileContractSlice(source);
+  const result = await compileContractSlice(source, options);
   options.signal?.throwIfAborted();
   if (result.ir === undefined) return { diagnostics: result.diagnostics };
   return { program: new ProgramSnapshot(result.ir), diagnostics: result.diagnostics };

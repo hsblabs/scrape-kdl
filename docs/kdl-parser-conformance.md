@@ -16,12 +16,11 @@ Supported lexical features include:
 
 Scraping KDL rejects KDL type annotations by language rule. The current parser does not promise support for every generic KDL 2 representation, including multiline escaped quoted strings, keyword non-finite numbers, arbitrary Unicode identifiers, or whitespace escapes. Specs should use the canonical formatting defined by the language specification.
 
-Parser conformance fixtures belong under `internal/kdl` and language fixtures under `fixtures/`.
+Shared parser cases and fuzz seeds live under `fixtures/parser/`; both Go and TypeScript consume them directly. Language fixtures remain under `fixtures/`.
 The normative section-to-evidence inventory is `docs/spec/conformance-coverage.json` and is drift-checked by `TestConformanceCoverage`.
 
-The bounded TypeScript parser under `packages/scrape-kdl` exists to independently cross-check the representative v0.2 contract fixtures.
-It does not yet claim the complete Scraping KDL subset listed above; unsupported syntax remains an implementation limit until Issues #11 through #13 expand the package.
+The TypeScript parser under `packages/scrape-kdl` implements the same documented subset and consumes the same acceptance and diagnostic cases. It preserves UTF-8 byte offsets with one-based lines and columns, rejects invalid UTF-8 before parsing, and matches Go diagnostic ordering. Its source graph resolves relative imports lexically through the injected `SourceLoader`; remote and absolute import syntax is rejected before the loader is called.
 
 ## Fuzzing
 
-`FuzzParseNeverPanics` continuously exercises arbitrary input. A scheduled GitHub Actions workflow runs the KDL parser and DOM parser/selector fuzz targets. Fuzzing guarantees crash resistance, not acceptance of syntax outside the documented subset.
+`FuzzParseNeverPanics` continuously exercises arbitrary input using the shared seed inventory. TypeScript tests run the same seeds plus 2,048 deterministic mutations bounded to 511 UTF-16 code units per case. A scheduled GitHub Actions workflow runs the Go KDL parser and DOM parser/selector fuzz targets. Fuzzing guarantees crash resistance, not acceptance of syntax outside the documented subset.

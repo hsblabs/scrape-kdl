@@ -33,7 +33,10 @@ export async function runTypeScriptSlice({ root, manifestPath = "conformance/man
 async function runCase(root, manifest, testCase, execution) {
   const sourcePath = testCase.artifacts.find((artifact) => artifact.role === "source")?.path;
   if (sourcePath === undefined) throw new Error(`${testCase.id} has no source artifact`);
-  const compiled = await compileContractSlice({ path: sourcePath, data: await readFile(`${root}/${sourcePath}`) });
+  const compiled = await compileContractSlice(
+    { path: sourcePath, data: await readFile(`${root}/${sourcePath}`) },
+    { loader: { async load(path) { return readFile(`${root}/${path}`); } } },
+  );
   const result = { id: testCase.id, status: "passed", observations: [], differences: [] };
   if (execution.stages.includes("validate")) {
     result.observations.push({ kind: "diagnostics", value: compiled.diagnostics });

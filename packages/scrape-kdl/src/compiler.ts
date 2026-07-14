@@ -1,4 +1,6 @@
-import { parse, type Node, type Property, type Span } from "./parser.js";
+import type { CompileOptions, Source } from "./public-api.js";
+import type { Node, Property, Span } from "./parser.js";
+import { loadSourceGraph } from "./source-loader.js";
 import type {
   CollectionIR, ExtractorIR, FieldIR, InputIR, OutputObjectIR, PrimitiveTypeName,
   SourceIR, TemplateSegmentIR, TransformCallIR, TypeRef,
@@ -7,17 +9,12 @@ import type {
 const LANGUAGE_VERSION = "2026-07-15";
 const IR_VERSION = "2026-07-15";
 
-export interface Source {
-  readonly path: string;
-  readonly data: string | Uint8Array;
-}
-
 export interface Diagnostic {
   readonly code: string;
   readonly severity: "error" | "warning";
   readonly message: string;
   readonly span: Span;
-  readonly path: string;
+  readonly path?: string;
 }
 
 export interface ContractSliceResult {
@@ -25,28 +22,15 @@ export interface ContractSliceResult {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-export async function compileContractSlice(source: Source): Promise<ContractSliceResult> {
-  const inputBytes = typeof source.data === "string" ? new TextEncoder().encode(source.data) : source.data;
-  const bytes = new Uint8Array(inputBytes.byteLength);
-  bytes.set(inputBytes);
-  let text: string;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch (error) {
-    const position = { offset: 0, line: 1, column: 1 };
-    return { diagnostics: [{
-      code: "E_KDL_SYNTAX", severity: "error", message: String(error), path: "",
-      span: { file: displayPath(source.path), start: position, end: position },
-    }] };
-  }
-  const path = displayPath(source.path);
-  const parsed = parse(path, text);
-  const diagnostics: Diagnostic[] = [...parsed.diagnostics];
-  if (parsed.document.nodes.length !== 1 || parsed.document.nodes[0]?.name !== "extractor") {
-    diagnostics.push(diagnostic("E_DOCUMENT_ROOT", "document must contain exactly one extractor root", parsed.document.span, ""));
+export async function compileContractSlice(source: Source, options: CompileOptions = {}): Promise<ContractSliceResult> {
+  const graph = await loadSourceGraph(source, options);
+  const diagnostics: Diagnostic[] = [...graph.diagnostics];
+  if (graph.entry?.root === undefined || graph.entry.kind !== "extractor" || diagnostics.some((item) => item.severity === "error")) {
     return { diagnostics: sortedDiagnostics(diagnostics) };
   }
-  const root = parsed.document.nodes[0];
+  const bytes = graph.entry.bytes;
+  const path = graph.entry.displayPath;
+  const root = graph.entry.root;
   validateProperties(root, diagnostics, new Set(["version", "language-version"]), "extractor");
   const name = stringArgument(root, 0);
   if (name === undefined || !/^[a-z][a-z0-9-]*$/u.test(name)) {
@@ -299,7 +283,8 @@ function isDateIdentifier(value: string): boolean {
 }
 
 function diagnostic(code: string, message: string, span: Span, path: string): Diagnostic {
-  return { code, severity: "error", message, span, path };
+  const result: Diagnostic = { code, severity: "error", message, span, path };
+  return path === "" ? { code, severity: "error", message, span } : result;
 }
 
 function sortedDiagnostics(diagnostics: readonly Diagnostic[]): readonly Diagnostic[] {
@@ -314,8 +299,4 @@ function compareCodePoints(left: string, right: string): number {
     if (leftPoints[index] !== rightPoints[index]) return leftPoints[index]! - rightPoints[index]!;
   }
   return leftPoints.length - rightPoints.length;
-}
-
-function displayPath(path: string): string {
-  return path.replaceAll("\\", "/").split("/").at(-1) ?? path;
 }

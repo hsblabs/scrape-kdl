@@ -1,0 +1,12 @@
+[
+  "extractor \"x\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.com\" } }",
+  "/- ignored \"x\"\nkept 0x10 #true #null",
+  "node #\"raw\"# key=#\"value\"#",
+  "node { child \"value\" }",
+  "/* nested /* block */ comment */ node",
+  "kept \"first\" /- \"dropped\" \"second\" /- old=1 new=2 /- { ignored } { real \"ok\" }",
+  "node #\"\"\"\nraw multiline\n\"\"\"#",
+  "numbers 0x10 0o10 0b10 -0x2 1_000 1.25e+2",
+  "(ignored) node \"typed\"",
+  "node \"unicode \\u{1f40e}\""
+]
