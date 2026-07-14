@@ -1,12 +1,13 @@
 # Validation
 
-Validated on 2026-07-14 with Go 1.26.5 on macOS arm64.
+Validated on 2026-07-15 with Go 1.26.5 and Node.js 26.4.0 on macOS arm64.
 
 ## Integrated release check
 
 Passed:
 
 ```bash
+npm ci
 ./scripts/verify-release.sh
 ```
 
@@ -16,6 +17,7 @@ This includes:
 - module-path and release-clean nested `go.mod` checks;
 - golden Validated IR comparison;
 - implementation-to-diagnostics documentation consistency;
+- independent Go consumer compilation, public-signature internal-package checks, and strict TypeScript API consumer typechecking;
 - `go vet ./...`;
 - `go test ./...`;
 - `go test -race ./...`;
@@ -56,6 +58,7 @@ Passed:
 
 - all `.github/**/*.yml` files parsed as YAML;
 - `actionlint` validation of all GitHub Actions workflows;
+- the pinned Node.js 26 / `npm ci` API-contract workflow path;
 - core and adapter semantic-version tag validation;
 - `manifest.json` JSON parsing;
 - source ZIP integrity and post-extraction root-module tests.

@@ -44,6 +44,7 @@ For source development:
 ```bash
 git clone https://github.com/hsblabs/scrape-kdl.git
 cd scrape-kdl
+npm ci
 make verify
 ```
 
@@ -101,7 +102,7 @@ scrape-kdl version
 ## Go API
 
 ```go
-program, diagnostics := scrapekdl.CompileFile("extractor.kdl")
+program, diagnostics := scrapekdl.CompileFile(ctx, "extractor.kdl")
 if diagnostics.HasErrors() {
     // Render diagnostics and stop before network or browser activity.
 }
@@ -122,7 +123,9 @@ if err != nil {
 
 The public API includes:
 
-- `CompileFile` and `ValidateFile`;
+- context-first `Compile`, `Validate`, `CompileFile`, and `ValidateFile` entry points;
+- injected source loading for deterministic import resolution without filesystem access;
+- immutable `Program.Metadata` snapshots;
 - `Program.IRJSON`;
 - `Program.Extract` and `Program.ExtractHTML`;
 - HTTP client and session injection;
@@ -132,6 +135,8 @@ The public API includes:
 - browser adapter injection.
 - adapter-facing `NormalizeBrowserResult` validation and normalization.
 - explicit `SupportedLanguageVersions` and `SupportedIRVersions` registries.
+
+See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and intentional idiomatic differences.
 
 ## Browser mode
 
@@ -183,6 +188,7 @@ See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
 Offline verification:
 
 ```bash
+npm ci
 make verify
 ```
 
@@ -217,6 +223,7 @@ make release-check
 - `docs/compiler-pipeline.md`
 - `docs/http-runtime.md`
 - `docs/browser-runtime.md`
+- `docs/public-api-v1.md`
 - `docs/roadmap-v1.md`
 - `docs/versioning.md`
 - `docs/releasing.md`
