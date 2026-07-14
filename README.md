@@ -215,6 +215,7 @@ make release-check
 - `docs/compiler-pipeline.md`
 - `docs/http-runtime.md`
 - `docs/browser-runtime.md`
+- `docs/roadmap-v1.md`
 - `docs/versioning.md`
 - `docs/releasing.md`
 
