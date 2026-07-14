@@ -2,10 +2,15 @@
   "name": "scrape-kdl-contract-workspace",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
     "node": ">=26"
   },
   "scripts": {
+    "build:contract-slice": "tsc --project packages/scrape-kdl/tsconfig.json",
+    "test:contract-slice": "npm run build:contract-slice && node packages/scrape-kdl/test/contract.test.mjs",
     "typecheck:api": "tsc --project testdata/api-consumers/typescript/tsconfig.json"
   },
   "devDependencies": {

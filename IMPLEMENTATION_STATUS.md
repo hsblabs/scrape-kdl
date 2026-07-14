@@ -71,11 +71,23 @@ Implemented:
 - host URL policy for initial targets and HTTP redirects;
 - raw-text/RCDATA, truncated HTML, and common optional-end-tag recovery.
 
+## v1 contract completion
+
+Implemented:
+
+- section-complete conformance coverage inventory for the language, built-in, selector, and diagnostic contracts;
+- exact dated-version grammar and shared Go/TypeScript diagnostic fixtures;
+- a private Node.js 26 npm workspace containing the bounded independent TypeScript parser/compiler cross-check;
+- canonical Go/TypeScript IR equality for the representative static HTTP fixture.
+
+The TypeScript slice deliberately covers the v0.2 contract cross-check only.
+The complete source loader, import resolver, semantic compiler, HTTP runtime, and Playwright adapter remain later roadmap work.
+
 ## Remaining limitations
 
 - Real go-rod and Chromium E2E require a network-enabled environment and browser availability.
 - The HTTP HTML parser is not a complete WHATWG tree builder.
 - The reference KDL parser implements the Scraping KDL v0.1 subset, not every generic KDL representation.
-- TypeScript runtime and Playwright adapter are not implemented.
+- The complete TypeScript compiler, runtime, and Playwright adapter are not implemented.
 - Go/TypeScript type and standalone extractor generation are not implemented.
 - Inspector, language server, and browser authoring extension are not implemented.

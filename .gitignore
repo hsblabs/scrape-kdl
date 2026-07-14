@@ -7,3 +7,4 @@
 /scrape-kdl-rod
 /scrape-kdl-rod.exe
 /node_modules/
+/packages/*/dist/
