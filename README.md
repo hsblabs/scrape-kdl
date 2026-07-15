@@ -172,7 +172,7 @@ See `SECURITY.md` and `docs/security-model.md`.
 - Minimum Go version: 1.26.
 - CI targets Go 1.26 on Linux and macOS.
 - The language is built on the KDL 2 data model but the reference parser intentionally supports the subset defined by the Scraping KDL v0.1 specification document series.
-- The HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
+- The Go HTTP runtime uses pinned `golang.org/x/net/html` WHATWG tree construction and is checked against the versioned portable HTML compatibility manifest.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
 - The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
 

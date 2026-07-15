@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "2026-07-15",
+  "normalization": {
+    "elementOrder": "document-order",
+    "text": "decoded-unmodified",
+    "innerHTML": "deterministic-html-serialization",
+    "missingAttribute": null
+  },
+  "upstream": {
+    "repository": "https://github.com/web-platform-tests/wpt",
+    "revision": "0fb6a32ac631eb62d3ab70fdfd2061d79ab25675",
+    "selectedTests": [],
+    "note": "The pull-request corpus is repository-owned. Issue #17 populates the scheduled WPT subset at this pinned revision."
+  },
+  "approvedDivergences": [],
+  "cases": [
+    {
+      "id": "local.raw-text-and-entities",
+      "input": "fixtures/html-compat/raw-text.html",
+      "decodedEncoding": "utf-8",
+      "parserMode": "document",
+      "upstreamTestId": "local:raw-text-and-entities",
+      "observations": [
+        { "selector": "script", "text": ["if (a < b && c > d) { x(\"&copy;\") }"], "innerHTML": ["if (a < b && c > d) { x(\"&copy;\") }"] },
+        { "selector": "style", "text": [".x > .y {}"], "innerHTML": [".x > .y {}"] },
+        { "selector": "h1", "text": ["ok & ready"], "innerHTML": ["ok &amp; ready"] }
+      ]
+    },
+    {
+      "id": "local.optional-end-tags",
+      "input": "fixtures/html-compat/optional-tags.html",
+      "decodedEncoding": "utf-8",
+      "parserMode": "document",
+      "upstreamTestId": "local:optional-end-tags",
+      "observations": [
+        { "selector": "main > p", "text": ["first", "second"], "innerHTML": ["first", "second"] },
+        { "selector": "ul > li", "text": ["a", "bHABF"], "innerHTML": ["a", "b<table><thead><tr><th>H</th></tr></thead><tbody><tr><td>A</td><td>B</td></tr></tbody><tfoot><tr><td>F</td></tr></tfoot></table>"] },
+        { "selector": "table > tbody > tr > td", "text": ["A", "B"], "innerHTML": ["A", "B"] }
+      ]
+    },
+    {
+      "id": "local.portable-selectors",
+      "input": "fixtures/html-compat/selectors.html",
+      "decodedEncoding": "utf-8",
+      "parserMode": "document",
+      "upstreamTestId": "local:portable-selectors",
+      "observations": [
+        { "selector": "#items > li.entry", "text": ["A", "B", "C"], "attributes": [{ "data-k": "a" }, { "data-k": "b" }, { "data-k": null }] },
+        { "selector": "li.first ~ li", "text": ["B", "C"] },
+        { "selector": "#types > span:nth-of-type(2n+1)", "text": ["", ""] },
+        { "selector": "li:not(.first) > a[href], li:not(.first) > span", "text": ["B", "C"] }
+      ]
+    },
+    {
+      "id": "local.tree-construction",
+      "input": "fixtures/html-compat/tree-construction.html",
+      "decodedEncoding": "utf-8",
+      "parserMode": "document",
+      "upstreamTestId": "local:foster-parenting-adoption-agency-foreign-content",
+      "observations": [
+        { "selector": "main", "text": ["beforefosterAafterone two threeVectorHTML"], "innerHTML": ["beforefoster<table id=\"table\"><tbody><tr><td>A</td></tr></tbody></table>after<p><b><i>one</i></b><i> two</i> three</p><svg><title>Vector</title><foreignObject><p>HTML</p></foreignObject></svg>"] },
+        { "selector": "main > table > tbody > tr > td", "text": ["A"] },
+        { "selector": "main > p > b > i", "text": ["one"] },
+        { "selector": "main > p > i", "text": [" two"] },
+        { "selector": "svg > title, svg p", "text": ["Vector", "HTML"] }
+      ]
+    },
+    {
+      "id": "local.rcdata-and-truncated-input",
+      "input": "fixtures/html-compat/rcdata-truncated.html",
+      "decodedEncoding": "utf-8",
+      "parserMode": "document",
+      "upstreamTestId": "local:rcdata-and-truncated-input",
+      "observations": [
+        { "selector": "title", "text": ["A & B < C"], "innerHTML": ["A &amp; B &lt; C"] },
+        { "selector": "textarea", "text": ["x < y"], "innerHTML": ["x &lt; y"] },
+        { "selector": "main > p", "text": ["first", "second"] },
+        { "selector": "main ul > li", "text": ["a", "b\n"] }
+      ]
+    }
+  ]
+}

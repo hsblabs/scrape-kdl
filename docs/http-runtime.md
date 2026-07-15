@@ -45,9 +45,9 @@ Other encodings are supported through `Options.CharsetDecoder`. This keeps encod
 
 ## HTML parser boundary
 
-The current Go reference runtime uses an internal permissive tree parser to keep the core module small. It supports ordinary scraping documents and repository fixtures, but it is not a complete WHATWG HTML tree builder. Malformed table foster parenting, all implied-element cases, and foreign-content edge cases may differ from a browser DOM.
+The Go reference runtime delegates document tree construction to pinned `golang.org/x/net/html` after bounded response bytes have been decoded to UTF-8. The internal DOM preserves document order and exposes portable selectors, decoded text, deterministic inner HTML, attributes, and missing-value behavior to the executor.
 
-Use browser mode when exact live-DOM behavior is required. Replacing or supplementing the static parser with a fully conforming backend remains planned work.
+The checked-in compatibility manifest covers malformed table foster parenting, active formatting elements, foreign content integration, raw text, RCDATA, optional end tags, truncated input, and the portable selector surface with zero approved divergences. See `docs/html-compatibility.md` for normalization and exclusions. Use browser mode when script mutations, layout, browser APIs, or other live-DOM behavior is required.
 
 
 ## URL policy
