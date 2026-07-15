@@ -67,4 +67,4 @@ The former `--header` and `--cookie` flags were removed at the v0.5 contract bou
 
 ## Compatibility window
 
-This is the v0.5 command contract candidate. Any change before the v0.9 freeze requires black-box tests, compatibility notes, and a migration path. At v0.9 the help, stream, JSON, exit-status, signal, and secret-input contracts freeze for v1.
+This command contract is frozen for the v1 release candidate as of 2026-07-15. A change requires black-box tests, compatibility notes, migration guidance, a release-blocker record, and a restarted 14-day candidate window. After stable publication, the help, stream, JSON, exit-status, signal, and secret-input contracts follow Semantic Versioning.

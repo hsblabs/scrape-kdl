@@ -234,8 +234,11 @@ See `conformance/README.md` for suite selection, the language-neutral result for
 Release preparation:
 
 ```bash
-make release-check
+make release-gate
+make rc-check
 ```
+
+Both commands are non-publishing. See `docs/pre-publication-checklist.md` and `docs/rc-operations.md`; tags, registry packages, GitHub releases, and visibility changes remain explicit project-owner gates.
 
 ## Coding agents
 
@@ -253,6 +256,9 @@ make release-check
 - `docs/public-api-v1.md`
 - `docs/roadmap-v1.md`
 - `docs/versioning.md`
+- `docs/pre-publication-checklist.md`
+- `docs/migration-to-v1.md`
+- `docs/maintenance-policy.md`
 - `docs/releasing.md`
 
 ## License

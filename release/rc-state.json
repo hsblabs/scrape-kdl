@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2026-07-15",
+  "prePublication": {
+    "status": "passed",
+    "verifiedOn": "2026-07-15",
+    "checklist": [
+      { "id": "contracts-frozen", "status": "passed", "evidence": "docs/public-api-v1.md, docs/cli.md, docs/spec, and docs/ir/schema.json" },
+      { "id": "support-matrix-frozen", "status": "passed", "evidence": "docs/support-matrix.json and CI package-target matrix" },
+      { "id": "migration-maintenance-release-notes", "status": "passed", "evidence": "docs/migration-to-v1.md, docs/maintenance-policy.md, and docs/releases/v1.0.0.md" },
+      { "id": "supported-release-gate", "status": "passed", "evidence": "make release-gate" },
+      { "id": "clean-package-dry-run", "status": "passed", "evidence": "make rc-package-check" },
+      { "id": "publication-guarded", "status": "passed", "evidence": "manual protected publication workflows with exact confirmation" }
+    ]
+  },
+  "candidatePeriod": {
+    "status": "ready",
+    "requiredConsecutiveDays": 14,
+    "candidateTag": null,
+    "windowStartedAt": null,
+    "minimumEndsAt": null,
+    "blockers": []
+  },
+  "publication": {
+    "ownerApproved": false,
+    "repositoryPublic": false,
+    "preV1Published": false,
+    "stablePublished": false
+  }
+}

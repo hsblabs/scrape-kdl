@@ -1,0 +1,36 @@
+name: RC pre-publication
+
+on:
+  pull_request:
+    paths:
+      - "release/**"
+      - "docs/pre-publication-checklist.md"
+      - "docs/rc-operations.md"
+      - "docs/releases/**"
+      - "scripts/check-rc-*"
+      - "scripts/prepare-npm-release.mjs"
+      - ".github/workflows/release*.yml"
+      - ".github/workflows/rc-prepublication.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-go@v6.5.0
+        with:
+          go-version: "1.26.x"
+          cache: false
+      - uses: actions/setup-node@v6.2.0
+        with:
+          node-version: "26.x"
+          cache: npm
+      - run: npm ci
+      - run: npm run build:typescript
+      - run: make rc-state
+      - run: make rc-package-check

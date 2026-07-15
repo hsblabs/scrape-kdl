@@ -1,8 +1,21 @@
 name: Release core
 
 on:
-  push:
-    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing core tag to publish, such as v1.0.0-rc.1 or v1.0.0
+        required: true
+        type: string
+      channel:
+        description: Publication channel
+        required: true
+        type: choice
+        options: [rc, stable]
+      confirmation:
+        description: Type PUBLISH followed by the exact tag
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -10,10 +23,12 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: v1-publication
     steps:
       - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
+          ref: ${{ inputs.tag }}
       - uses: actions/setup-go@v6.5.0
         with:
           go-version: "1.26.x"
@@ -22,11 +37,40 @@ jobs:
         with:
           node-version: "26.x"
           cache: npm
+          registry-url: "https://registry.npmjs.org"
       - run: npm ci
-      - run: ./scripts/validate-release-tag.sh core "${GITHUB_REF_NAME}"
-      - run: make release-check
-      - run: ./scripts/build-release.sh "${GITHUB_REF_NAME}" dist
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/check-publication-request.mjs core "$RELEASE_TAG" "$RELEASE_CHANNEL" "$RELEASE_CONFIRMATION" "$OWNER_APPROVAL"
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+          OWNER_APPROVAL: ${{ secrets.PUBLICATION_APPROVAL }}
+      - run: ./scripts/validate-release-tag.sh core "$RELEASE_TAG"
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+      - run: make release-gate
+      - run: ./scripts/build-release.sh "$RELEASE_TAG" dist
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+      - run: node scripts/prepare-npm-release.mjs "${RELEASE_TAG#v}" dist
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+      - run: rm dist/checksums.txt && ./scripts/write-release-checksums.sh dist
+      - name: Publish npm core
+        run: npm publish "dist/hsblabs-scrape-kdl-${RELEASE_TAG#v}.tgz" --access public --tag "$NPM_TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          NPM_TAG: ${{ inputs.channel == 'stable' && 'latest' || 'next' }}
+      - name: Publish npm Playwright adapter
+        run: npm publish "dist/hsblabs-scrape-kdl-playwright-${RELEASE_TAG#v}.tgz" --access public --tag "$NPM_TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          NPM_TAG: ${{ inputs.channel == 'stable' && 'latest' || 'next' }}
       - name: Create GitHub release
+        run: gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes --title "$RELEASE_TAG" ${{ inputs.channel == 'rc' && '--prerelease' || '' }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/* --verify-tag --generate-notes --title "${GITHUB_REF_NAME}"
+          RELEASE_TAG: ${{ inputs.tag }}

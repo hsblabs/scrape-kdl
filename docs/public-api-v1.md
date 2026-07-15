@@ -1,6 +1,6 @@
 # Go and TypeScript public API contract
 
-Status: v1 contract candidate. Breaking changes remain possible before the v0.9 API freeze, but every change requires tests, compatibility notes, and a migration path. Semantic behavior remains governed by the dated language and IR specifications.
+Status: frozen v1 release-candidate contract as of 2026-07-15. Changes now require a documented release blocker, compatibility analysis, and a restarted 14-day candidate window. Semantic behavior remains governed by the dated language and IR specifications.
 
 ## Shared capability surface
 
@@ -63,4 +63,4 @@ These are surface differences only. They do not permit different accepted KDL, d
 
 ## Compatibility process
 
-Before v0.9, a breaking public API change must update this document, both independent consumer checks, and `CHANGELOG.md` with a migration path. At v0.9 the candidate freezes. At v1.0.0, compatible additions and breaking changes follow Semantic Versioning independently for the Go modules and npm packages.
+The v1 candidate is frozen. Any candidate-period contract change must update this document, both independent consumer checks, `CHANGELOG.md`, and the migration guide, and must be handled as a release blocker that restarts the candidate window. After v1.0.0 publication, compatible additions and breaking changes follow Semantic Versioning independently for the Go modules and npm packages.

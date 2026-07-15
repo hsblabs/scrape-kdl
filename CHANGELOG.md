@@ -4,6 +4,8 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## Unreleased — M5 release hardening
 
+- Froze the v1 Go, TypeScript, CLI, diagnostics, runtime, adapter, and support candidates; added the migration guide, maintenance policy, draft release notes, guarded manual publication workflows, and an executable 14-day RC ledger without publishing any artifact.
+- Added cross-runtime executable examples, pinned WPT/Chromium differential coverage, measured performance baselines, clean module-proxy/npm consumers, fuzz/race/security gates, and the single non-publishing `make release-gate` command.
 - Replaced the untagged integer/`0.1` working-draft identifiers with independent `2026-07-15` document, language, and Validated IR date strings; `Program.Version` now returns a string and the Go API exposes exact supported-version registries.
 - Added the dated Validated IR schema layout, canonical JSON normalization, schema/golden validation, declaration-shape drift checks, and acquisition-time file/capability metadata preflight.
 - Defined equivalent Go and TypeScript v1 API candidates, made Go compilation context-first with injected source loading, removed internal executor aliases from public browser signatures, and added independent consumer contract checks. This is a pre-v0.9 Go API break: `CompileFile` and `ValidateFile` now require `context.Context`.
