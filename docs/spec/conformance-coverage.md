@@ -27,8 +27,6 @@ Any change to those observable contracts requires an approved new language date 
 ## TypeScript cross-check boundary
 
 `packages/scrape-kdl` is the future `@hsblabs/scrape-kdl` package boundary and requires Node.js 26 or later.
-At this milestone it is deliberately a bounded, independent parser/compiler slice: it parses and lowers the representative HTTP fixture, rejects the shared dated-version fixtures, emits the shared diagnostic codes and paths, hashes source bytes, and matches the Go golden IR after canonical JSON normalization without invoking a Go binary.
+The package now contains the complete documented KDL subset parser and injectable import graph. Shared parser and import cases require exact Go/TypeScript acceptance, diagnostics, UTF-8 byte spans, and ordering; the TypeScript conformance slice also runs the release-blocking import-cycle fixture. This implementation performs no network access, Go invocation, or subprocess execution.
 
-The slice does not claim complete language support.
-Issues #11 through #13 expand this package to the full parser, source loader, import resolver, semantic checker, and IR compiler.
-Unsupported syntax in the bounded slice is an implementation limit, not an alternate interpretation of the 2026-07-15 contract.
+Semantic validation and full IR lowering remain bounded to the representative HTTP fixture and dated-version diagnostics until Issue #13. That semantic slice is an implementation limit, not an alternate interpretation of the `2026-07-15` contract.

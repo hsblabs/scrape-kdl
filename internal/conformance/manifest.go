@@ -14,14 +14,15 @@ import (
 const SchemaVersion = "2026-07-15"
 
 type Manifest struct {
-	Schema              string            `json:"$schema"`
-	SchemaVersion       string            `json:"schemaVersion"`
-	Contract            Contract          `json:"contract"`
-	Normalization       map[string]string `json:"normalization"`
-	Suites              map[string]Suite  `json:"suites"`
-	ApprovedDivergences []Divergence      `json:"approvedDivergences"`
-	Cases               []Case            `json:"cases"`
-	Root                string            `json:"-"`
+	Schema              string             `json:"$schema"`
+	SchemaVersion       string             `json:"schemaVersion"`
+	Contract            Contract           `json:"contract"`
+	Normalization       map[string]string  `json:"normalization"`
+	FixtureInventories  []FixtureInventory `json:"fixtureInventories"`
+	Suites              map[string]Suite   `json:"suites"`
+	ApprovedDivergences []Divergence       `json:"approvedDivergences"`
+	Cases               []Case             `json:"cases"`
+	Root                string             `json:"-"`
 }
 
 type Contract struct {
@@ -31,6 +32,13 @@ type Contract struct {
 
 type Suite struct {
 	Description string `json:"description"`
+}
+
+type FixtureInventory struct {
+	ID        string   `json:"id"`
+	Purpose   string   `json:"purpose"`
+	Consumers []string `json:"consumers"`
+	Artifacts []string `json:"artifacts"`
 }
 
 type Case struct {
@@ -127,6 +135,40 @@ func (manifest *Manifest) Validate() error {
 	caseIDs := make(map[string]struct{})
 	casesByID := make(map[string]Case)
 	registeredArtifacts := make(map[string]struct{})
+	inventoryIDs := make(map[string]struct{})
+	for _, inventory := range manifest.FixtureInventories {
+		if inventory.ID == "" || inventory.Purpose == "" {
+			problems = append(problems, "fixture inventory id and purpose are required")
+		}
+		if _, exists := inventoryIDs[inventory.ID]; exists {
+			problems = append(problems, "duplicate fixture inventory id "+inventory.ID)
+		}
+		inventoryIDs[inventory.ID] = struct{}{}
+		if len(inventory.Consumers) == 0 || len(inventory.Artifacts) == 0 {
+			problems = append(problems, inventory.ID+": fixture inventory requires consumers and artifacts")
+		}
+		for _, consumer := range inventory.Consumers {
+			if consumer != "go" && consumer != "typescript" {
+				problems = append(problems, inventory.ID+": unknown fixture consumer "+consumer)
+			}
+		}
+		for _, artifact := range inventory.Artifacts {
+			if !validFixturePath(artifact) {
+				problems = append(problems, inventory.ID+": artifact path is not normalized: "+artifact)
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(manifest.Root, filepath.FromSlash(artifact)))
+			if err != nil {
+				problems = append(problems, fmt.Sprintf("%s: missing artifact %s: %v", inventory.ID, artifact, err))
+			} else if !json.Valid(data) {
+				problems = append(problems, inventory.ID+": artifact is not valid JSON: "+artifact)
+			}
+			if _, exists := registeredArtifacts[artifact]; exists {
+				problems = append(problems, inventory.ID+": duplicate registered artifact "+artifact)
+			}
+			registeredArtifacts[artifact] = struct{}{}
+		}
+	}
 	for _, testCase := range manifest.Cases {
 		if _, exists := caseIDs[testCase.ID]; exists {
 			problems = append(problems, "duplicate case id "+testCase.ID)

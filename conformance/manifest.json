@@ -12,6 +12,19 @@
     "diagnostics": "exact-code-severity-message-span-path-order",
     "spans": "utf8-byte-offset-one-based-line-column-exclusive-end"
   },
+  "fixtureInventories": [
+    {
+      "id": "parser-and-import-corpora",
+      "purpose": "Shared Go and TypeScript parser, UTF-8, import, and fuzz inputs consumed by package-level parity tests.",
+      "consumers": ["go", "typescript"],
+      "artifacts": [
+        "fixtures/parser/cases.json",
+        "fixtures/parser/fuzz-seeds.json",
+        "fixtures/parser/invalid-utf8.json",
+        "fixtures/imports/cases.json"
+      ]
+    }
+  ],
   "suites": {
     "pr": { "description": "Release-blocking cases executed by pull-request jobs." },
     "release": { "description": "Every release-blocking case across core and browser jobs." },
@@ -123,7 +136,7 @@
       "id": "invalid.import-cycle",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
       "artifacts": [
         { "path": "fixtures/invalid/import-cycle.kdl", "role": "source" },
         { "path": "fixtures/invalid/cycle/a.kdl", "role": "import" },
@@ -131,7 +144,10 @@
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
       ],
       "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "import-cycle.kdl" } },
-      "executions": [{ "implementation": "go", "job": "core", "stages": ["validate"] }]
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
     },
     {
       "id": "invalid.timeout-overflow",

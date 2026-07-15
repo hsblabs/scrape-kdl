@@ -8,9 +8,10 @@ const root = fileURLToPath(new URL("../../..", import.meta.url));
 
 const manifestResult = await runTypeScriptSlice({ root });
 assert.equal(manifestResult.status, "passed", JSON.stringify(manifestResult.cases.filter((testCase) => testCase.status === "failed"), null, 2));
-assert.equal(manifestResult.cases.length, 7, "the manifest must retain one valid and six invalid TypeScript slice cases");
+assert.equal(manifestResult.cases.length, 8, "the manifest must retain the compiler and import-graph TypeScript slice cases");
 assert.deepEqual(manifestResult.cases.map((testCase) => testCase.id), [
   "valid.basic-http",
+  "invalid.import-cycle",
   "invalid.integer-version",
   "invalid.missing-document-version",
   "invalid.malformed-document-version",
