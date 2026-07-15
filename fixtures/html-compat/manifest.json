@@ -9,8 +9,18 @@
   "upstream": {
     "repository": "https://github.com/web-platform-tests/wpt",
     "revision": "0fb6a32ac631eb62d3ab70fdfd2061d79ab25675",
-    "selectedTests": [],
-    "note": "The pull-request corpus is repository-owned. Issue #17 populates the scheduled WPT subset at this pinned revision."
+    "selectedTests": [
+      "html/syntax/parsing/ambiguous-ampersand.html",
+      "html/syntax/parsing/foreign_content_001.html",
+      "html/syntax/parsing/html-integration-point.html"
+    ],
+    "excludedTests": [
+      {
+        "path": "html/syntax/parsing/adoption_agency_check_the_end_tag_name.html",
+        "reason": "The test exercises fragment parsing through innerHTML, which is outside the v1 portable HTTP document-parsing profile."
+      }
+    ],
+    "note": "The repository-owned reductions preserve the parser inputs asserted by the selected document-parsing tests at this exact revision; refreshes require an explicit reviewed diff."
   },
   "approvedDivergences": [],
   "cases": [
@@ -76,6 +86,56 @@
         { "selector": "textarea", "text": ["x < y"], "innerHTML": ["x &lt; y"] },
         { "selector": "main > p", "text": ["first", "second"] },
         { "selector": "main ul > li", "text": ["a", "b\n"] }
+      ]
+    },
+    {
+      "id": "wpt.ambiguous-ampersand",
+      "input": "fixtures/html-compat/wpt-ambiguous-ampersand.html",
+      "decodedEncoding": "utf-8",
+      "parserMode": "document",
+      "upstreamTestId": "html/syntax/parsing/ambiguous-ampersand.html#Check div structure: network",
+      "upstreamSource": {
+        "path": "html/syntax/parsing/ambiguous-ampersand.html",
+        "revision": "0fb6a32ac631eb62d3ab70fdfd2061d79ab25675",
+        "reduction": "network-parsed div parser input"
+      },
+      "observations": [
+        { "selector": "#case > a", "text": ["Link"], "attributes": [{ "href": "?a=b&c=d&a0b=c&copy=1&noti=n&not=in&notin=∉¬&;& &" }] },
+        { "selector": "#case > p", "text": ["Text: ?a=b&c=d&a0b=c©=1¬i=n¬=in¬in=∉¬&;& &"] }
+      ]
+    },
+    {
+      "id": "wpt.foreign-content-object-svg",
+      "input": "fixtures/html-compat/wpt-foreign-object.html",
+      "decodedEncoding": "utf-8",
+      "parserMode": "document",
+      "upstreamTestId": "html/syntax/parsing/foreign_content_001.html#SVG in HTML object tree construction",
+      "upstreamSource": {
+        "path": "html/syntax/parsing/foreign_content_001.html",
+        "revision": "0fb6a32ac631eb62d3ab70fdfd2061d79ab25675",
+        "reduction": "object and SVG parser input"
+      },
+      "observations": [
+        { "selector": "object > svg > rect", "attributes": [{ "width": "100px", "height": "100px", "fill": "none" }] }
+      ]
+    },
+    {
+      "id": "wpt.html-integration-points",
+      "input": "fixtures/html-compat/wpt-integration-points.html",
+      "decodedEncoding": "utf-8",
+      "parserMode": "document",
+      "upstreamTestId": "html/syntax/parsing/html-integration-point.html#HTML integration point raw-text elements",
+      "upstreamSource": {
+        "path": "html/syntax/parsing/html-integration-point.html",
+        "revision": "0fb6a32ac631eb62d3ab70fdfd2061d79ab25675",
+        "reduction": "five integration-point parser inputs"
+      },
+      "observations": [
+        { "selector": "#point-1 > xmp", "attributes": [{}] },
+        { "selector": "#point-2 > style", "attributes": [{}] },
+        { "selector": "#point-3 > iframe", "attributes": [{}] },
+        { "selector": "#point-4 > noembed", "attributes": [{}] },
+        { "selector": "#point-5 > noframes", "attributes": [{}] }
       ]
     }
   ]

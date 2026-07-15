@@ -14,6 +14,8 @@
 | Playwright adapter | Playwright 1.61.1 | Chromium (blocking); Firefox and WebKit (best effort) |
 | Operating system | Linux or macOS | Linux and macOS |
 
+The executable source for this table is [`support-matrix.json`](./support-matrix.json). Pull-request CI cross-builds all four supported OS/architecture package targets and runs the native Go, Node.js, and clean-consumer gates on Linux and macOS.
+
 The Go and TypeScript core packages intentionally have no browser-library dependency. The TypeScript core pins the roadmap-approved `parse5` dependency for WHATWG HTML tree construction; its transitive `entities` dependency is lockfile-pinned. Browser integrations are separate modules or packages. The official TypeScript adapter pins Playwright 1.61.1. Chromium is the supported v1 browser target; scheduled Firefox and WebKit results remain best effort and do not block v1.
 
 The Go and TypeScript libraries publish their exact accepted sets through `SupportedLanguageVersions` / `SupportedIRVersions` and `supportedLanguageVersions` / `supportedIRVersions`. These values are opaque identifiers; an earlier date is not implicitly compatible with a later date.

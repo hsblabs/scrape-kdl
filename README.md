@@ -192,7 +192,7 @@ See `SECURITY.md` and `docs/security-model.md`.
 - The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
 - The checked-in TypeScript packages include the complete compiler, HTTP/browser runtimes, and official Playwright adapter with publishable package gates.
 
-See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
+See `docs/compatibility.md`, `docs/kdl-parser-conformance.md`, and `docs/release-gates.md`. The release-gate document links the executable support/example matrix and measured performance policy.
 
 ## Development
 

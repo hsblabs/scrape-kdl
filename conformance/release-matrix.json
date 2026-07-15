@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "2026-07-15",
+  "portableDifferencesAllowed": 0,
+  "categories": [
+    { "id": "static-http", "modes": ["http"], "implementations": ["go", "typescript"], "artifacts": ["examples/basic-http/example.json"], "gates": ["examples"] },
+    { "id": "malformed-truncated-html", "modes": ["offline-html"], "implementations": ["go", "typescript", "chromium"], "artifacts": ["examples/malformed-html/example.json", "fixtures/html-compat/manifest.json"], "gates": ["examples", "html-differential"] },
+    { "id": "charset-decoding", "modes": ["http"], "implementations": ["go", "typescript"], "artifacts": ["internal/executor/charset_test.go", "packages/scrape-kdl/test/runtime.test.mjs"], "gates": ["hardening"] },
+    { "id": "sessions-redirects-url-policy", "modes": ["http", "browser"], "implementations": ["go", "typescript", "rod", "playwright"], "artifacts": ["internal/executor/executor_test.go", "packages/scrape-kdl/test/runtime.test.mjs", "packages/scrape-kdl-playwright/test/e2e.test.mjs"], "gates": ["hardening", "browser-supported"] },
+    { "id": "transforms", "modes": ["offline-html"], "implementations": ["go", "typescript"], "artifacts": ["examples/transforms/example.json"], "gates": ["examples"] },
+    { "id": "partial-results", "modes": ["offline-html"], "implementations": ["go", "typescript"], "artifacts": ["examples/partial-result/example.json"], "gates": ["examples"] },
+    { "id": "imports", "modes": ["compile"], "implementations": ["go", "typescript"], "artifacts": ["fixtures/imports/cases.json", "testdata/api-consumers/go/consumer_test.go"], "gates": ["conformance", "package-consumers"] },
+    { "id": "browser-workflow-javascript", "modes": ["browser"], "implementations": ["rod", "playwright"], "artifacts": ["fixtures/valid/rod-browser-e2e.kdl", "fixtures/expected-output/rod-browser-e2e.json"], "gates": ["browser-supported"] }
+  ],
+  "gates": {
+    "examples": "make examples",
+    "conformance": "make conformance",
+    "html-differential": "make html-differential",
+    "hardening": "make hardening",
+    "package-consumers": "make package-go && make typescript-package",
+    "browser-supported": "make test-rod-e2e && make test-playwright-e2e"
+  }
+}

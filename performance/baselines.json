@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "2026-07-15",
+  "measuredAt": "2026-07-15",
+  "environment": "Go 1.26.5 and Node.js 26.4.0 on darwin/arm64; median of four complete probe runs",
+  "workload": "examples/basic-http compile and saved-HTML extraction, each divided by same-process JSON decoding calibration",
+  "policy": "The maximum is four times the reviewed median baseline; it detects major regressions without defining an absolute speed SLA.",
+  "runtimes": {
+    "go": {
+      "compileRatio": { "baseline": 0.264, "maximum": 1.056 },
+      "extractRatio": { "baseline": 6.881, "maximum": 27.524 }
+    },
+    "typescript": {
+      "compileRatio": { "baseline": 8.349, "maximum": 33.396 },
+      "extractRatio": { "baseline": 151.505, "maximum": 606.02 }
+    }
+  }
+}

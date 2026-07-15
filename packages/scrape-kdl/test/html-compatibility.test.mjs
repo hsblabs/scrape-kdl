@@ -10,10 +10,16 @@ test("parse5 has zero unapproved differences in the pinned HTML compatibility ma
   assert.equal(manifest.schemaVersion, "2026-07-15");
   assert.deepEqual(manifest.approvedDivergences, []);
   assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/u);
+  assert.ok(manifest.upstream.selectedTests.length >= 3);
   for (const fixture of manifest.cases) {
     await t.test(fixture.id, async () => {
       assert.equal(fixture.decodedEncoding, "utf-8");
       assert.equal(fixture.parserMode, "document");
+      if (fixture.upstreamSource !== undefined) {
+        assert.equal(fixture.upstreamSource.revision, manifest.upstream.revision);
+        assert.ok(manifest.upstream.selectedTests.includes(fixture.upstreamSource.path));
+        assert.ok(fixture.upstreamSource.reduction.length > 0);
+      }
       const document = parseHTML(await readFile(new URL(fixture.input, root), "utf8"));
       for (const observation of fixture.observations) {
         const nodes = queryAll(document, observation.selector);
