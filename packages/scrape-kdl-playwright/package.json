@@ -2,7 +2,6 @@
   "name": "@hsblabs/scrape-kdl-playwright",
   "version": "0.0.0-development",
   "description": "Official Playwright adapter for @hsblabs/scrape-kdl",
-  "private": true,
   "type": "module",
   "license": "Apache-2.0",
   "sideEffects": false,
@@ -24,9 +23,16 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",
-    "typecheck": "tsc --project tsconfig.json --noEmit"
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test:e2e": "node --test test/e2e.test.mjs"
   },
   "devDependencies": {
     "@hsblabs/scrape-kdl": "0.0.0-development"
+  },
+  "peerDependencies": {
+    "@hsblabs/scrape-kdl": "0.0.0-development || ^1.0.0"
+  },
+  "dependencies": {
+    "playwright": "1.61.1"
   }
 }

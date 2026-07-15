@@ -1,5 +1,5 @@
 .PHONY: test race vet build format-check module-check golden diagnostics ir-contract api-contract typescript-contract typescript-package conformance-coverage conformance validate-example extract-example verify
-.PHONY: test-rod-contract test-rod test-rod-e2e release-check release-dist
+.PHONY: test-rod-contract test-rod test-rod-e2e test-playwright-e2e release-check release-dist
 
 test:
 	GOTOOLCHAIN=local go test ./...
@@ -59,6 +59,10 @@ test-rod:
 
 test-rod-e2e:
 	./scripts/verify-rod.sh --e2e
+
+test-playwright-e2e:
+	npm run build:typescript
+	npm run test:e2e --workspace @hsblabs/scrape-kdl-playwright
 
 verify: format-check module-check golden diagnostics ir-contract api-contract typescript-package conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract
 

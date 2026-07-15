@@ -37,3 +37,5 @@ The reference runtime provides:
 - structured error codes that avoid embedding session values.
 
 The TypeScript HTTP runtime applies the same ordering: program, selector, input, session, capability, and external-transform preflight completes before `fetch` is invoked. It performs redirects manually so `URLPolicy` runs before every redirected request, strips authorization and host-only cookie headers across origins, bounds streamed bodies before decoding, and propagates parent cancellation separately from request timeouts. `parse5` receives only decoded HTML after these acquisition limits succeed.
+
+The TypeScript browser runtime rejects missing adapters and disabled JavaScript before lease acquisition or navigation. It applies the initial URL policy before acquiring the extraction-wide lease and passes cancellation to every adapter operation. The official Playwright adapter creates an isolated context for each extraction; timeout or cancellation closes that context before the lease is released. Browser redirects and page-initiated requests remain subject to the adapter, browser-context, and host network policy described in `docs/browser-runtime.md`.

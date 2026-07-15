@@ -25,6 +25,20 @@ async function main() {
   }
 
   const tarball = join(packDirectory, metadata.filename);
+  const adapterPacked = JSON.parse(run("npm", [
+    "pack", "--json", "--workspace", "@hsblabs/scrape-kdl-playwright", "--pack-destination", packDirectory,
+  ]));
+  assert.equal(adapterPacked.length, 1, "npm pack must produce exactly one adapter artifact");
+  const adapterMetadata = adapterPacked[0];
+  const adapterPaths = adapterMetadata.files.map((file) => file.path).sort();
+  for (const required of ["LICENSE", "NOTICE", "README.md", "dist/index.js", "dist/index.d.ts", "package.json"]) {
+    assert.ok(adapterPaths.includes(required), `packed adapter is missing ${required}`);
+  }
+  for (const path of adapterPaths) {
+    assert.match(path, /^(?:LICENSE|NOTICE|README\.md|package\.json|dist\/(?:[a-z0-9-]+\.)+(?:js|d\.ts))$/u, `unexpected packed adapter path ${path}`);
+    assert.doesNotMatch(path, /(?:fixture|test|tsconfig|\.map$|node_modules)/u);
+  }
+  const adapterTarball = join(packDirectory, adapterMetadata.filename);
   const extracted = join(temporary, "extracted");
   await mkdir(extracted);
   run("tar", ["-xzf", tarball, "-C", extracted]);
@@ -39,6 +53,18 @@ async function main() {
   assert.equal(JSON.stringify(packageJSON).toLowerCase().includes("playwright"), false, "core package metadata must not mention Playwright");
   assert.doesNotMatch(JSON.stringify(packageJSON), /(?:file|workspace):/u, "core package metadata must not contain local dependency protocols");
 
+  const adapterExtracted = join(temporary, "adapter-extracted");
+  await mkdir(adapterExtracted);
+  run("tar", ["-xzf", adapterTarball, "-C", adapterExtracted]);
+  const adapterRoot = join(adapterExtracted, "package");
+  const adapterJSON = JSON.parse(await readFile(join(adapterRoot, "package.json"), "utf8"));
+  assert.equal(adapterJSON.name, "@hsblabs/scrape-kdl-playwright");
+  assert.equal(adapterJSON.private, undefined, "adapter package must be publishable");
+  assert.equal(adapterJSON.engines.node, ">=26");
+  assert.deepEqual(adapterJSON.dependencies, { playwright: "1.61.1" });
+  assert.deepEqual(adapterJSON.peerDependencies, { "@hsblabs/scrape-kdl": "0.0.0-development || ^1.0.0" });
+  assert.doesNotMatch(JSON.stringify(adapterJSON), /(?:file|workspace):/u, "adapter package metadata must not contain local dependency protocols");
+
   const extractedFiles = [];
   await collect(packageRoot, extractedFiles);
   const forbidden = [
@@ -52,26 +78,34 @@ async function main() {
     const data = await readFile(path, "utf8");
     for (const pattern of forbidden) assert.doesNotMatch(data, pattern, `${relative(packageRoot, path)} contains forbidden local or secret material`);
   }
+  const adapterFiles = [];
+  await collect(adapterRoot, adapterFiles);
+  for (const path of adapterFiles) {
+    const data = await readFile(path, "utf8");
+    for (const pattern of forbidden) assert.doesNotMatch(data, pattern, `${relative(adapterRoot, path)} contains forbidden local or secret material`);
+  }
 
   const consumer = join(temporary, "consumer");
   await mkdir(consumer);
   const fixture = await readFile(join(root, "fixtures/valid/basic-http.kdl"), "utf8");
   await writeFile(join(consumer, "extractor.kdl"), fixture);
-  await writeFile(join(consumer, "package.json"), `${JSON.stringify({ name: "clean-consumer", private: true, type: "module" }, null, 2)}\n`);
+  await writeFile(join(consumer, "package.json"), `${JSON.stringify({
+    name: "clean-consumer", private: true, type: "module", devDependencies: { "@types/node": "26.1.1" },
+  }, null, 2)}\n`);
   await writeFile(join(consumer, "index.mjs"), runtimeConsumerSource);
   await writeFile(join(consumer, "consumer.ts"), typeConsumerSource);
   await writeFile(join(consumer, "tsconfig.json"), `${JSON.stringify({
     compilerOptions: {
       target: "ESNext", module: "NodeNext", moduleResolution: "NodeNext",
-      lib: ["ESNext", "DOM", "DOM.Iterable"], strict: true, exactOptionalPropertyTypes: true, noEmit: true,
+      lib: ["ESNext", "DOM", "DOM.Iterable"], types: ["node"], strict: true, exactOptionalPropertyTypes: true, noEmit: true,
     },
     include: ["consumer.ts"],
   }, null, 2)}\n`);
-  run("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball], consumer);
+  run("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball, adapterTarball], consumer);
   run(process.execPath, [join(root, "node_modules/typescript/bin/tsc"), "--project", join(consumer, "tsconfig.json")], consumer);
   run(process.execPath, [join(consumer, "index.mjs")], consumer);
 
-  console.log(`npm package check: ${basename(tarball)} has ${paths.length} intended files and passed a clean consumer smoke test`);
+  console.log(`npm package check: ${basename(tarball)} and ${basename(adapterTarball)} passed clean consumer smoke tests`);
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
@@ -93,8 +127,10 @@ const runtimeConsumerSource = `
 import assert from "node:assert/strict";
 import { ExecutionError, compile, supportedIRVersions, supportedLanguageVersions, validate } from "@hsblabs/scrape-kdl";
 import { compileFile, validateFile } from "@hsblabs/scrape-kdl/node";
+import { PlaywrightAdapter } from "@hsblabs/scrape-kdl-playwright";
 
 assert.equal(typeof ExecutionError, "function");
+assert.equal(typeof PlaywrightAdapter, "function");
 assert.equal(typeof compile, "function");
 assert.equal(typeof validate, "function");
 assert.deepEqual(supportedLanguageVersions(), ["2026-07-15"]);
@@ -129,6 +165,7 @@ assert.deepEqual(await validateFile(new URL("./extractor.kdl", import.meta.url).
 const typeConsumerSource = `
 import { ExecutionError, compile, supportedIRVersions, supportedLanguageVersions, validate } from "@hsblabs/scrape-kdl";
 import { compileFile, validateFile } from "@hsblabs/scrape-kdl/node";
+import { PlaywrightAdapter } from "@hsblabs/scrape-kdl-playwright";
 import type {
   BrowserAdapter, BrowserAdapterLease, BrowserElement, BrowserEvaluateOptions, BrowserNavigateOptions,
   BrowserOperationOptions, CompileOptions, CompileResult, DiagnosticIR, ExecutionOptions, ExternalTransform,
@@ -151,6 +188,7 @@ void supportedLanguageVersions;
 void supportedIRVersions;
 void compileFile;
 void validateFile;
+void PlaywrightAdapter;
 `;
 
 await main();
