@@ -57,11 +57,11 @@ func TestManifestSuiteSelection(t *testing.T) {
 		job            string
 		want           int
 	}{
-		{suite: "pr", implementation: "go", job: "core", want: 15},
-		{suite: "release", implementation: "go", job: "core", want: 16},
+		{suite: "pr", implementation: "go", job: "core", want: 16},
+		{suite: "release", implementation: "go", job: "core", want: 17},
 		{suite: "release", implementation: "go", job: "browser-e2e", want: 1},
-		{suite: "typescript-slice", implementation: "typescript", job: "core", want: 16},
-		{suite: "invalid", implementation: "go", job: "core", want: 11},
+		{suite: "typescript-slice", implementation: "typescript", job: "core", want: 17},
+		{suite: "invalid", implementation: "go", job: "core", want: 12},
 	}
 	for _, test := range tests {
 		t.Run(test.suite+"/"+test.implementation+"/"+test.job, func(t *testing.T) {

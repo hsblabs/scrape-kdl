@@ -160,7 +160,7 @@ func (manifest *Manifest) Validate() error {
 			data, err := os.ReadFile(filepath.Join(manifest.Root, filepath.FromSlash(artifact)))
 			if err != nil {
 				problems = append(problems, fmt.Sprintf("%s: missing artifact %s: %v", inventory.ID, artifact, err))
-			} else if !json.Valid(data) {
+			} else if strings.HasSuffix(artifact, ".json") && !json.Valid(data) {
 				problems = append(problems, inventory.ID+": artifact is not valid JSON: "+artifact)
 			}
 			if _, exists := registeredArtifacts[artifact]; exists {

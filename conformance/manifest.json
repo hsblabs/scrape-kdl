@@ -23,6 +23,17 @@
         "fixtures/parser/invalid-utf8.json",
         "fixtures/imports/cases.json"
       ]
+    },
+    {
+      "id": "html-compatibility-2026-07-15",
+      "purpose": "Pinned Go and TypeScript HTML tree-construction, serialization, and portable-selector observations.",
+      "consumers": ["go", "typescript"],
+      "artifacts": [
+        "fixtures/html-compat/manifest.json",
+        "fixtures/html-compat/raw-text.html",
+        "fixtures/html-compat/optional-tags.html",
+        "fixtures/html-compat/selectors.html"
+      ]
     }
   ],
   "suites": {
@@ -59,7 +70,7 @@
       },
       "executions": [
         { "implementation": "go", "job": "core", "stages": ["validate", "compile", "ir", "runtime"] },
-        { "implementation": "typescript", "job": "core", "stages": ["validate", "compile", "ir"] }
+        { "implementation": "typescript", "job": "core", "stages": ["validate", "compile", "ir", "runtime"] }
       ]
     },
     {
@@ -173,6 +184,21 @@
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
       ],
       "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "timeout-overflow.kdl" } },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate"] }
+      ]
+    },
+    {
+      "id": "invalid.regex-lookahead",
+      "status": "release-blocking",
+      "categories": ["invalid"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "artifacts": [
+        { "path": "fixtures/invalid/regex-lookahead.kdl", "role": "source" },
+        { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
+      ],
+      "expectations": { "outcome": "invalid", "diagnostics": { "artifact": "fixtures/expected-diagnostics/go-contract.json", "key": "regex-lookahead.kdl" } },
       "executions": [
         { "implementation": "go", "job": "core", "stages": ["validate"] },
         { "implementation": "typescript", "job": "core", "stages": ["validate"] }

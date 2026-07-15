@@ -16,7 +16,11 @@ const validPath = `${root}/fixtures/valid/basic-http.kdl`;
 const invalidPath = `${root}/fixtures/invalid/unknown-language-version.kdl`;
 
 test("public in-memory compilation returns immutable metadata and IR", async () => {
-  const data = await readFile(validPath);
+  const [data, html, expected] = await Promise.all([
+    readFile(validPath),
+    readFile(`${root}/fixtures/html/basic-http.html`, "utf8"),
+    readFile(`${root}/fixtures/expected-output/basic-http.json`, "utf8").then(JSON.parse),
+  ]);
   const result = await compile({ path: "logical/basic-http.kdl", data });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.program.metadata.name, "basic-http");
@@ -26,7 +30,9 @@ test("public in-memory compilation returns immutable metadata and IR", async () 
   assert.ok(Object.isFrozen(result.program.metadata.files));
   assert.ok(Object.isFrozen(result.program.ir));
   assert.throws(() => { result.program.metadata.capabilities.push("mutated"); }, TypeError);
-  await assert.rejects(result.program.extract(), /Issue #14/u);
+  assert.deepEqual(await result.program.extract({ id: "fixture" }, {
+    fetch: async () => new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }),
+  }), expected);
 });
 
 test("public validation and compatibility registries retain exact diagnostics", async () => {

@@ -35,3 +35,5 @@ The reference runtime provides:
 - JSON-compatible JavaScript result validation;
 - optional adapter-wide extraction leases to prevent page-operation interleaving;
 - structured error codes that avoid embedding session values.
+
+The TypeScript HTTP runtime applies the same ordering: program, selector, input, session, capability, and external-transform preflight completes before `fetch` is invoked. It performs redirects manually so `URLPolicy` runs before every redirected request, strips authorization and host-only cookie headers across origins, bounds streamed bodies before decoding, and propagates parent cancellation separately from request timeouts. `parse5` receives only decoded HTML after these acquisition limits succeed.

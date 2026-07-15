@@ -1,7 +1,7 @@
 # Cross-language conformance
 
 `manifest.json` is the source of truth for release-blocking and provisional conformance cases.
-It registers every file below `fixtures/`, the implementations and jobs that own each case, focused suites, expected artifacts, and the currently empty approved-divergence registry. `fixtureInventories` registers shared non-case corpora, such as parser and fuzz inputs consumed directly by both implementations, without pretending a mixed corpus is one executable extractor case.
+It registers every file below `fixtures/`, the implementations and jobs that own each case, focused suites, expected artifacts, and the currently empty approved-divergence registry. `fixtureInventories` registers shared non-case corpora, such as parser, fuzz, and HTML-compatibility inputs consumed directly by both implementations, without pretending a mixed corpus is one executable extractor case. Inventory files ending in `.json` are syntax-checked as JSON; byte-oriented source artifacts retain their checked-in contents unchanged.
 
 The dated schemas are:
 
