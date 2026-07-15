@@ -81,8 +81,11 @@ Implemented:
 - canonical Go/TypeScript IR equality for the representative static HTTP fixture.
 - a machine-readable fixture manifest, dated result schema, focused suite selection, Go runner, and exact Go/TypeScript slice comparator;
 - CI rejection of unregistered fixtures, missing expected artifacts, schema drift, and unapproved implementation differences.
+- ESM-only npm workspace boundaries for `@hsblabs/scrape-kdl` and the reserved `@hsblabs/scrape-kdl-playwright` adapter package;
+- the approved TypeScript root and Node.js entry points, full readonly IR declarations, and direct package consumer typechecking;
+- Node.js 26 typecheck, source lint, tests, coverage thresholds, package-content inspection, and packed clean-consumer smoke gates on Linux and macOS.
 
-The TypeScript slice deliberately covers the v0.2 contract cross-check only.
+The TypeScript implementation deliberately remains the v0.2 contract cross-check behind the v0.3 publishable package boundary.
 The complete source loader, import resolver, semantic compiler, HTTP runtime, and Playwright adapter remain later roadmap work.
 
 ## Remaining limitations

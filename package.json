@@ -1,5 +1,5 @@
 {
-  "name": "scrape-kdl-contract-workspace",
+  "name": "scrape-kdl-workspace",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -9,12 +9,21 @@
     "node": ">=26"
   },
   "scripts": {
-    "build:contract-slice": "tsc --project packages/scrape-kdl/tsconfig.json",
+    "build": "npm run build --workspaces --if-present",
+    "build:contract-slice": "npm run build --workspace @hsblabs/scrape-kdl",
     "conformance:typescript-slice": "npm run build:contract-slice && node packages/scrape-kdl/test/manifest-runner.mjs",
+    "coverage:typescript": "npm run build:typescript && node --test --experimental-test-coverage --test-coverage-lines=70 --test-coverage-branches=60 --test-coverage-functions=80 packages/scrape-kdl/test/*.test.mjs",
+    "lint:typescript": "node scripts/lint-typescript.mjs",
+    "package:check": "npm run build:typescript && node scripts/check-npm-package.mjs",
     "test:contract-slice": "npm run build:contract-slice && node packages/scrape-kdl/test/contract.test.mjs",
-    "typecheck:api": "tsc --project testdata/api-consumers/typescript/tsconfig.json"
+    "test:typescript": "npm run build:typescript && node --test packages/scrape-kdl/test/*.test.mjs",
+    "typecheck:api": "npm run build:typescript && tsc --project testdata/api-consumers/typescript/tsconfig.json",
+    "typecheck:typescript": "npm run typecheck --workspaces --if-present",
+    "verify:typescript": "npm run typecheck:typescript && npm run lint:typescript && npm run test:typescript && npm run coverage:typescript && npm run package:check",
+    "build:typescript": "npm run build --workspaces --if-present"
   },
   "devDependencies": {
+    "@types/node": "26.1.1",
     "typescript": "7.0.2"
   }
 }

@@ -138,9 +138,11 @@ The public API includes:
 
 See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and intentional idiomatic differences.
 
-The private `packages/scrape-kdl` workspace currently contains the bounded TypeScript parser/compiler cross-check for the `2026-07-15` contract.
-It independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture under Node.js 26 without invoking Go.
-It is not yet the complete or publishable TypeScript library; Issues #11 through #13 expand this package after contract completion.
+The `@hsblabs/scrape-kdl` workspace is an ESM-only, publishable package scaffold for Node.js 26 and later.
+Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
+The package independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture without invoking Go.
+Issues #12 through #14 complete the parser, semantic compiler, and HTTP runtime behind this boundary; until then, `Program.extract` is intentionally unavailable at runtime.
+The reserved `@hsblabs/scrape-kdl-playwright` workspace remains private until Issue #16 and no concrete browser library is a dependency of the core package.
 See `docs/spec/conformance-coverage.md` for the audited rule inventory and the exact slice boundary.
 
 ## Browser mode
@@ -180,12 +182,13 @@ See `SECURITY.md` and `docs/security-model.md`.
 
 - Supported operating systems: Linux and macOS only. Windows is out of scope.
 - Minimum Go version: 1.26.
-- CI targets Go 1.26 on Linux and macOS.
+- Minimum Node.js version: 26 for the TypeScript packages.
+- CI targets Go 1.26 and Node.js 26 on Linux and macOS.
 - The language is built on the KDL 2 data model but the reference parser intentionally supports the subset defined by the Scraping KDL v0.1 specification document series.
 - The HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
 - The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
-- The checked-in TypeScript package is currently a contract cross-check slice, not the complete compiler or runtime.
+- The checked-in TypeScript package has a publishable boundary and package gates, but its implementation is currently the contract cross-check slice rather than the complete compiler or runtime.
 
 See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
 
@@ -216,6 +219,12 @@ Cross-language conformance:
 make conformance
 go run ./cmd/conformance-runner --suite invalid --output invalid-go.json
 npm run conformance:typescript-slice
+```
+
+TypeScript package verification, including a packed clean-consumer install:
+
+```bash
+npm run verify:typescript
 ```
 
 See `conformance/README.md` for suite selection, the language-neutral result format, normalization, and divergence policy.

@@ -89,11 +89,20 @@ func TestIRDeclarationShapesMatchSchema(t *testing.T) {
 		{"MatchCaseIR", "matchCase"}, {"ResolvedTransformCallIR", "transformCall"}, {"BuiltinTransformTargetIR", "transformTarget:builtin"},
 		{"DeclaredTransformTargetIR", "transformTarget:declared"}, {"NamedArgumentIR", "namedArgument"},
 	}
-	tsShapes := parseTypeScriptDeclarationShapes(t, filepath.Join(root, "docs", "ir", "typescript", "index.ts"))
-	for _, mapping := range tsMappings {
-		t.Run("typescript/"+mapping.name, func(t *testing.T) {
-			compareDeclarationShape(t, resolveTypeScriptShape(t, mapping.name, tsShapes, map[string]bool{}), schema[mapping.schema])
-		})
+	typeScriptDeclarations := []struct {
+		name string
+		path string
+	}{
+		{"typescript-docs", filepath.Join(root, "docs", "ir", "typescript", "index.ts")},
+		{"typescript-package", filepath.Join(root, "packages", "scrape-kdl", "src", "ir.ts")},
+	}
+	for _, declarations := range typeScriptDeclarations {
+		tsShapes := parseTypeScriptDeclarationShapes(t, declarations.path)
+		for _, mapping := range tsMappings {
+			t.Run(declarations.name+"/"+mapping.name, func(t *testing.T) {
+				compareDeclarationShape(t, resolveTypeScriptShape(t, mapping.name, tsShapes, map[string]bool{}), schema[mapping.schema])
+			})
+		}
 	}
 }
 

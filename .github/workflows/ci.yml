@@ -37,7 +37,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: make api-contract
-      - run: make typescript-contract
+      - run: make typescript-package
       - run: make conformance-coverage
       - run: make conformance
       - run: go test ./...

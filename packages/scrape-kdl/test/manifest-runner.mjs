@@ -1,10 +1,8 @@
 import { parseArgs } from "node:util";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import {
-  canonicalJSONStringify,
-  compileContractSlice,
-} from "../dist/index.js";
+import { canonicalJSONStringify } from "../dist/canonical-json.js";
+import { compileContractSlice } from "../dist/compiler.js";
 
 export async function runTypeScriptSlice({ root, manifestPath = "conformance/manifest.json", suite = "typescript-slice", job = "core" }) {
   const manifest = JSON.parse(await readFile(`${root}/${manifestPath}`, "utf8"));

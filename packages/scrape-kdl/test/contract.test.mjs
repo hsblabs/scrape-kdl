@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
-import {
-  canonicalJSONStringify,
-  supportedIRVersions,
-  supportedLanguageVersions,
-} from "../dist/index.js";
+import { canonicalJSONStringify } from "../dist/canonical-json.js";
+import { supportedIRVersions, supportedLanguageVersions } from "../dist/index.js";
 import { runTypeScriptSlice } from "./manifest-runner.mjs";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));

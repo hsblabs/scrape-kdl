@@ -8,7 +8,7 @@ cd "$root"
 ./scripts/check-golden.sh
 ./scripts/check-diagnostics.sh
 make api-contract
-make typescript-contract
+make typescript-package
 make conformance-coverage
 make conformance
 GOTOOLCHAIN=local go vet ./...

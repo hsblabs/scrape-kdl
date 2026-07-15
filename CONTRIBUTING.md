@@ -16,6 +16,14 @@ npm ci
 make verify
 ```
 
+TypeScript package changes can run the complete focused gate directly:
+
+```bash
+npm run verify:typescript
+```
+
+This gate typechecks and lints source, runs tests and coverage thresholds, inspects the packed file set, and installs the tarball into a clean Node.js consumer. Do not commit generated `dist/` files or packed archives.
+
 When network access and Chromium are available, also run:
 
 ```bash
