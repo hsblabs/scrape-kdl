@@ -8,10 +8,18 @@ const root = fileURLToPath(new URL("../../..", import.meta.url));
 
 const manifestResult = await runTypeScriptSlice({ root });
 assert.equal(manifestResult.status, "passed", JSON.stringify(manifestResult.cases.filter((testCase) => testCase.status === "failed"), null, 2));
-assert.equal(manifestResult.cases.length, 8, "the manifest must retain the compiler and import-graph TypeScript slice cases");
+assert.equal(manifestResult.cases.length, 16, "the manifest must retain the complete shared TypeScript compiler suite");
 assert.deepEqual(manifestResult.cases.map((testCase) => testCase.id), [
   "valid.basic-http",
+  "valid.race-detail",
+  "valid.document-version-advance",
+  "valid.browser-js",
+  "valid.rod-browser-e2e",
+  "invalid.duplicate-property",
+  "invalid.http-js",
   "invalid.import-cycle",
+  "invalid.timeout-overflow",
+  "invalid.transform-type-mismatch",
   "invalid.integer-version",
   "invalid.missing-document-version",
   "invalid.malformed-document-version",
@@ -35,4 +43,4 @@ assert.throws(() => canonicalJSONStringify(Number.POSITIVE_INFINITY), /non-finit
 assert.deepEqual(supportedLanguageVersions(), ["2026-07-15"]);
 assert.deepEqual(supportedIRVersions(), ["2026-07-15"]);
 
-console.log("TypeScript contract slice matches Go fixtures and dated registries");
+console.log("TypeScript semantic compiler matches Go fixtures and dated registries");
