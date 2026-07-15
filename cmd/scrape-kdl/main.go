@@ -383,7 +383,7 @@ func (cli command) compileInput(ctx context.Context, path string) (*ir.Extractor
 		return nil, nil, err
 	}
 	if path != "-" {
-		program, diagnostics := compiler.CompileFile(path)
+		program, diagnostics := compiler.CompileFileContext(ctx, path)
 		return program, diagnostics, nil
 	}
 	data, err := io.ReadAll(cli.io.stdin)
