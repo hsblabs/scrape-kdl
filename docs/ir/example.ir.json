@@ -1,9 +1,9 @@
 {
   "kind": "extractor",
-  "irVersion": "0.1",
-  "languageVersion": "0.1",
+  "irVersion": "2026-07-15",
+  "languageVersion": "2026-07-15",
   "name": "basic-http",
-  "version": 1,
+  "version": "2026-07-15",
   "files": [
     {
       "path": "fixtures/conformance/valid/basic-http/spec.kdl"

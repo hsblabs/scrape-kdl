@@ -1,4 +1,4 @@
-# Validated IR v0.1
+# Validated IR 2026-07-15
 
 The IR is the contract between parser/validator, interpreter, code generators, inspector, and runtime bindings.
 
@@ -30,7 +30,7 @@ A lossless syntax tree may exist internally for formatting and editor support, b
 
 `irVersion` versions the serialized IR independently from `languageVersion`.
 
-Within IR 0.1:
+Within IR `2026-07-15`:
 
 - enum strings and JSON property names are stable;
 - new optional properties MAY be added;

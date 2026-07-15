@@ -1,5 +1,5 @@
 import "./a.kdl" as="a"
-module "b" version=1 {
+module "b" version="2026-07-15" language-version="2026-07-15" {
   transform "b_value" input="string" output="string" {
     pipeline { apply "trim" }
   }

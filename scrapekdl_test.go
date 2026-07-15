@@ -22,7 +22,7 @@ func TestPublicCompileAndExtract(t *testing.T) {
 	}))
 	defer server.Close()
 	path := filepath.Join(t.TempDir(), "example.kdl")
-	spec := fmt.Sprintf(`extractor "example" version=1 {
+	spec := fmt.Sprintf(`extractor "example" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   field "title" type="string" required=#true {
     select "h1"
@@ -50,8 +50,14 @@ func TestPublicValidationAndProgramMetadata(t *testing.T) {
 	if diagnostics.HasErrors() || program == nil {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
-	if program.Name() != "basic-http" || program.Version() != 1 {
-		t.Fatalf("program metadata = %q v%d", program.Name(), program.Version())
+	if program.Name() != "basic-http" || program.Version() != "2026-07-15" {
+		t.Fatalf("program metadata = %q v%s", program.Name(), program.Version())
+	}
+	if got := scrapekdl.SupportedLanguageVersions(); !reflect.DeepEqual(got, []string{"2026-07-15"}) {
+		t.Fatalf("supported language versions = %v", got)
+	}
+	if got := scrapekdl.SupportedIRVersions(); !reflect.DeepEqual(got, []string{"2026-07-15"}) {
+		t.Fatalf("supported IR versions = %v", got)
 	}
 	capabilities := program.Capabilities()
 	if len(capabilities) != 1 || capabilities[0] != "http.fetch" {
@@ -75,7 +81,7 @@ func TestPublicValidationAndProgramMetadata(t *testing.T) {
 	}
 
 	invalidPath := filepath.Join(t.TempDir(), "invalid.kdl")
-	if err := os.WriteFile(invalidPath, []byte(`extractor "invalid" version=1 {}`), 0o600); err != nil {
+	if err := os.WriteFile(invalidPath, []byte(`extractor "invalid" version="2026-07-15" language-version="2026-07-15" {}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	validation := scrapekdl.ValidateFile(invalidPath)

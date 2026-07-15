@@ -1,19 +1,19 @@
 {
   "kind": "extractor",
-  "irVersion": "0.1",
-  "languageVersion": "0.1",
+  "irVersion": "2026-07-15",
+  "languageVersion": "2026-07-15",
   "name": "race-detail",
-  "version": 1,
+  "version": "2026-07-15",
   "files": [
     {
       "path": "../modules/common.kdl",
       "moduleName": "netkeiba-common",
-      "moduleVersion": 1,
-      "sha256": "89c89bf6c908c39ccba67bdc825dcacf54a7f9bd170738da654a4bbe62fa3fe7"
+      "moduleVersion": "2026-07-15",
+      "sha256": "271398be713b45aab941b05075ee1bb58ee14087db5e37b2366d9e6d94d40b50"
     },
     {
       "path": "race-detail.kdl",
-      "sha256": "af17122541cd5129068254a15c8085f842c121f572b670cf9c2b7564ef98f792"
+      "sha256": "4091efd1f7364e2303217533eb30694dbdd1fe639d6def2d562cbc3614656f7f"
     }
   ],
   "source": {
@@ -36,12 +36,12 @@
       "span": {
         "file": "race-detail.kdl",
         "start": {
-          "offset": 102,
+          "offset": 143,
           "line": 5,
           "column": 5
         },
         "end": {
-          "offset": 163,
+          "offset": 204,
           "line": 5,
           "column": 66
         }
@@ -57,12 +57,12 @@
         "span": {
           "file": "race-detail.kdl",
           "start": {
-            "offset": 216,
+            "offset": 257,
             "line": 9,
             "column": 7
           },
           "end": {
-            "offset": 239,
+            "offset": 280,
             "line": 9,
             "column": 30
           }
@@ -75,12 +75,12 @@
         "span": {
           "file": "race-detail.kdl",
           "start": {
-            "offset": 278,
+            "offset": 319,
             "line": 10,
             "column": 7
           },
           "end": {
-            "offset": 392,
+            "offset": 433,
             "line": 14,
             "column": 13
           }
@@ -90,12 +90,12 @@
     "span": {
       "file": "race-detail.kdl",
       "start": {
-        "offset": 82,
+        "offset": 123,
         "line": 4,
         "column": 3
       },
       "end": {
-        "offset": 418,
+        "offset": 459,
         "line": 16,
         "column": 4
       }
@@ -109,12 +109,12 @@
       "span": {
         "file": "race-detail.kdl",
         "start": {
-          "offset": 422,
+          "offset": 463,
           "line": 18,
           "column": 3
         },
         "end": {
-          "offset": 437,
+          "offset": 478,
           "line": 18,
           "column": 18
         }
@@ -141,12 +141,12 @@
       "span": {
         "file": "../modules/common.kdl",
         "start": {
-          "offset": 39,
+          "offset": 80,
           "line": 2,
           "column": 3
         },
         "end": {
-          "offset": 191,
+          "offset": 232,
           "line": 6,
           "column": 4
         }
@@ -182,12 +182,12 @@
           "span": {
             "file": "../modules/common.kdl",
             "start": {
-              "offset": 123,
+              "offset": 164,
               "line": 4,
               "column": 7
             },
             "end": {
-              "offset": 144,
+              "offset": 185,
               "line": 4,
               "column": 28
             }
@@ -211,12 +211,12 @@
       "span": {
         "file": "../modules/common.kdl",
         "start": {
-          "offset": 195,
+          "offset": 236,
           "line": 8,
           "column": 3
         },
         "end": {
-          "offset": 376,
+          "offset": 417,
           "line": 15,
           "column": 4
         }
@@ -228,12 +228,12 @@
           "span": {
             "file": "../modules/common.kdl",
             "start": {
-              "offset": 272,
+              "offset": 313,
               "line": 10,
               "column": 7
             },
             "end": {
-              "offset": 289,
+              "offset": 330,
               "line": 10,
               "column": 22
             }
@@ -245,12 +245,12 @@
           "span": {
             "file": "../modules/common.kdl",
             "start": {
-              "offset": 296,
+              "offset": 337,
               "line": 11,
               "column": 7
             },
             "end": {
-              "offset": 315,
+              "offset": 356,
               "line": 11,
               "column": 24
             }
@@ -262,12 +262,12 @@
           "span": {
             "file": "../modules/common.kdl",
             "start": {
-              "offset": 322,
+              "offset": 363,
               "line": 12,
               "column": 7
             },
             "end": {
-              "offset": 342,
+              "offset": 383,
               "line": 12,
               "column": 25
             }
@@ -299,12 +299,12 @@
           "span": {
             "file": "race-detail.kdl",
             "start": {
-              "offset": 519,
+              "offset": 560,
               "line": 21,
               "column": 5
             },
             "end": {
-              "offset": 530,
+              "offset": 571,
               "line": 21,
               "column": 16
             }
@@ -319,12 +319,12 @@
           "span": {
             "file": "race-detail.kdl",
             "start": {
-              "offset": 547,
+              "offset": 588,
               "line": 22,
               "column": 5
             },
             "end": {
-              "offset": 559,
+              "offset": 600,
               "line": 22,
               "column": 17
             }
@@ -349,12 +349,12 @@
             "span": {
               "file": "race-detail.kdl",
               "start": {
-                "offset": 564,
+                "offset": 605,
                 "line": 23,
                 "column": 5
               },
               "end": {
-                "offset": 592,
+                "offset": 633,
                 "line": 23,
                 "column": 33
               }
@@ -365,12 +365,12 @@
         "span": {
           "file": "race-detail.kdl",
           "start": {
-            "offset": 470,
+            "offset": 511,
             "line": 20,
             "column": 3
           },
           "end": {
-            "offset": 596,
+            "offset": 637,
             "line": 24,
             "column": 4
           }
@@ -410,12 +410,12 @@
           "span": {
             "file": "race-detail.kdl",
             "start": {
-              "offset": 658,
+              "offset": 699,
               "line": 27,
               "column": 5
             },
             "end": {
-              "offset": 736,
+              "offset": 777,
               "line": 29,
               "column": 11
             }
@@ -426,12 +426,12 @@
         "span": {
           "file": "race-detail.kdl",
           "start": {
-            "offset": 600,
+            "offset": 641,
             "line": 26,
             "column": 3
           },
           "end": {
-            "offset": 791,
+            "offset": 832,
             "line": 30,
             "column": 4
           }
@@ -467,12 +467,12 @@
                 "span": {
                   "file": "race-detail.kdl",
                   "start": {
-                    "offset": 939,
+                    "offset": 980,
                     "line": 36,
                     "column": 7
                   },
                   "end": {
-                    "offset": 955,
+                    "offset": 996,
                     "line": 36,
                     "column": 23
                   }
@@ -487,12 +487,12 @@
                 "span": {
                   "file": "race-detail.kdl",
                   "start": {
-                    "offset": 974,
+                    "offset": 1015,
                     "line": 37,
                     "column": 7
                   },
                   "end": {
-                    "offset": 986,
+                    "offset": 1027,
                     "line": 37,
                     "column": 19
                   }
@@ -517,12 +517,12 @@
                   "span": {
                     "file": "race-detail.kdl",
                     "start": {
-                      "offset": 993,
+                      "offset": 1034,
                       "line": 38,
                       "column": 7
                     },
                     "end": {
-                      "offset": 1005,
+                      "offset": 1046,
                       "line": 38,
                       "column": 19
                     }
@@ -551,12 +551,12 @@
                   "span": {
                     "file": "race-detail.kdl",
                     "start": {
-                      "offset": 1012,
+                      "offset": 1053,
                       "line": 39,
                       "column": 7
                     },
                     "end": {
-                      "offset": 1029,
+                      "offset": 1070,
                       "line": 39,
                       "column": 24
                     }
@@ -567,12 +567,12 @@
               "span": {
                 "file": "race-detail.kdl",
                 "start": {
-                  "offset": 891,
+                  "offset": 932,
                   "line": 35,
                   "column": 5
                 },
                 "end": {
-                  "offset": 1043,
+                  "offset": 1084,
                   "line": 40,
                   "column": 6
                 }
@@ -597,12 +597,12 @@
                 "span": {
                   "file": "race-detail.kdl",
                   "start": {
-                    "offset": 1105,
+                    "offset": 1146,
                     "line": 43,
                     "column": 7
                   },
                   "end": {
-                    "offset": 1127,
+                    "offset": 1168,
                     "line": 43,
                     "column": 29
                   }
@@ -617,12 +617,12 @@
                 "span": {
                   "file": "race-detail.kdl",
                   "start": {
-                    "offset": 1146,
+                    "offset": 1187,
                     "line": 44,
                     "column": 7
                   },
                   "end": {
-                    "offset": 1158,
+                    "offset": 1199,
                     "line": 44,
                     "column": 19
                   }
@@ -647,12 +647,12 @@
                   "span": {
                     "file": "race-detail.kdl",
                     "start": {
-                      "offset": 1165,
+                      "offset": 1206,
                       "line": 45,
                       "column": 7
                     },
                     "end": {
-                      "offset": 1193,
+                      "offset": 1234,
                       "line": 45,
                       "column": 35
                     }
@@ -663,12 +663,12 @@
               "span": {
                 "file": "race-detail.kdl",
                 "start": {
-                  "offset": 1049,
+                  "offset": 1090,
                   "line": 42,
                   "column": 5
                 },
                 "end": {
-                  "offset": 1199,
+                  "offset": 1240,
                   "line": 46,
                   "column": 6
                 }
@@ -699,12 +699,12 @@
                 "span": {
                   "file": "race-detail.kdl",
                   "start": {
-                    "offset": 1261,
+                    "offset": 1302,
                     "line": 49,
                     "column": 7
                   },
                   "end": {
-                    "offset": 1283,
+                    "offset": 1324,
                     "line": 49,
                     "column": 29
                   }
@@ -720,12 +720,12 @@
                 "span": {
                   "file": "race-detail.kdl",
                   "start": {
-                    "offset": 1302,
+                    "offset": 1343,
                     "line": 50,
                     "column": 7
                   },
                   "end": {
-                    "offset": 1314,
+                    "offset": 1355,
                     "line": 50,
                     "column": 19
                   }
@@ -753,12 +753,12 @@
                   "span": {
                     "file": "race-detail.kdl",
                     "start": {
-                      "offset": 1333,
+                      "offset": 1374,
                       "line": 51,
                       "column": 7
                     },
                     "end": {
-                      "offset": 1364,
+                      "offset": 1405,
                       "line": 51,
                       "column": 38
                     }
@@ -769,12 +769,12 @@
               "span": {
                 "file": "race-detail.kdl",
                 "start": {
-                  "offset": 1205,
+                  "offset": 1246,
                   "line": 48,
                   "column": 5
                 },
                 "end": {
-                  "offset": 1392,
+                  "offset": 1433,
                   "line": 53,
                   "column": 6
                 }
@@ -799,12 +799,12 @@
                 "span": {
                   "file": "race-detail.kdl",
                   "start": {
-                    "offset": 1447,
+                    "offset": 1488,
                     "line": 56,
                     "column": 7
                   },
                   "end": {
-                    "offset": 1460,
+                    "offset": 1501,
                     "line": 56,
                     "column": 20
                   }
@@ -819,12 +819,12 @@
                 "span": {
                   "file": "race-detail.kdl",
                   "start": {
-                    "offset": 1479,
+                    "offset": 1520,
                     "line": 57,
                     "column": 7
                   },
                   "end": {
-                    "offset": 1491,
+                    "offset": 1532,
                     "line": 57,
                     "column": 19
                   }
@@ -849,12 +849,12 @@
                   "span": {
                     "file": "race-detail.kdl",
                     "start": {
-                      "offset": 1498,
+                      "offset": 1539,
                       "line": 58,
                       "column": 7
                     },
                     "end": {
-                      "offset": 1526,
+                      "offset": 1567,
                       "line": 58,
                       "column": 35
                     }
@@ -865,12 +865,12 @@
               "span": {
                 "file": "race-detail.kdl",
                 "start": {
-                  "offset": 1398,
+                  "offset": 1439,
                   "line": 55,
                   "column": 5
                 },
                 "end": {
-                  "offset": 1532,
+                  "offset": 1573,
                   "line": 59,
                   "column": 6
                 }
@@ -900,12 +900,12 @@
                 "span": {
                   "file": "race-detail.kdl",
                   "start": {
-                    "offset": 1591,
+                    "offset": 1632,
                     "line": 62,
                     "column": 7
                   },
                   "end": {
-                    "offset": 1666,
+                    "offset": 1707,
                     "line": 64,
                     "column": 13
                   }
@@ -916,12 +916,12 @@
               "span": {
                 "file": "race-detail.kdl",
                 "start": {
-                  "offset": 1538,
+                  "offset": 1579,
                   "line": 61,
                   "column": 5
                 },
                 "end": {
-                  "offset": 1705,
+                  "offset": 1746,
                   "line": 65,
                   "column": 6
                 }
@@ -932,12 +932,12 @@
         "span": {
           "file": "race-detail.kdl",
           "start": {
-            "offset": 795,
+            "offset": 836,
             "line": 32,
             "column": 3
           },
           "end": {
-            "offset": 1709,
+            "offset": 1750,
             "line": 66,
             "column": 4
           }
@@ -961,7 +961,7 @@
       "column": 1
     },
     "end": {
-      "offset": 1711,
+      "offset": 1752,
       "line": 67,
       "column": 2
     }

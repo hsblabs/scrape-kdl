@@ -1,0 +1,5 @@
+extractor "document-version-advance" version="2026-07-16" language-version="2026-07-15" {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/"
+  }
+}

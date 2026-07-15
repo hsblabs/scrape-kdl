@@ -1,6 +1,6 @@
 import "../modules/common.kdl" as="common"
 
-extractor "race-detail" version=1 {
+extractor "race-detail" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="browser" url="https://example.com/race/{race_id}"
     session policy="optional"

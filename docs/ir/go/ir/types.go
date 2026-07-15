@@ -1,4 +1,4 @@
-// Package ir defines the in-memory representation of Scraping KDL Validated IR 0.1.
+// Package ir defines the in-memory representation of Scraping KDL Validated IR 2026-07-15.
 //
 // The JSON Schema is the authoritative wire contract. Interfaces below model
 // discriminated unions strongly; a production decoder must dispatch on each
@@ -49,7 +49,7 @@ func (NullableTypeRef) isTypeRef() {}
 type SourceFile struct {
 	Path          string `json:"path"`
 	ModuleName    string `json:"moduleName,omitempty"`
-	ModuleVersion int    `json:"moduleVersion,omitempty"`
+	ModuleVersion string `json:"moduleVersion,omitempty"`
 	SHA256        string `json:"sha256,omitempty"`
 }
 
@@ -58,7 +58,7 @@ type Extractor struct {
 	IRVersion       string       `json:"irVersion"`
 	LanguageVersion string       `json:"languageVersion"`
 	Name            string       `json:"name"`
-	Version         int          `json:"version"`
+	Version         string       `json:"version"`
 	Files           []SourceFile `json:"files"`
 	Source          Source       `json:"source"`
 	Inputs          []Input      `json:"inputs"`

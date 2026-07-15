@@ -3,7 +3,7 @@ package kdl
 import "testing"
 
 func TestParseRawMultilineString(t *testing.T) {
-	source := []byte("extractor \"x\" version=1 {\n  source \"html\" {\n    fetch mode=\"browser\" url=\"https://example.invalid/\"\n    workflow { evaluate-js #\"\"\"\n      () => document.title\n      \"\"\"# }\n  }\n}\n")
+	source := []byte("extractor \"x\" version=\"2026-07-15\" language-version=\"2026-07-15\" {\n  source \"html\" {\n    fetch mode=\"browser\" url=\"https://example.invalid/\"\n    workflow { evaluate-js #\"\"\"\n      () => document.title\n      \"\"\"# }\n  }\n}\n")
 	doc, diags := Parse("test.kdl", source)
 	if diags.HasErrors() {
 		t.Fatalf("unexpected diagnostics: %#v", diags)
@@ -27,7 +27,7 @@ func stringArgForTest(n *Node, idx int) (string, bool) {
 }
 
 func TestDuplicatePropertiesArePreserved(t *testing.T) {
-	doc, diags := Parse("test.kdl", []byte("extractor \"x\" version=1 version=2\n"))
+	doc, diags := Parse("test.kdl", []byte("extractor \"x\" version=\"2026-07-15\" version=\"2026-07-16\" language-version=\"2026-07-15\"\n"))
 	if diags.HasErrors() {
 		t.Fatalf("syntax parser must preserve duplicate properties for semantic validation: %#v", diags)
 	}

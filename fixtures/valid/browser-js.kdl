@@ -1,4 +1,4 @@
-extractor "browser-js" version=1 {
+extractor "browser-js" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="browser" url="https://example.invalid/"
   }

@@ -1,5 +1,5 @@
 import "./cycle/a.kdl" as="a"
-extractor "import-cycle" version=1 {
+extractor "import-cycle" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "title" type="string" required=#true {
     select "h1"

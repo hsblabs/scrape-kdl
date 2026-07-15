@@ -1,0 +1,5 @@
+extractor "unknown-language-version" version="2026-07-15" language-version="2026-07-16" {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/"
+  }
+}

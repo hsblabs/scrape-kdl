@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hsblabs/scrape-kdl/internal/compatibility"
 	"github.com/hsblabs/scrape-kdl/internal/diagnostic"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 	"github.com/hsblabs/scrape-kdl/internal/kdl"
@@ -32,7 +33,7 @@ type loadedDocument struct {
 	importOrder    []string
 	transformDecls map[string]*transformDecl
 	moduleName     string
-	moduleVersion  int
+	moduleVersion  string
 }
 
 type transformDecl struct {
@@ -192,17 +193,15 @@ func (c *Compiler) compileImportHeader(d *loadedDocument, n *kdl.Node) {
 }
 
 func (c *Compiler) compileRootHeader(d *loadedDocument) {
-	validateNode(&c.diags, d.root, 1, 1, map[string]valueExpectation{"version": expectInt}, d.root.Name)
+	validateNode(&c.diags, d.root, 1, 1, map[string]valueExpectation{"version": expectScalar, "language-version": expectScalar}, d.root.Name)
 	name, ok := stringArg(d.root, 0)
 	if !ok {
 		c.diags.Add("E_TYPE_MISMATCH", diagnostic.SeverityError, d.root.Name+" name must be a string", d.root.Span, d.root.Name)
 		return
 	}
 	validateIdentifier(&c.diags, name, d.root.Span, true, d.root.Name)
-	version, ok := intProperty(d.root, "version")
-	if !ok || version < 1 {
-		c.diags.Add("E_TYPE_MISMATCH", diagnostic.SeverityError, "version must be a positive integer", d.root.Span, d.root.Name)
-	}
+	version := c.documentVersion(d)
+	c.languageVersion(d)
 	if d.kind == docModule {
 		for _, child := range d.root.Children {
 			if child.Name != "transform" {
@@ -218,6 +217,38 @@ func (c *Compiler) compileRootHeader(d *loadedDocument) {
 			}
 		}
 	}
+}
+
+func (c *Compiler) documentVersion(d *loadedDocument) string {
+	value, exists := d.root.Property("version")
+	if !exists {
+		c.diags.Add("E_DOCUMENT_VERSION_REQUIRED", diagnostic.SeverityError, "document requires version", d.root.Span, d.root.Name+".version")
+		return ""
+	}
+	version, ok := stringProperty(d.root, "version")
+	if !ok || !compatibility.IsDateIdentifier(version) {
+		c.diags.Add("E_DOCUMENT_VERSION_INVALID", diagnostic.SeverityError, "version must be a real calendar date in YYYY-MM-DD form", value.Span, d.root.Name+".version")
+		return ""
+	}
+	return version
+}
+
+func (c *Compiler) languageVersion(d *loadedDocument) string {
+	value, exists := d.root.Property("language-version")
+	if !exists {
+		c.diags.Add("E_LANGUAGE_VERSION_REQUIRED", diagnostic.SeverityError, "document requires language-version", d.root.Span, d.root.Name+".language-version")
+		return ""
+	}
+	languageVersion, ok := stringProperty(d.root, "language-version")
+	if !ok || !compatibility.IsDateIdentifier(languageVersion) {
+		c.diags.Add("E_LANGUAGE_VERSION_INVALID", diagnostic.SeverityError, "language-version must be a real calendar date in YYYY-MM-DD form", value.Span, d.root.Name+".language-version")
+		return ""
+	}
+	if !compatibility.IsSupportedLanguageVersion(languageVersion) {
+		c.diags.Add("E_LANGUAGE_VERSION_UNSUPPORTED", diagnostic.SeverityError, fmt.Sprintf("unsupported language-version %q", languageVersion), value.Span, d.root.Name+".language-version")
+		return ""
+	}
+	return languageVersion
 }
 
 func (c *Compiler) collectTransformDecls(d *loadedDocument) {
@@ -267,7 +298,8 @@ func (c *Compiler) compileExtractor(d *loadedDocument) *ir.Extractor {
 		return nil
 	}
 	name, _ := stringArg(d.root, 0)
-	version, _ := intProperty(d.root, "version")
+	version, _ := stringProperty(d.root, "version")
+	languageVersion, _ := stringProperty(d.root, "language-version")
 	inputs, inputMap := c.compileInputs(d)
 	sourceIR := c.compileSource(d, inputMap)
 	transforms := c.compileReachableTransforms(d)
@@ -275,7 +307,7 @@ func (c *Compiler) compileExtractor(d *loadedDocument) *ir.Extractor {
 
 	files := append([]ir.SourceFile{}, c.files...)
 	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
-	return &ir.Extractor{Kind: "extractor", IRVersion: "0.1", LanguageVersion: "0.1", Name: name, Version: version, Files: files, Source: sourceIR, Inputs: inputs, Transforms: transforms, Output: output, Capabilities: sortedSet(c.capabilities), Span: d.root.Span}
+	return &ir.Extractor{Kind: "extractor", IRVersion: compatibility.InitialIRVersion, LanguageVersion: languageVersion, Name: name, Version: version, Files: files, Source: sourceIR, Inputs: inputs, Transforms: transforms, Output: output, Capabilities: sortedSet(c.capabilities), Span: d.root.Span}
 }
 
 func (c *Compiler) displayPath(path string) string {

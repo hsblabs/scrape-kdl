@@ -49,7 +49,7 @@ func TestExecuteHTTP(t *testing.T) {
 	}))
 	defer server.Close()
 
-	spec := fmt.Sprintf(`extractor "http-runtime" version=1 {
+	spec := fmt.Sprintf(`extractor "http-runtime" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="http" url=%q
     session policy="optional"
@@ -134,7 +134,7 @@ func TestExecuteHTTP(t *testing.T) {
 }
 
 func TestExecuteFieldWarningAndExternalTransform(t *testing.T) {
-	spec := `extractor "external" version=1 {
+	spec := `extractor "external" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid" }
   transform "decorate" input="string" output="string" { external symbol="decorate" }
   field "bad" type="u8" required=#false {
@@ -171,7 +171,7 @@ func TestExecuteFieldWarningAndExternalTransform(t *testing.T) {
 }
 
 func TestExecuteHTMLCancellationBoundaries(t *testing.T) {
-	path := compileTestSpec(t, `extractor "offline-cancellation" version=1 {
+	path := compileTestSpec(t, `extractor "offline-cancellation" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   transform "cancel" input="string" output="string" { external symbol="cancel" }
   field "first" type="string" required=#true {
@@ -211,7 +211,7 @@ func TestExecuteHTMLCancellationBoundaries(t *testing.T) {
 }
 
 func TestExecuteHTMLFieldRecoveryPolicies(t *testing.T) {
-	path := compileTestSpec(t, `extractor "http-recovery" version=1 {
+	path := compileTestSpec(t, `extractor "http-recovery" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "nulled" type="u8" required=#false {
     select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "null"
@@ -237,7 +237,7 @@ func TestExecuteHTMLFieldRecoveryPolicies(t *testing.T) {
 }
 
 func TestExecuteHTMLFieldRecoveryFail(t *testing.T) {
-	path := compileTestSpec(t, `extractor "http-recovery-fail" version=1 {
+	path := compileTestSpec(t, `extractor "http-recovery-fail" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "value" type="u8" required=#true {
     select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "fail"
@@ -255,7 +255,7 @@ func TestExecuteHTMLFieldRecoveryFail(t *testing.T) {
 }
 
 func TestExecuteHTMLRequiredMissingIsNotRecovered(t *testing.T) {
-	path := compileTestSpec(t, `extractor "http-required-missing" version=1 {
+	path := compileTestSpec(t, `extractor "http-required-missing" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "value" type="string" required=#true {
     select ".missing" match="first"; value "text"
@@ -273,7 +273,7 @@ func TestExecuteHTMLRequiredMissingIsNotRecovered(t *testing.T) {
 }
 
 func TestExecuteHTMLNormalizesNumericFieldDefaults(t *testing.T) {
-	path := compileTestSpec(t, `extractor "numeric-defaults" version=1 {
+	path := compileTestSpec(t, `extractor "numeric-defaults" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "missing_count" type="int" required=#false default=7 {
     select ".missing"; value "text"; apply "parse-int" as="int"; on-error "default"
@@ -303,7 +303,7 @@ func TestExecuteHTMLNormalizesNumericFieldDefaults(t *testing.T) {
 }
 
 func TestExecuteNormalizesNumericTransformLiterals(t *testing.T) {
-	path := compileTestSpec(t, `extractor "numeric-literals" version=1 {
+	path := compileTestSpec(t, `extractor "numeric-literals" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   transform "maybe_count" input="string" output="int?" {
     match {
@@ -350,7 +350,7 @@ func TestExecuteRejectsMissingExternalBeforeFetch(t *testing.T) {
 		requested = true
 	}))
 	defer server.Close()
-	spec := fmt.Sprintf(`extractor "external" version=1 {
+	spec := fmt.Sprintf(`extractor "external" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   transform "x" input="string" output="string" { external symbol="missing" }
   field "x" type="string" required=#true {
@@ -392,7 +392,7 @@ func TestSessionNoneIsIgnored(t *testing.T) {
 		_, _ = writer.Write([]byte(`<h1>ok</h1>`))
 	}))
 	defer server.Close()
-	spec := fmt.Sprintf(`extractor "session-none" version=1 {
+	spec := fmt.Sprintf(`extractor "session-none" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="http" url=%q
     session policy="none"
@@ -414,7 +414,7 @@ func TestSessionNoneIsIgnored(t *testing.T) {
 }
 
 func TestExecuteHTTPSessionConstructionIsDeterministic(t *testing.T) {
-	path := compileTestSpec(t, `extractor "session-order" version=1 {
+	path := compileTestSpec(t, `extractor "session-order" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/"; session policy="optional" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
@@ -468,7 +468,7 @@ func TestRequiredInputFailsBeforeFetch(t *testing.T) {
 		requested = true
 	}))
 	defer server.Close()
-	spec := fmt.Sprintf(`extractor "required-input" version=1 {
+	spec := fmt.Sprintf(`extractor "required-input" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   input "id" type="string" required=#true
   field "title" type="string" required=#true {
@@ -495,7 +495,7 @@ func TestResponseBodyLimit(t *testing.T) {
 		_, _ = writer.Write([]byte(`<h1>too large</h1>`))
 	}))
 	defer server.Close()
-	spec := fmt.Sprintf(`extractor "body-limit" version=1 {
+	spec := fmt.Sprintf(`extractor "body-limit" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   field "title" type="string" required=#true {
     select "h1"
@@ -519,7 +519,7 @@ func TestCustomCharsetDecoder(t *testing.T) {
 		_, _ = writer.Write([]byte("ignored"))
 	}))
 	defer server.Close()
-	spec := fmt.Sprintf(`extractor "charset" version=1 {
+	spec := fmt.Sprintf(`extractor "charset" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   field "title" type="string" required=#true {
     select "h1"
@@ -553,7 +553,7 @@ func TestExecuteURLPolicyRejectsBeforeFetch(t *testing.T) {
 		requested = true
 	}))
 	defer server.Close()
-	spec := fmt.Sprintf(`extractor "policy" version=1 {
+	spec := fmt.Sprintf(`extractor "policy" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`, server.URL)
@@ -575,7 +575,7 @@ func TestExecuteURLPolicyRejectsBeforeFetch(t *testing.T) {
 }
 
 func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
-	const spec = `extractor "http-preflight" version=1 {
+	const spec = `extractor "http-preflight" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="http" url="https://example.invalid/{id}"
     session policy="required"
@@ -599,23 +599,37 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
 		{
-			name: "unsupported IR version",
+			name: "legacy IR version",
 			mutate: func(extractor *ir.Extractor) {
-				extractor.IRVersion = "1.0"
+				extractor.IRVersion = "0.1"
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
 		{
-			name: "unsupported language version",
+			name: "unknown IR version",
 			mutate: func(extractor *ir.Extractor) {
-				extractor.LanguageVersion = "1.0"
+				extractor.IRVersion = "2026-07-16"
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
 		{
-			name: "non-positive extractor version",
+			name: "legacy language version",
 			mutate: func(extractor *ir.Extractor) {
-				extractor.Version = 0
+				extractor.LanguageVersion = "0.1"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unknown language version",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.LanguageVersion = "2026-07-16"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "malformed extractor version",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Version = "2026-02-30"
 			},
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
@@ -1171,7 +1185,7 @@ func TestExecuteURLPolicyChecksRedirects(t *testing.T) {
 		_, _ = writer.Write([]byte(`<h1>should-not-run</h1>`))
 	}))
 	defer server.Close()
-	spec := fmt.Sprintf(`extractor "policy-redirect" version=1 {
+	spec := fmt.Sprintf(`extractor "policy-redirect" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`, server.URL+"/start")
@@ -1202,7 +1216,7 @@ func TestExecuteHTTPTimeoutUsesStableCode(t *testing.T) {
 		<-request.Context().Done()
 	}))
 	defer server.Close()
-	spec := fmt.Sprintf(`extractor "timeout" version=1 {
+	spec := fmt.Sprintf(`extractor "timeout" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`, server.URL)
@@ -1256,7 +1270,7 @@ func (reader contextReader) Read([]byte) (int, error) {
 
 func compileHTTPRuntimeSpec(t *testing.T, target string) *ir.Extractor {
 	t.Helper()
-	path := compileTestSpec(t, fmt.Sprintf(`extractor "http-cleanup" version=1 {
+	path := compileTestSpec(t, fmt.Sprintf(`extractor "http-cleanup" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url=%q }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`, target))
@@ -1430,7 +1444,7 @@ func TestExecuteHTTPSessionHeadersFollowRedirectSecurityRules(t *testing.T) {
 					Body: io.NopCloser(strings.NewReader(`<h1>redirected</h1>`)), Request: request,
 				}, nil
 			})}
-			path := compileTestSpec(t, `extractor "redirect-session" version=1 {
+			path := compileTestSpec(t, `extractor "redirect-session" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="http" url="https://example.invalid/start"
     session policy="optional"
@@ -1493,7 +1507,7 @@ func TestExecuteHTTPCookieJarAppliesRedirectScope(t *testing.T) {
 			}, nil
 		}),
 	}
-	path := compileTestSpec(t, `extractor "redirect-jar" version=1 {
+	path := compileTestSpec(t, `extractor "redirect-jar" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/start" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
@@ -1546,7 +1560,7 @@ func TestExecuteHTTPClientJarPersistsResponseCookies(t *testing.T) {
 			}, nil
 		}),
 	}
-	path := compileTestSpec(t, `extractor "redirect-set-cookie" version=1 {
+	path := compileTestSpec(t, `extractor "redirect-set-cookie" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/start" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
@@ -1609,7 +1623,7 @@ func TestExecuteHTTPCustomRedirectCanStripSessionHeaders(t *testing.T) {
 			return nil
 		},
 	}
-	path := compileTestSpec(t, `extractor "redirect-mutation" version=1 {
+	path := compileTestSpec(t, `extractor "redirect-mutation" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/start"; session policy="optional" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
@@ -1639,7 +1653,7 @@ func TestExecuteHTTPCustomRedirectCanStripSessionHeaders(t *testing.T) {
 }
 
 func TestExecuteHTTPPreservesParentCancellation(t *testing.T) {
-	spec := `extractor "canceled" version=1 {
+	spec := `extractor "canceled" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`

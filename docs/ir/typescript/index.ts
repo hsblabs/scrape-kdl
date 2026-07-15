@@ -1,5 +1,5 @@
-export type IRVersion = "0.1";
-export type LanguageVersion = "0.1";
+export type IRVersion = "2026-07-15";
+export type LanguageVersion = "2026-07-15";
 
 export interface SourcePosition {
   readonly offset: number;
@@ -57,7 +57,7 @@ export interface NullableTypeRef {
 export interface SourceFileIR {
   readonly path: string;
   readonly moduleName?: string;
-  readonly moduleVersion?: number;
+  readonly moduleVersion?: string;
   readonly sha256?: string;
 }
 
@@ -66,7 +66,7 @@ export interface ExtractorIR {
   readonly irVersion: IRVersion;
   readonly languageVersion: LanguageVersion;
   readonly name: string;
-  readonly version: number;
+  readonly version: string;
   readonly files: readonly SourceFileIR[];
   readonly source: SourceIR;
   readonly inputs: readonly InputIR[];
