@@ -47,8 +47,17 @@ jobs:
       - run: ./scripts/check-diagnostics.sh
       - run: ./scripts/check-module-paths.sh
       - run: ./scripts/check-format.sh
-      - if: matrix.os == 'ubuntu-latest'
-        run: go test -race ./...
+
+  race:
+    name: Race / ubuntu-latest / Go 1.26.x
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-go@v6.5.0
+        with:
+          go-version: "1.26.x"
+          cache: false
+      - run: go test -race ./...
 
   rod-contract:
     name: go-rod adapter contract
