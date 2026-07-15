@@ -5,13 +5,22 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"testing"
 )
 
 type htmlCompatibilityManifest struct {
 	SchemaVersion       string                  `json:"schemaVersion"`
+	Normalization       map[string]any          `json:"normalization"`
+	Upstream            htmlCompatibilitySource `json:"upstream"`
 	ApprovedDivergences []any                   `json:"approvedDivergences"`
 	Cases               []htmlCompatibilityCase `json:"cases"`
+}
+
+type htmlCompatibilitySource struct {
+	Repository    string   `json:"repository"`
+	Revision      string   `json:"revision"`
+	SelectedTests []string `json:"selectedTests"`
 }
 
 type htmlCompatibilityCase struct {
@@ -19,6 +28,7 @@ type htmlCompatibilityCase struct {
 	Input           string                         `json:"input"`
 	DecodedEncoding string                         `json:"decodedEncoding"`
 	ParserMode      string                         `json:"parserMode"`
+	UpstreamTestID  string                         `json:"upstreamTestId"`
 	Observations    []htmlCompatibilityObservation `json:"observations"`
 }
 
@@ -42,10 +52,22 @@ func TestPinnedHTMLCompatibilityManifest(t *testing.T) {
 	if manifest.SchemaVersion != "2026-07-15" || len(manifest.ApprovedDivergences) != 0 {
 		t.Fatalf("manifest contract = %#v", manifest)
 	}
+	if len(manifest.Normalization) == 0 || manifest.Upstream.Repository != "https://github.com/web-platform-tests/wpt" || !regexp.MustCompile(`^[0-9a-f]{40}$`).MatchString(manifest.Upstream.Revision) {
+		t.Fatalf("manifest provenance = %#v", manifest.Upstream)
+	}
+	if len(manifest.Cases) < 5 {
+		t.Fatalf("manifest cases = %d, want at least 5", len(manifest.Cases))
+	}
+	seen := map[string]bool{}
 	for _, fixture := range manifest.Cases {
+		fixture := fixture
 		t.Run(fixture.ID, func(t *testing.T) {
-			if fixture.DecodedEncoding != "utf-8" || fixture.ParserMode != "document" {
-				t.Fatalf("unsupported fixture mode: %#v", fixture)
+			if fixture.ID == "" || seen[fixture.ID] {
+				t.Fatalf("duplicate or empty fixture ID %q", fixture.ID)
+			}
+			seen[fixture.ID] = true
+			if fixture.DecodedEncoding != "utf-8" || fixture.ParserMode != "document" || fixture.UpstreamTestID == "" {
+				t.Fatalf("unsupported fixture metadata: %#v", fixture)
 			}
 			documentData, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(fixture.Input)))
 			if err != nil {
@@ -73,6 +95,9 @@ func TestPinnedHTMLCompatibilityManifest(t *testing.T) {
 					}
 				}
 				if observation.Attributes != nil {
+					if len(nodes) != len(observation.Attributes) {
+						t.Fatalf("%s nodes = %d, attribute observations = %d", observation.Selector, len(nodes), len(observation.Attributes))
+					}
 					actual := make([]map[string]*string, len(nodes))
 					for index, node := range nodes {
 						actual[index] = map[string]*string{}

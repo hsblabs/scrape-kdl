@@ -9,6 +9,7 @@
 | KDL lexical base | KDL 2.0 concepts | Scraping KDL supported subset |
 | Scraping KDL language | `2026-07-15` | `2026-07-15` |
 | Validated IR | `2026-07-15` | `2026-07-15` |
+| Go HTML parser | `golang.org/x/net/html` v0.57.0 | v0.57.0 |
 | go-rod adapter | go-rod v0.116.2 | v0.116.2 |
 | Playwright adapter | Playwright 1.61.1 | Chromium (blocking); Firefox and WebKit (best effort) |
 | Operating system | Linux or macOS | Linux and macOS |
@@ -39,7 +40,7 @@ The project is pre-release, and these M5 changes intentionally close previously 
 
 These changes may affect scripts built against an untagged working draft. After a release, patch versions remain backward compatible within their minor version under `docs/versioning.md`.
 
-The HTTP reference runtime uses an internal permissive parser with raw-text/RCDATA protection, truncated-document recovery, and common optional-end-tag handling. It is not yet a complete WHATWG HTML tree builder. Browser mode operates on the browser's live DOM and does not share that limitation.
+The HTTP reference runtime uses pinned `golang.org/x/net/html` WHATWG document tree construction after charset decoding. The portable guarantee and explicit exclusions are recorded in `docs/html-compatibility.md`; browser mode continues to operate on the browser's mutable live DOM.
 
 ## Platform policy
 

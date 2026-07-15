@@ -32,7 +32,9 @@
         "fixtures/html-compat/manifest.json",
         "fixtures/html-compat/raw-text.html",
         "fixtures/html-compat/optional-tags.html",
-        "fixtures/html-compat/selectors.html"
+        "fixtures/html-compat/selectors.html",
+        "fixtures/html-compat/rcdata-truncated.html",
+        "fixtures/html-compat/tree-construction.html"
       ]
     }
   ],

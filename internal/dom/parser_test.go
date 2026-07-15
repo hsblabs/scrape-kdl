@@ -65,16 +65,15 @@ func TestParseHTMLRCDATA(t *testing.T) {
 	}
 }
 
-func TestProtectRawTextPreservesInvalidUTF8Offsets(t *testing.T) {
-	source := "<sCript>\xd6\xd6\xd6\xd6\xd6</sCript"
-	want := "<script>\xd6\xd6\xd6\xd6\xd6</sCript"
-	if got := protectRawText(source); got != want || len(got) != len(source) {
-		t.Fatalf("protectRawText = %q (%d bytes), want %q (%d bytes)", got, len(got), want, len(source))
+func TestParseHTMLPreservesCommentsInInnerHTML(t *testing.T) {
+	document := mustParseHTML(t, `<main>before<!-- stable -->after</main>`)
+	main := QueryAll(document, mustSelector(t, "main"))
+	if len(main) != 1 || main[0].TextContent() != "beforeafter" {
+		t.Fatalf("main = %#v", main)
 	}
-	if got := asciiLower("A\xd6Zé"); got != "a\xd6zé" || len(got) != len("A\xd6Zé") {
-		t.Fatalf("asciiLower = %q (%d bytes)", got, len(got))
+	if got := main[0].InnerHTML(); got != `before<!-- stable -->after` {
+		t.Fatalf("inner HTML = %q", got)
 	}
-	_, _ = ParseHTML(strings.NewReader(source))
 }
 
 func TestParseHTMLRecoversTruncatedDocument(t *testing.T) {

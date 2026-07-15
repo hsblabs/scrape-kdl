@@ -185,7 +185,7 @@ See `SECURITY.md` and `docs/security-model.md`.
 - Minimum Node.js version: 26 for the TypeScript packages.
 - CI targets Go 1.26 and Node.js 26 on Linux and macOS.
 - The language is built on the KDL 2 data model but the reference parser intentionally supports the subset defined by the Scraping KDL v0.1 specification document series.
-- The Go HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
+- The Go HTTP runtime uses pinned `golang.org/x/net/html` WHATWG tree construction and is checked against the versioned portable HTML compatibility manifest.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
 - The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
 - The checked-in TypeScript package has the complete compiler pipeline plus a publishable boundary and package gates; execution is not yet complete.

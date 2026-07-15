@@ -12,6 +12,7 @@ const (
 	DocumentNode NodeType = iota
 	ElementNode
 	TextNode
+	CommentNode
 )
 
 type Node struct {
@@ -84,6 +85,10 @@ func serializeNode(b *strings.Builder, n *Node) {
 		} else {
 			b.WriteString(html.EscapeString(n.Data))
 		}
+	case CommentNode:
+		b.WriteString("<!--")
+		b.WriteString(n.Data)
+		b.WriteString("-->")
 	case ElementNode:
 		b.WriteByte('<')
 		b.WriteString(n.Tag)
