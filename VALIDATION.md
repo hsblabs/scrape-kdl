@@ -20,6 +20,7 @@ This includes:
 - implementation-to-diagnostics documentation consistency;
 - independent Go consumer compilation, public-signature internal-package checks, and strict TypeScript API consumer typechecking;
 - independent TypeScript parser/compiler compilation of the representative valid fixture, exact canonical IR comparison, and exact shared invalid-fixture diagnostics;
+- manifest-complete Go conformance execution and exact comparison of shared Go/TypeScript observations in the dated language-neutral result format;
 - `go vet ./...`;
 - `go test ./...`;
 - `go test -race ./...`;
@@ -62,6 +63,7 @@ Passed:
 - `actionlint` validation of all GitHub Actions workflows;
 - the pinned Node.js 26 / `npm ci` API-contract workflow path;
 - the Node.js 26 TypeScript contract-slice and conformance-coverage workflow paths;
+- fixture registration, missing-artifact, suite-selection, result-schema, and unapproved-divergence failure tests;
 - core and adapter semantic-version tag validation;
 - `manifest.json` JSON parsing;
 - source ZIP integrity and post-extraction root-module tests.
