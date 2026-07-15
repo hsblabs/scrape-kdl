@@ -16,8 +16,10 @@ This includes:
 - `gofmt` verification;
 - module-path and release-clean nested `go.mod` checks;
 - golden Validated IR comparison;
+- section-complete normative conformance coverage inventory checks;
 - implementation-to-diagnostics documentation consistency;
 - independent Go consumer compilation, public-signature internal-package checks, and strict TypeScript API consumer typechecking;
+- independent TypeScript parser/compiler compilation of the representative valid fixture, exact canonical IR comparison, and exact shared invalid-fixture diagnostics;
 - `go vet ./...`;
 - `go test ./...`;
 - `go test -race ./...`;
@@ -59,6 +61,7 @@ Passed:
 - all `.github/**/*.yml` files parsed as YAML;
 - `actionlint` validation of all GitHub Actions workflows;
 - the pinned Node.js 26 / `npm ci` API-contract workflow path;
+- the Node.js 26 TypeScript contract-slice and conformance-coverage workflow paths;
 - core and adapter semantic-version tag validation;
 - `manifest.json` JSON parsing;
 - source ZIP integrity and post-extraction root-module tests.

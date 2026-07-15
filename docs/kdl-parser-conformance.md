@@ -17,6 +17,10 @@ Supported lexical features include:
 Scraping KDL rejects KDL type annotations by language rule. The current parser does not promise support for every generic KDL 2 representation, including multiline escaped quoted strings, keyword non-finite numbers, arbitrary Unicode identifiers, or whitespace escapes. Specs should use the canonical formatting defined by the language specification.
 
 Parser conformance fixtures belong under `internal/kdl` and language fixtures under `fixtures/`.
+The normative section-to-evidence inventory is `docs/spec/conformance-coverage.json` and is drift-checked by `TestConformanceCoverage`.
+
+The bounded TypeScript parser under `packages/scrape-kdl` exists to independently cross-check the representative v0.2 contract fixtures.
+It does not yet claim the complete Scraping KDL subset listed above; unsupported syntax remains an implementation limit until Issues #11 through #13 expand the package.
 
 ## Fuzzing
 

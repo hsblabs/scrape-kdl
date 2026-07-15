@@ -138,6 +138,11 @@ The public API includes:
 
 See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and intentional idiomatic differences.
 
+The private `packages/scrape-kdl` workspace currently contains the bounded TypeScript parser/compiler cross-check for the `2026-07-15` contract.
+It independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture under Node.js 26 without invoking Go.
+It is not yet the complete or publishable TypeScript library; Issues #11 through #13 expand this package after contract completion.
+See `docs/spec/conformance-coverage.md` for the audited rule inventory and the exact slice boundary.
+
 ## Browser mode
 
 Browser mode uses an application-supplied adapter. JavaScript is disabled by default.
@@ -180,6 +185,7 @@ See `SECURITY.md` and `docs/security-model.md`.
 - The HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
 - The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
+- The checked-in TypeScript package is currently a contract cross-check slice, not the complete compiler or runtime.
 
 See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
 

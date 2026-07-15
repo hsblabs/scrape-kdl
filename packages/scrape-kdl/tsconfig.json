@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ESNext", "DOM"],
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "verbatimModuleSyntax": true
+  },
+  "include": ["src/**/*.ts"]
+}
