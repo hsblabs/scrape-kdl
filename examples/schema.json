@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hsblabs.github.io/scrape-kdl/examples/schema.json",
+  "title": "Scraping KDL executable example manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "name", "description", "languageVersion", "irVersion", "source", "inputs", "expected", "executions", "adapters"],
+  "properties": {
+    "$schema": { "const": "../schema.json" },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "languageVersion": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "irVersion": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "source": { "$ref": "#/$defs/localPath" },
+    "inputs": { "$ref": "#/$defs/localPath" },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ir", "output"],
+      "properties": {
+        "ir": { "$ref": "#/$defs/localPath" },
+        "output": { "$ref": "#/$defs/localPath" }
+      }
+    },
+    "executions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["implementation", "mode", "fixture"],
+        "properties": {
+          "implementation": { "enum": ["go", "typescript"] },
+          "mode": { "enum": ["offline-html", "local-http", "browser"] },
+          "fixture": { "$ref": "#/$defs/localPath" },
+          "adapter": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "adapters": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "localPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    }
+  }
+}

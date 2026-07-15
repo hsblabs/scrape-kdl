@@ -1,0 +1,12 @@
+{
+  "$schema": "../schema.json",
+  "name": "malformed-html",
+  "description": "Deterministic extraction from truncated HTML with omitted list-item end tags.",
+  "languageVersion": "2026-07-15",
+  "irVersion": "2026-07-15",
+  "source": "extractor.kdl",
+  "inputs": "inputs.json",
+  "expected": { "ir": "expected-ir.json", "output": "expected-output.json" },
+  "executions": [{ "implementation": "go", "mode": "offline-html", "fixture": "page.html" }],
+  "adapters": []
+}

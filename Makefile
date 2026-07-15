@@ -1,4 +1,4 @@
-.PHONY: test race vet build format-check module-check golden diagnostics ir-contract api-contract typescript-contract typescript-package conformance-coverage conformance validate-example extract-example verify
+.PHONY: test race vet build format-check module-check golden diagnostics examples ir-contract api-contract typescript-contract typescript-package conformance-coverage conformance validate-example extract-example verify
 .PHONY: test-rod-contract test-rod test-rod-e2e test-playwright-e2e release-check release-dist
 
 test:
@@ -24,6 +24,9 @@ golden:
 
 diagnostics:
 	./scripts/check-diagnostics.sh
+
+examples:
+	GOTOOLCHAIN=local go run ./cmd/check-examples
 
 ir-contract:
 	GOTOOLCHAIN=local go test ./internal/canonicaljson ./internal/ir ./scripts -run 'Test(Canonical|IR)'
@@ -64,7 +67,7 @@ test-playwright-e2e:
 	npm run build:typescript
 	npm run test:e2e --workspace @hsblabs/scrape-kdl-playwright
 
-verify: format-check module-check golden diagnostics ir-contract api-contract typescript-package conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract
+verify: format-check module-check golden diagnostics examples ir-contract api-contract typescript-package conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract
 
 release-check:
 	./scripts/verify-release.sh

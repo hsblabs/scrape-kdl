@@ -1,0 +1,31 @@
+{
+  "value": {
+    "items": [
+      {
+        "number": 1
+      },
+      {
+        "number": 3
+      }
+    ],
+    "status": null
+  },
+  "warnings": [
+    {
+      "code": "W_ERROR_RECOVERED",
+      "message": "E_TRANSFORM at output.status: value does not match required pattern",
+      "path": "output.status"
+    },
+    {
+      "code": "W_ROW_SKIPPED",
+      "message": "E_TRANSFORM at output.items[1].number: parse u8: strconv.ParseUint: parsing \"not-a-number\": invalid syntax",
+      "path": "output.items",
+      "row": 1
+    },
+    {
+      "code": "W_PARTIAL_EXTRACTION",
+      "message": "extraction completed with one or more recovered errors"
+    }
+  ],
+  "partial": true
+}

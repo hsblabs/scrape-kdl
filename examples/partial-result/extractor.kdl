@@ -1,0 +1,23 @@
+extractor "partial-result" version="2026-07-15" language-version="2026-07-15" {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/partial"
+  }
+
+  field "status" type="string?" required=#false {
+    select "#status" match="one"
+    value "text"
+    apply "trim"
+    apply "assert-matches" pattern="^ready$"
+    on-error "warn"
+  }
+
+  collection "items" min-items=1 on-row-error="skip" {
+    select "ul.items > li"
+    field "number" type="u8" required=#true {
+      select ".number" match="one"
+      value "text"
+      apply "trim"
+      apply "parse-int" as="u8"
+    }
+  }
+}

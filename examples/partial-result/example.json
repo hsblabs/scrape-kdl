@@ -1,0 +1,12 @@
+{
+  "$schema": "../schema.json",
+  "name": "partial-result",
+  "description": "Field warning and row-skip recovery with deterministic partial-result warnings.",
+  "languageVersion": "2026-07-15",
+  "irVersion": "2026-07-15",
+  "source": "extractor.kdl",
+  "inputs": "inputs.json",
+  "expected": { "ir": "expected-ir.json", "output": "expected-output.json" },
+  "executions": [{ "implementation": "go", "mode": "offline-html", "fixture": "page.html" }],
+  "adapters": []
+}

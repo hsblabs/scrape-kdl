@@ -1,0 +1,34 @@
+extractor "transforms" version="2026-07-15" language-version="2026-07-15" {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/transforms"
+  }
+
+  transform "clean" input="string" output="string" {
+    pipeline {
+      apply "trim"
+      apply "normalize-whitespace"
+      apply "uppercase"
+    }
+  }
+
+  transform "category" input="string" output="string" {
+    match {
+      case "F" "female"
+      case "M" "male"
+      default "unknown"
+    }
+  }
+
+  field "name" type="string" required=#true {
+    select "#name" match="one"
+    value "text"
+    apply "clean"
+  }
+
+  field "category" type="string" required=#true {
+    select "#category" match="one"
+    value "text"
+    apply "trim"
+    apply "category"
+  }
+}

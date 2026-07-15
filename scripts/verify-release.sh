@@ -7,6 +7,7 @@ cd "$root"
 ./scripts/check-module-paths.sh
 ./scripts/check-golden.sh
 ./scripts/check-diagnostics.sh
+GOTOOLCHAIN=local go run ./cmd/check-examples
 make api-contract
 make typescript-package
 make conformance-coverage

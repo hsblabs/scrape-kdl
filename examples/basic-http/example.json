@@ -1,0 +1,12 @@
+{
+  "$schema": "../schema.json",
+  "name": "basic-http",
+  "description": "Static HTTP extraction with a required URL input and a numeric collection.",
+  "languageVersion": "2026-07-15",
+  "irVersion": "2026-07-15",
+  "source": "extractor.kdl",
+  "inputs": "inputs.json",
+  "expected": { "ir": "expected-ir.json", "output": "expected-output.json" },
+  "executions": [{ "implementation": "go", "mode": "local-http", "fixture": "page.html" }],
+  "adapters": []
+}
