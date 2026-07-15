@@ -32,7 +32,7 @@ func TestPublicCompileAndExtract(t *testing.T) {
 	if err := os.WriteFile(path, []byte(spec), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	program, diagnostics := scrapekdl.CompileFile(path)
+	program, diagnostics := scrapekdl.CompileFile(context.Background(), path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("diagnostics = %#v", diagnostics)
 	}
@@ -46,7 +46,7 @@ func TestPublicCompileAndExtract(t *testing.T) {
 }
 
 func TestPublicValidationAndProgramMetadata(t *testing.T) {
-	program, diagnostics := scrapekdl.CompileFile("fixtures/valid/basic-http.kdl")
+	program, diagnostics := scrapekdl.CompileFile(context.Background(), "fixtures/valid/basic-http.kdl")
 	if diagnostics.HasErrors() || program == nil {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -84,18 +84,71 @@ func TestPublicValidationAndProgramMetadata(t *testing.T) {
 	if err := os.WriteFile(invalidPath, []byte(`extractor "invalid" version="2026-07-15" language-version="2026-07-15" {}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	validation := scrapekdl.ValidateFile(invalidPath)
+	validation := scrapekdl.ValidateFile(context.Background(), invalidPath)
 	if !validation.HasErrors() {
 		t.Fatalf("ValidateFile diagnostics = %#v", validation)
 	}
-	invalidProgram, compileDiagnostics := scrapekdl.CompileFile(invalidPath)
+	invalidProgram, compileDiagnostics := scrapekdl.CompileFile(context.Background(), invalidPath)
 	if invalidProgram != nil || !compileDiagnostics.HasErrors() {
 		t.Fatalf("CompileFile invalid result = %#v, %#v", invalidProgram, compileDiagnostics)
 	}
 }
 
+func TestPublicCompileUsesInjectedSourceLoader(t *testing.T) {
+	const mainSource = `import "common.kdl" as="common"
+extractor "memory" version="2026-07-15" language-version="2026-07-15" {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`
+	const moduleSource = `module "common" version="2026-07-15" language-version="2026-07-15" {}`
+	loaded := []string{}
+	program, diagnostics := scrapekdl.Compile(context.Background(), scrapekdl.Source{
+		Path: "spec/main.kdl", Data: []byte(mainSource),
+	}, scrapekdl.CompileOptions{Loader: func(_ context.Context, path string) ([]byte, error) {
+		loaded = append(loaded, path)
+		if path != "spec/common.kdl" {
+			return nil, fmt.Errorf("unexpected path %q", path)
+		}
+		return []byte(moduleSource), nil
+	}})
+	if diagnostics.HasErrors() || program == nil {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	if !reflect.DeepEqual(loaded, []string{"spec/common.kdl"}) {
+		t.Fatalf("loaded paths = %v", loaded)
+	}
+	metadata := program.Metadata()
+	if metadata.Name != "memory" || metadata.Version != "2026-07-15" || metadata.LanguageVersion != "2026-07-15" || metadata.IRVersion != "2026-07-15" {
+		t.Fatalf("metadata = %#v", metadata)
+	}
+	if len(metadata.Files) != 2 || metadata.Files[0].Path != "common.kdl" || metadata.Files[0].ModuleName != "common" || metadata.Files[1].Path != "main.kdl" {
+		t.Fatalf("source files = %#v", metadata.Files)
+	}
+	metadata.Files[0].Path = "mutated"
+	metadata.Capabilities[0] = "mutated"
+	again := program.Metadata()
+	if again.Files[0].Path != "common.kdl" || again.Capabilities[0] != "http.fetch" {
+		t.Fatalf("metadata aliases internal storage: %#v", again)
+	}
+}
+
+func TestPublicCompilePreservesContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	loaderCalled := false
+	program, diagnostics := scrapekdl.Compile(ctx, scrapekdl.Source{
+		Path: "main.kdl", Data: []byte(`extractor "canceled" version="2026-07-15" language-version="2026-07-15" {}`),
+	}, scrapekdl.CompileOptions{Loader: func(context.Context, string) ([]byte, error) {
+		loaderCalled = true
+		return nil, nil
+	}})
+	if program != nil || !diagnostics.HasErrors() || loaderCalled {
+		t.Fatalf("program=%#v diagnostics=%#v loaderCalled=%v", program, diagnostics, loaderCalled)
+	}
+}
+
 func TestPublicExtractHTMLAndExecutionError(t *testing.T) {
-	program, diagnostics := scrapekdl.CompileFile("fixtures/valid/basic-http.kdl")
+	program, diagnostics := scrapekdl.CompileFile(context.Background(), "fixtures/valid/basic-http.kdl")
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -122,7 +175,7 @@ func TestPublicExtractHTMLAndExecutionError(t *testing.T) {
 }
 
 func TestPublicExtractPreservesContextCancellation(t *testing.T) {
-	program, diagnostics := scrapekdl.CompileFile("fixtures/valid/basic-http.kdl")
+	program, diagnostics := scrapekdl.CompileFile(context.Background(), "fixtures/valid/basic-http.kdl")
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}

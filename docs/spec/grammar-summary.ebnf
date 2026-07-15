@@ -4,11 +4,15 @@ document             = { import }, (extractor | module) ;
 import               = node("import", string, prop("as", identifier)) ;
 
 extractor            = node("extractor", extractor_name,
-                            prop("version", positive_int), extractor_child*) ;
+                            prop("version", compatibility_date),
+                            prop("language-version", supported_language_date),
+                            extractor_child*) ;
 extractor_child      = source | input | transform | field | collection ;
 
 module               = node("module", module_name,
-                            prop("version", positive_int), transform*) ;
+                            prop("version", compatibility_date),
+                            prop("language-version", supported_language_date),
+                            transform*) ;
 
 source               = node("source", "html", source_child*) ;
 source_child         = fetch | session | workflow ;
@@ -91,3 +95,5 @@ identifier           = ? [a-z][a-z0-9_]* ? ;
 extractor_name       = ? [a-z][a-z0-9-]* ? ;
 module_name          = extractor_name ;
 transform_reference  = identifier | identifier, ".", identifier ;
+compatibility_date   = ? real calendar date in exact YYYY-MM-DD form ? ;
+supported_language_date = "2026-07-15" ;

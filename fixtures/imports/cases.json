@@ -1,0 +1,138 @@
+[
+  {
+    "name": "valid-relative",
+    "path": "spec/main.kdl",
+    "source": "import \"./modules/../common.kdl\" as=\"common\"\nextractor \"entry\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\n",
+    "files": {
+      "spec/common.kdl": "module \"common\" version=\"2026-07-15\" language-version=\"2026-07-15\" {}\n"
+    },
+    "diagnostics": []
+  },
+  {
+    "name": "duplicate-target-distinct-aliases",
+    "path": "spec/main.kdl",
+    "source": "import \"./common.kdl\" as=\"first\"\nimport \"./common.kdl\" as=\"second\"\nextractor \"entry\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\n",
+    "files": {
+      "spec/common.kdl": "module \"common\" version=\"2026-07-15\" language-version=\"2026-07-15\" {}\n"
+    },
+    "diagnostics": []
+  },
+  {
+    "name": "remote",
+    "path": "spec/main.kdl",
+    "source": "import \"https://example.invalid/common.kdl\" as=\"common\"\nextractor \"entry\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\n",
+    "files": {},
+    "diagnostics": [
+      {
+        "code": "E_REMOTE_IMPORT_UNSUPPORTED",
+        "severity": "error",
+        "message": "import path must be relative",
+        "span": {
+          "file": "main.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 43, "line": 1, "column": 44 }
+        },
+        "path": "imports"
+      }
+    ]
+  },
+  {
+    "name": "duplicate-alias",
+    "path": "spec/main.kdl",
+    "source": "import \"./one.kdl\" as=\"same\"\nimport \"./two.kdl\" as=\"same\"\nextractor \"entry\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\n",
+    "files": {
+      "spec/one.kdl": "module \"one\" version=\"2026-07-15\" language-version=\"2026-07-15\" {}\n",
+      "spec/two.kdl": "module \"two\" version=\"2026-07-15\" language-version=\"2026-07-15\" {}\n"
+    },
+    "diagnostics": [
+      {
+        "code": "E_DUPLICATE_SYMBOL",
+        "severity": "error",
+        "message": "duplicate import alias \"same\"",
+        "span": {
+          "file": "main.kdl",
+          "start": { "offset": 29, "line": 2, "column": 1 },
+          "end": { "offset": 47, "line": 2, "column": 19 }
+        },
+        "path": "imports"
+      }
+    ]
+  },
+  {
+    "name": "wrong-kind",
+    "path": "spec/main.kdl",
+    "source": "import \"./other.kdl\" as=\"other\"\nextractor \"entry\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\n",
+    "files": {
+      "spec/other.kdl": "extractor \"other\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\n"
+    },
+    "diagnostics": [
+      {
+        "code": "E_IMPORT_KIND",
+        "severity": "error",
+        "message": "import target must be a module document",
+        "span": {
+          "file": "other.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 212, "line": 1, "column": 213 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "missing-alias",
+    "path": "spec/main.kdl",
+    "source": "import \"./common.kdl\"\nextractor \"entry\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\n",
+    "files": {},
+    "diagnostics": [
+      {
+        "code": "E_IMPORT_ALIAS_REQUIRED",
+        "severity": "error",
+        "message": "import requires non-empty string property as",
+        "span": {
+          "file": "main.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 21, "line": 1, "column": 22 }
+        },
+        "path": "imports"
+      }
+    ]
+  },
+  {
+    "name": "missing-file",
+    "path": "spec/main.kdl",
+    "source": "import \"./missing.kdl\" as=\"missing\"\nextractor \"entry\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\n",
+    "files": {},
+    "diagnostics": [
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "read \"missing.kdl\": missing source",
+        "span": {
+          "file": "missing.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 0, "line": 1, "column": 1 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "import-after-root",
+    "path": "spec/main.kdl",
+    "source": "extractor \"entry\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\nimport \"./common.kdl\" as=\"common\"\n",
+    "files": {
+      "spec/common.kdl": "module \"common\" version=\"2026-07-15\" language-version=\"2026-07-15\" {}\n"
+    },
+    "diagnostics": [
+      {
+        "code": "E_DOCUMENT_ROOT",
+        "severity": "error",
+        "message": "imports must appear before the document root",
+        "span": {
+          "file": "main.kdl",
+          "start": { "offset": 213, "line": 2, "column": 1 },
+          "end": { "offset": 234, "line": 2, "column": 22 }
+        }
+      }
+    ]
+  }
+]

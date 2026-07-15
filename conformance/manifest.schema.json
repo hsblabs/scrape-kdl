@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hsblabs.github.io/scrape-kdl/conformance/2026-07-15/manifest.schema.json",
+  "title": "Scraping KDL conformance manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schemaVersion", "contract", "normalization", "fixtureInventories", "suites", "approvedDivergences", "cases"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": "2026-07-15" },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["languageVersion", "irVersion"],
+      "properties": {
+        "languageVersion": { "const": "2026-07-15" },
+        "irVersion": { "const": "2026-07-15" }
+      }
+    },
+    "normalization": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "fixtureInventories": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fixtureInventory" }
+    },
+    "suites": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description"],
+        "properties": { "description": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "approvedDivergences": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/divergence" }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "fixtureInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "purpose", "consumers", "artifacts"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+        "purpose": { "type": "string", "minLength": 1 },
+        "consumers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["go", "typescript"] }
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^fixtures/" }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^fixtures/" },
+        "role": { "enum": ["source", "import", "expected-diagnostics", "expected-ir", "inputs", "html", "expected-output", "browser-page"] }
+      }
+    },
+    "diagnosticExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "key"],
+      "properties": {
+        "artifact": { "type": "string", "pattern": "^fixtures/expected-diagnostics/" },
+        "key": { "type": "string", "minLength": 1 }
+      }
+    },
+    "expectations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome"],
+      "properties": {
+        "outcome": { "enum": ["valid", "invalid"] },
+        "diagnostics": { "$ref": "#/$defs/diagnosticExpectation" },
+        "ir": { "type": "string", "pattern": "^fixtures/expected-ir/" },
+        "inputs": { "type": "string", "pattern": "^fixtures/inputs/" },
+        "html": { "type": "string", "pattern": "^fixtures/html/" },
+        "output": { "type": "string", "pattern": "^fixtures/expected-output/" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "job", "stages"],
+      "properties": {
+        "implementation": { "enum": ["go", "typescript"] },
+        "job": { "enum": ["core", "browser-e2e"] },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["validate", "compile", "ir", "runtime", "browser"] }
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "categories", "suites", "artifacts", "expectations", "executions"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9.-]+$" },
+        "status": { "enum": ["release-blocking", "provisional"] },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["valid", "invalid", "ir", "runtime", "html", "browser"] }
+        },
+        "suites": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+        "artifacts": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/artifact" } },
+        "expectations": { "$ref": "#/$defs/expectations" },
+        "executions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/execution" } }
+      }
+    },
+    "divergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "case", "observation", "implementations", "contractExclusion", "rationale", "owner"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^DIV-[0-9]{4}$" },
+        "case": { "type": "string" },
+        "observation": { "enum": ["diagnostics", "ir", "runtime", "browser"] },
+        "implementations": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "enum": ["go", "typescript", "chromium"] } },
+        "contractExclusion": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

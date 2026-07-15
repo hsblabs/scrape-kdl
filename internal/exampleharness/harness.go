@@ -49,7 +49,7 @@ type Report struct {
 	Updated  []string
 }
 
-func Check(root string, update bool) (Report, error) {
+func Check(ctx context.Context, root string, update bool) (Report, error) {
 	examplesRoot := filepath.Join(root, "examples")
 	entries, err := os.ReadDir(examplesRoot)
 	if err != nil {
@@ -61,7 +61,7 @@ func Check(root string, update bool) (Report, error) {
 			continue
 		}
 		directory := filepath.Join(examplesRoot, entry.Name())
-		updated, err := checkExample(directory, entry.Name(), update)
+		updated, err := checkExample(ctx, directory, entry.Name(), update)
 		if err != nil {
 			return report, fmt.Errorf("example %s: %w", entry.Name(), err)
 		}
@@ -80,7 +80,7 @@ func Check(root string, update bool) (Report, error) {
 	return report, nil
 }
 
-func checkExample(directory, directoryName string, update bool) ([]string, error) {
+func checkExample(ctx context.Context, directory, directoryName string, update bool) ([]string, error) {
 	manifest, err := readManifest(filepath.Join(directory, "example.json"))
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func checkExample(directory, directoryName string, update bool) ([]string, error
 	if err := validateManifest(directory, directoryName, manifest); err != nil {
 		return nil, err
 	}
-	program, diagnostics := scrapekdl.CompileFile(filepath.Join(directory, manifest.Source))
+	program, diagnostics := scrapekdl.CompileFile(ctx, filepath.Join(directory, manifest.Source))
 	if diagnostics.HasErrors() || program == nil {
 		data, _ := json.Marshal(diagnostics)
 		return nil, fmt.Errorf("compile failed: %s", data)
@@ -113,7 +113,7 @@ func checkExample(directory, directoryName string, update bool) ([]string, error
 		if execution.Implementation != "go" {
 			continue
 		}
-		result, runErr := execute(context.Background(), directory, program, inputs, execution)
+		result, runErr := execute(ctx, directory, program, inputs, execution)
 		if runErr != nil {
 			return nil, fmt.Errorf("executions[%d]: %w", index, runErr)
 		}

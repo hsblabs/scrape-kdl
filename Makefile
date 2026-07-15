@@ -1,5 +1,5 @@
-.PHONY: test race vet build format-check module-check golden diagnostics examples validate-example extract-example verify
-.PHONY: test-rod-contract test-rod test-rod-e2e release-check release-dist
+.PHONY: test race vet build format-check module-check golden diagnostics examples ir-contract api-contract typescript-contract typescript-package conformance-coverage conformance validate-example extract-example verify
+.PHONY: test-rod-contract test-rod test-rod-e2e test-playwright-e2e release-check release-dist
 
 test:
 	GOTOOLCHAIN=local go test ./...
@@ -28,6 +28,26 @@ diagnostics:
 examples:
 	GOTOOLCHAIN=local go run ./cmd/check-examples
 
+ir-contract:
+	GOTOOLCHAIN=local go test ./internal/canonicaljson ./internal/ir ./scripts -run 'Test(Canonical|IR)'
+
+api-contract:
+	GOTOOLCHAIN=local go test ./testdata/api-consumers/go
+	GOTOOLCHAIN=local go test ./scripts -run TestGoPublicSignatures
+	npm run typecheck:api
+
+typescript-contract:
+	npm run test:contract-slice
+
+typescript-package:
+	npm run verify:typescript
+
+conformance-coverage:
+	GOTOOLCHAIN=local go test ./scripts -run TestConformanceCoverage
+
+conformance:
+	./scripts/check-conformance.sh
+
 validate-example:
 	GOTOOLCHAIN=local go run ./cmd/scrape-kdl validate ./fixtures/valid/race-detail.kdl
 
@@ -43,7 +63,11 @@ test-rod:
 test-rod-e2e:
 	./scripts/verify-rod.sh --e2e
 
-verify: format-check module-check golden diagnostics examples vet test race build validate-example extract-example test-rod-contract
+test-playwright-e2e:
+	npm run build:typescript
+	npm run test:e2e --workspace @hsblabs/scrape-kdl-playwright
+
+verify: format-check module-check golden diagnostics examples ir-contract api-contract typescript-package conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract
 
 release-check:
 	./scripts/verify-release.sh

@@ -3,7 +3,7 @@
   "normalization": {
     "elementOrder": "document-order",
     "text": "decoded-unmodified",
-    "innerHTML": "deterministic-html-serialization",
+    "innerHTML": "parser-serialization",
     "missingAttribute": null
   },
   "upstream": {

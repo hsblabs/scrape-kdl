@@ -11,7 +11,7 @@ type SourceFile struct {
 	Path          string `json:"path"`
 	ModuleName    string `json:"moduleName,omitempty"`
 	ModuleVersion string `json:"moduleVersion,omitempty"`
-	SHA256        string `json:"sha256,omitempty"`
+	SHA256        string `json:"sha256"`
 }
 
 type Extractor struct {

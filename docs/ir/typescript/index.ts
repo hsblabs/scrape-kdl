@@ -58,7 +58,7 @@ export interface SourceFileIR {
   readonly path: string;
   readonly moduleName?: string;
   readonly moduleVersion?: string;
-  readonly sha256?: string;
+  readonly sha256: string;
 }
 
 export interface ExtractorIR {
@@ -126,30 +126,33 @@ export type WorkflowStepIR =
 
 interface WorkflowStepBase {
   readonly span: SourceSpan;
-  readonly timeoutMs?: number;
 }
 
 export interface WaitForStepIR extends WorkflowStepBase {
   readonly kind: "wait-for";
   readonly selector: string;
   readonly state: "attached" | "visible" | "hidden" | "detached";
+  readonly timeoutMs?: number;
 }
 
 export interface ClickStepIR extends WorkflowStepBase {
   readonly kind: "click";
   readonly selector: string;
+  readonly timeoutMs?: number;
 }
 
 export interface FillStepIR extends WorkflowStepBase {
   readonly kind: "fill";
   readonly selector: string;
   readonly value: string;
+  readonly timeoutMs?: number;
 }
 
 export interface PressStepIR extends WorkflowStepBase {
   readonly kind: "press";
   readonly selector: string;
   readonly key: string;
+  readonly timeoutMs?: number;
 }
 
 export interface ScrollStepIR extends WorkflowStepBase {
@@ -161,11 +164,13 @@ export interface ScrollStepIR extends WorkflowStepBase {
 export interface NetworkIdleStepIR extends WorkflowStepBase {
   readonly kind: "wait-for-network-idle";
   readonly idleMs: number;
+  readonly timeoutMs?: number;
 }
 
 export interface EvaluateJavaScriptStepIR extends WorkflowStepBase {
   readonly kind: "evaluate-js";
   readonly source: string;
+  readonly timeoutMs?: number;
 }
 
 export interface OutputObjectIR {

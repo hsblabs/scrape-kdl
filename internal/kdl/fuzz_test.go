@@ -1,14 +1,20 @@
 package kdl
 
-import "testing"
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func FuzzParseNeverPanics(f *testing.F) {
-	seeds := []string{
-		`extractor "x" version="2026-07-15" language-version="2026-07-15" { source "html" { fetch mode="http" url="https://example.com" } }`,
-		`/- ignored "x"\nkept 0x10 #true #null`,
-		`node #"raw"# key=#"value"#`,
-		`node { child "value" }`,
-		`/* nested /* block */ comment */ node`,
+	data, err := os.ReadFile(filepath.Join("..", "..", "fixtures", "parser", "fuzz-seeds.json"))
+	if err != nil {
+		f.Fatal(err)
+	}
+	var seeds []string
+	if err := json.Unmarshal(data, &seeds); err != nil {
+		f.Fatal(err)
 	}
 	for _, seed := range seeds {
 		f.Add(seed)
