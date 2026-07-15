@@ -1,0 +1,23 @@
+extractor "basic-http" version="2026-07-15" language-version="2026-07-15" {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/{id}"
+  }
+
+  input "id" type="string" required=#true
+
+  field "title" type="string" required=#true {
+    select "h1" match="one"
+    value "text"
+    apply "normalize-whitespace"
+  }
+
+  collection "items" min-items=1 {
+    select "ul.items > li"
+    field "value" type="u8" required=#true {
+      select ".value" match="one"
+      value "text"
+      apply "trim"
+      apply "parse-int" as="u8"
+    }
+  }
+}

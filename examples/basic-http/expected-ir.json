@@ -1,0 +1,355 @@
+{
+  "kind": "extractor",
+  "irVersion": "2026-07-15",
+  "languageVersion": "2026-07-15",
+  "name": "basic-http",
+  "version": "2026-07-15",
+  "files": [
+    {
+      "path": "extractor.kdl",
+      "sha256": "847cf887089e106900cb9b00bf43be1895db7bcd6a6b57cfb2279e904910b30b"
+    }
+  ],
+  "source": {
+    "kind": "html",
+    "fetch": {
+      "mode": "http",
+      "urlTemplate": {
+        "raw": "https://example.invalid/{id}",
+        "segments": [
+          {
+            "kind": "literal",
+            "value": "https://example.invalid/"
+          },
+          {
+            "kind": "input",
+            "name": "id"
+          }
+        ]
+      },
+      "span": {
+        "file": "extractor.kdl",
+        "start": {
+          "offset": 98,
+          "line": 3,
+          "column": 5
+        },
+        "end": {
+          "offset": 150,
+          "line": 3,
+          "column": 57
+        }
+      }
+    },
+    "sessionPolicy": "none",
+    "workflow": [],
+    "span": {
+      "file": "extractor.kdl",
+      "start": {
+        "offset": 78,
+        "line": 2,
+        "column": 3
+      },
+      "end": {
+        "offset": 154,
+        "line": 4,
+        "column": 4
+      }
+    }
+  },
+  "inputs": [
+    {
+      "name": "id",
+      "type": "string",
+      "required": true,
+      "span": {
+        "file": "extractor.kdl",
+        "start": {
+          "offset": 158,
+          "line": 6,
+          "column": 3
+        },
+        "end": {
+          "offset": 168,
+          "line": 6,
+          "column": 13
+        }
+      }
+    }
+  ],
+  "transforms": [],
+  "output": {
+    "kind": "object",
+    "members": [
+      {
+        "kind": "field",
+        "id": "output.title",
+        "name": "title",
+        "successfulType": {
+          "kind": "primitive",
+          "name": "string"
+        },
+        "effectiveType": {
+          "kind": "primitive",
+          "name": "string"
+        },
+        "required": true,
+        "selection": {
+          "selector": "h1",
+          "match": "one",
+          "span": {
+            "file": "extractor.kdl",
+            "start": {
+              "offset": 250,
+              "line": 9,
+              "column": 5
+            },
+            "end": {
+              "offset": 261,
+              "line": 9,
+              "column": 16
+            }
+          }
+        },
+        "valueSource": {
+          "kind": "text",
+          "rawType": {
+            "kind": "primitive",
+            "name": "string"
+          },
+          "span": {
+            "file": "extractor.kdl",
+            "start": {
+              "offset": 278,
+              "line": 10,
+              "column": 5
+            },
+            "end": {
+              "offset": 290,
+              "line": 10,
+              "column": 17
+            }
+          }
+        },
+        "transforms": [
+          {
+            "target": {
+              "kind": "builtin",
+              "name": "normalize-whitespace"
+            },
+            "positionalArguments": [],
+            "namedArguments": [],
+            "input": {
+              "kind": "primitive",
+              "name": "string"
+            },
+            "output": {
+              "kind": "primitive",
+              "name": "string"
+            },
+            "span": {
+              "file": "extractor.kdl",
+              "start": {
+                "offset": 295,
+                "line": 11,
+                "column": 5
+              },
+              "end": {
+                "offset": 323,
+                "line": 11,
+                "column": 33
+              }
+            }
+          }
+        ],
+        "onError": "fail",
+        "span": {
+          "file": "extractor.kdl",
+          "start": {
+            "offset": 201,
+            "line": 8,
+            "column": 3
+          },
+          "end": {
+            "offset": 327,
+            "line": 12,
+            "column": 4
+          }
+        }
+      },
+      {
+        "kind": "collection",
+        "id": "output.items",
+        "name": "items",
+        "selector": "ul.items \u003e li",
+        "required": false,
+        "minItems": 1,
+        "onRowError": "fail",
+        "row": {
+          "kind": "object",
+          "members": [
+            {
+              "kind": "field",
+              "id": "output.items[].value",
+              "name": "value",
+              "successfulType": {
+                "kind": "primitive",
+                "name": "u8"
+              },
+              "effectiveType": {
+                "kind": "primitive",
+                "name": "u8"
+              },
+              "required": true,
+              "selection": {
+                "selector": ".value",
+                "match": "one",
+                "span": {
+                  "file": "extractor.kdl",
+                  "start": {
+                    "offset": 442,
+                    "line": 17,
+                    "column": 7
+                  },
+                  "end": {
+                    "offset": 457,
+                    "line": 17,
+                    "column": 22
+                  }
+                }
+              },
+              "valueSource": {
+                "kind": "text",
+                "rawType": {
+                  "kind": "primitive",
+                  "name": "string"
+                },
+                "span": {
+                  "file": "extractor.kdl",
+                  "start": {
+                    "offset": 476,
+                    "line": 18,
+                    "column": 7
+                  },
+                  "end": {
+                    "offset": 488,
+                    "line": 18,
+                    "column": 19
+                  }
+                }
+              },
+              "transforms": [
+                {
+                  "target": {
+                    "kind": "builtin",
+                    "name": "trim"
+                  },
+                  "positionalArguments": [],
+                  "namedArguments": [],
+                  "input": {
+                    "kind": "primitive",
+                    "name": "string"
+                  },
+                  "output": {
+                    "kind": "primitive",
+                    "name": "string"
+                  },
+                  "span": {
+                    "file": "extractor.kdl",
+                    "start": {
+                      "offset": 495,
+                      "line": 19,
+                      "column": 7
+                    },
+                    "end": {
+                      "offset": 507,
+                      "line": 19,
+                      "column": 19
+                    }
+                  }
+                },
+                {
+                  "target": {
+                    "kind": "builtin",
+                    "name": "parse-int"
+                  },
+                  "positionalArguments": [],
+                  "namedArguments": [
+                    {
+                      "name": "as",
+                      "value": "u8"
+                    }
+                  ],
+                  "input": {
+                    "kind": "primitive",
+                    "name": "string"
+                  },
+                  "output": {
+                    "kind": "primitive",
+                    "name": "u8"
+                  },
+                  "span": {
+                    "file": "extractor.kdl",
+                    "start": {
+                      "offset": 514,
+                      "line": 20,
+                      "column": 7
+                    },
+                    "end": {
+                      "offset": 531,
+                      "line": 20,
+                      "column": 24
+                    }
+                  }
+                }
+              ],
+              "onError": "fail",
+              "span": {
+                "file": "extractor.kdl",
+                "start": {
+                  "offset": 395,
+                  "line": 16,
+                  "column": 5
+                },
+                "end": {
+                  "offset": 545,
+                  "line": 21,
+                  "column": 6
+                }
+              }
+            }
+          ]
+        },
+        "span": {
+          "file": "extractor.kdl",
+          "start": {
+            "offset": 331,
+            "line": 14,
+            "column": 3
+          },
+          "end": {
+            "offset": 549,
+            "line": 22,
+            "column": 4
+          }
+        }
+      }
+    ]
+  },
+  "capabilities": [
+    "http.fetch"
+  ],
+  "span": {
+    "file": "extractor.kdl",
+    "start": {
+      "offset": 0,
+      "line": 1,
+      "column": 1
+    },
+    "end": {
+      "offset": 551,
+      "line": 23,
+      "column": 2
+    }
+  }
+}

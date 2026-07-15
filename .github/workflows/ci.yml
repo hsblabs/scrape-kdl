@@ -36,6 +36,7 @@ jobs:
       - run: go vet ./...
       - run: go build ./cmd/scrape-kdl
       - run: ./scripts/check-golden.sh
+      - run: make examples
       - run: ./scripts/check-diagnostics.sh
       - run: ./scripts/check-module-paths.sh
       - run: ./scripts/check-format.sh

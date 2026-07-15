@@ -1,0 +1,14 @@
+extractor "malformed-html" version="2026-07-15" language-version="2026-07-15" {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/malformed"
+  }
+
+  collection "items" min-items=2 {
+    select "ul.items > li"
+    field "label" type="string" required=#true {
+      select ".label" match="one"
+      value "text"
+      apply "trim"
+    }
+  }
+}
