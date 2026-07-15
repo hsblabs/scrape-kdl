@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/hsblabs/scrape-kdl/internal/compatibility"
@@ -27,6 +29,11 @@ type engine struct {
 type missingValue struct {
 	message string
 }
+
+var (
+	irRootNamePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+	irSHA256Pattern   = regexp.MustCompile(`^[a-f0-9]{64}$`)
+)
 
 func (m missingValue) Error() string { return m.message }
 
@@ -103,6 +110,9 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 	if err := preflightOutputStructure(extractor.Output); err != nil {
 		return nil, err
 	}
+	if err := preflightCapabilities(extractor); err != nil {
+		return nil, err
+	}
 	result := &engine{
 		ctx: ctx, extractor: extractor, options: options, transforms: transforms,
 		selectors: map[string]dom.Selector{},
@@ -132,7 +142,122 @@ func preflightExtractorStructure(extractor *ir.Extractor) error {
 	if !compatibility.IsDateIdentifier(extractor.Version) {
 		return &ExecutionError{Code: "E_IR_INVALID", Message: "extractor version must be a real calendar date in YYYY-MM-DD form", Path: "version"}
 	}
+	if !irRootNamePattern.MatchString(extractor.Name) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid extractor name %q", extractor.Name), Path: "name"}
+	}
+	if err := preflightSourceFiles(extractor); err != nil {
+		return err
+	}
 	return nil
+}
+
+func preflightCapabilities(extractor *ir.Extractor) error {
+	expectedCapabilities := deriveCapabilities(extractor)
+	if !slices.Equal(extractor.Capabilities, expectedCapabilities) {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("capabilities %q do not match derived sorted capabilities %q", extractor.Capabilities, expectedCapabilities), Path: "capabilities"}
+	}
+	return nil
+}
+
+func preflightSourceFiles(extractor *ir.Extractor) error {
+	if len(extractor.Files) == 0 {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: "extractor requires at least one source file", Path: "files"}
+	}
+	knownPaths := make(map[string]struct{}, len(extractor.Files))
+	previousPath := ""
+	for index, file := range extractor.Files {
+		path := fmt.Sprintf("files[%d]", index)
+		if file.Path == "" {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: "source file path must be non-empty", Path: path + ".path"}
+		}
+		if index > 0 && file.Path <= previousPath {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: "source files must have unique lexicographically sorted paths", Path: path + ".path"}
+		}
+		previousPath = file.Path
+		knownPaths[file.Path] = struct{}{}
+		if !irSHA256Pattern.MatchString(file.SHA256) {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: "source file sha256 must be 64 lowercase hexadecimal characters", Path: path + ".sha256"}
+		}
+		if (file.ModuleName == "") != (file.ModuleVersion == "") {
+			return &ExecutionError{Code: "E_IR_INVALID", Message: "moduleName and moduleVersion must be present together", Path: path}
+		}
+		if file.ModuleName != "" {
+			if !irRootNamePattern.MatchString(file.ModuleName) {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("invalid module name %q", file.ModuleName), Path: path + ".moduleName"}
+			}
+			if !compatibility.IsDateIdentifier(file.ModuleVersion) {
+				return &ExecutionError{Code: "E_IR_INVALID", Message: "moduleVersion must be a real calendar date in YYYY-MM-DD form", Path: path + ".moduleVersion"}
+			}
+		}
+	}
+	if _, ok := knownPaths[extractor.Span.File]; !ok {
+		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("extractor span references unknown source file %q", extractor.Span.File), Path: "span.file"}
+	}
+	return nil
+}
+
+func deriveCapabilities(extractor *ir.Extractor) []string {
+	set := map[string]struct{}{}
+	if extractor.Source.Fetch.Mode == "http" {
+		set["http.fetch"] = struct{}{}
+	} else if extractor.Source.Fetch.Mode == "browser" {
+		set["browser.navigate"] = struct{}{}
+	}
+	for _, step := range extractor.Source.Workflow {
+		switch step.(type) {
+		case ir.WaitForStep:
+			set["browser.wait"] = struct{}{}
+		case ir.ClickStep, ir.FillStep, ir.PressStep:
+			set["browser.input"] = struct{}{}
+		case ir.ScrollStep:
+			set["browser.scroll"] = struct{}{}
+		case ir.NetworkIdleStep:
+			set["browser.network-idle"] = struct{}{}
+		case ir.EvaluateJavaScriptStep:
+			set["browser.evaluate-js"] = struct{}{}
+		}
+	}
+	for _, transform := range extractor.Transforms {
+		if external, ok := transform.(ir.ExternalTransform); ok && external.Symbol != "" {
+			set["transform.external:"+external.Symbol] = struct{}{}
+		}
+	}
+	if extractor.Source.Fetch.Mode == "browser" {
+		deriveOutputCapabilities(extractor.Output, set)
+	}
+	capabilities := make([]string, 0, len(set))
+	for capability := range set {
+		capabilities = append(capabilities, capability)
+	}
+	slices.Sort(capabilities)
+	return capabilities
+}
+
+func deriveOutputCapabilities(object ir.OutputObject, set map[string]struct{}) {
+	for _, member := range object.Members {
+		switch typed := member.(type) {
+		case ir.Field:
+			switch source := typed.ValueSource.(type) {
+			case ir.TextValueSource:
+				set["browser.query"] = struct{}{}
+				set["browser.read-text"] = struct{}{}
+			case ir.HTMLValueSource:
+				set["browser.query"] = struct{}{}
+				set["browser.read-html"] = struct{}{}
+			case ir.AttributeValueSource:
+				set["browser.query"] = struct{}{}
+				set["browser.read-attr"] = struct{}{}
+			case ir.JavaScriptValueSource:
+				set["browser.evaluate-js"] = struct{}{}
+				if typed.Selection != nil || source.Scope == "current" {
+					set["browser.query"] = struct{}{}
+				}
+			}
+		case ir.Collection:
+			set["browser.query"] = struct{}{}
+			deriveOutputCapabilities(typed.Row, set)
+		}
+	}
 }
 
 func preflightSourceStructure(source ir.Source) error {

@@ -6,7 +6,8 @@
   "version": "2026-07-15",
   "files": [
     {
-      "path": "fixtures/conformance/valid/basic-http/spec.kdl"
+      "path": "fixtures/conformance/valid/basic-http/spec.kdl",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
     }
   ],
   "source": {

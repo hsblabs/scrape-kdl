@@ -634,6 +634,48 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
 		},
 		{
+			name: "missing source files",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Files = nil
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "invalid source hash",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Files[0].SHA256 = "invalid"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "incomplete module identity",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Files[0].ModuleName = "module"
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unsorted source files",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Files = append(extractor.Files, ir.SourceFile{Path: "aaa.kdl", SHA256: strings.Repeat("0", 64)})
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "missing derived capabilities",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Capabilities = nil
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "unregistered capability",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Capabilities = append(extractor.Capabilities, "http.future")
+			},
+			inputs: map[string]any{"id": int64(1)}, session: &Session{}, wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "external transform",
 			mutate: func(extractor *ir.Extractor) {
 				extractor.Transforms = append(extractor.Transforms, ir.ExternalTransform{

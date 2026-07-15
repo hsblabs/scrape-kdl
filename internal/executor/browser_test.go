@@ -223,6 +223,20 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 			wantCode: "E_IR_INVALID",
 		},
 		{
+			name: "missing source files",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Files = nil
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
+			name: "missing derived capabilities",
+			mutate: func(extractor *ir.Extractor) {
+				extractor.Capabilities = nil
+			},
+			wantCode: "E_IR_INVALID",
+		},
+		{
 			name: "nested selector",
 			mutate: func(extractor *ir.Extractor) {
 				collection := extractor.Output.Members[0].(ir.Collection)
