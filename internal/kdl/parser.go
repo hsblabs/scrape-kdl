@@ -2,6 +2,7 @@ package kdl
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/hsblabs/scrape-kdl/internal/diagnostic"
 	"github.com/hsblabs/scrape-kdl/internal/source"
@@ -15,6 +16,14 @@ type parser struct {
 }
 
 func Parse(path string, data []byte) (*Document, diagnostic.List) {
+	if !utf8.Valid(data) {
+		position := source.Position{Offset: 0, Line: 1, Column: 1}
+		span := source.Span{File: path, Start: position, End: position}
+		return &Document{Path: path, Span: span}, diagnostic.List{{
+			Code: "E_KDL_SYNTAX", Severity: diagnostic.SeverityError,
+			Message: "document is not valid UTF-8", Span: span,
+		}}
+	}
 	lex := newLexer(path, string(data))
 	p := &parser{lex: lex}
 	p.cur = lex.next()

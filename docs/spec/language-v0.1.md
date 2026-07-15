@@ -19,6 +19,7 @@ The words MUST, MUST NOT, REQUIRED, SHOULD, SHOULD NOT, and MAY are normative.
 Scraping KDL v0.1 adds these restrictions:
 
 - documents MUST be UTF-8;
+- invalid UTF-8 MUST be rejected as `E_KDL_SYNTAX` at the zero-width start span before syntactic parsing;
 - KDL type annotations MUST NOT be used;
 - KDL slashdash (`/-`) suppression is supported and suppressed syntax is removed before Scraping KDL semantic validation;
 - unknown nodes and properties MUST be rejected;
@@ -90,6 +91,7 @@ Rules:
 - `as` is REQUIRED and MUST be a valid unique alias;
 - the target MUST be a transform module document;
 - imports are resolved relative to the importing file;
+- import loading is host-injected in the core TypeScript API and MUST NOT imply network access;
 - cyclic imports MUST be rejected;
 - remote URL imports MUST be rejected;
 - imported transforms are referenced as `alias.transform_name`;

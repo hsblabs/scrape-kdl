@@ -44,6 +44,7 @@ For source development:
 ```bash
 git clone https://github.com/hsblabs/scrape-kdl.git
 cd scrape-kdl
+npm ci
 make verify
 ```
 
@@ -103,7 +104,7 @@ scrape-kdl version
 ## Go API
 
 ```go
-program, diagnostics := scrapekdl.CompileFile("extractor.kdl")
+program, diagnostics := scrapekdl.CompileFile(ctx, "extractor.kdl")
 if diagnostics.HasErrors() {
     // Render diagnostics and stop before network or browser activity.
 }
@@ -124,7 +125,9 @@ if err != nil {
 
 The public API includes:
 
-- `CompileFile` and `ValidateFile`;
+- context-first `Compile`, `Validate`, `CompileFile`, and `ValidateFile` entry points;
+- injected source loading for deterministic import resolution without filesystem access;
+- immutable `Program.Metadata` snapshots;
 - `Program.IRJSON`;
 - `Program.Extract` and `Program.ExtractHTML`;
 - HTTP client and session injection;
@@ -134,6 +137,15 @@ The public API includes:
 - browser adapter injection.
 - adapter-facing `NormalizeBrowserResult` validation and normalization.
 - explicit `SupportedLanguageVersions` and `SupportedIRVersions` registries.
+
+See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and intentional idiomatic differences.
+
+The `@hsblabs/scrape-kdl` workspace is an ESM-only, publishable package scaffold for Node.js 26 and later.
+Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
+The package independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture without invoking Go.
+The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, HTTP/offline-HTML runtime, and browser-library-neutral runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
+`@hsblabs/scrape-kdl-playwright` is the official Playwright adapter. It owns isolated per-extraction browser contexts and an extraction-wide lease; no concrete browser library is a dependency of the core package.
+See `docs/spec/conformance-coverage.md` and `docs/html-compatibility.md` for the audited rule inventory and parser-compatibility gates.
 
 ## Browser mode
 
@@ -172,11 +184,13 @@ See `SECURITY.md` and `docs/security-model.md`.
 
 - Supported operating systems: Linux and macOS only. Windows is out of scope.
 - Minimum Go version: 1.26.
-- CI targets Go 1.26 on Linux and macOS.
+- Minimum Node.js version: 26 for the TypeScript packages.
+- CI targets Go 1.26 and Node.js 26 on Linux and macOS.
 - The language is built on the KDL 2 data model but the reference parser intentionally supports the subset defined by the Scraping KDL v0.1 specification document series.
 - The Go HTTP runtime uses pinned `golang.org/x/net/html` WHATWG tree construction and is checked against the versioned portable HTML compatibility manifest.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
 - The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
+- The checked-in TypeScript package has the complete compiler pipeline plus a publishable boundary and package gates; execution is not yet complete.
 
 See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
 
@@ -185,6 +199,7 @@ See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
 Offline verification:
 
 ```bash
+npm ci
 make verify
 ```
 
@@ -199,6 +214,22 @@ Chromium E2E:
 ```bash
 make test-rod-e2e
 ```
+
+Cross-language conformance:
+
+```bash
+make conformance
+go run ./cmd/conformance-runner --suite invalid --output invalid-go.json
+npm run conformance:typescript-slice
+```
+
+TypeScript package verification, including a packed clean-consumer install:
+
+```bash
+npm run verify:typescript
+```
+
+See `conformance/README.md` for suite selection, the language-neutral result format, normalization, and divergence policy.
 
 Release preparation:
 
@@ -219,6 +250,7 @@ make release-check
 - `docs/compiler-pipeline.md`
 - `docs/http-runtime.md`
 - `docs/browser-runtime.md`
+- `docs/public-api-v1.md`
 - `docs/roadmap-v1.md`
 - `docs/versioning.md`
 - `docs/releasing.md`

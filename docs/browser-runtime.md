@@ -20,6 +20,8 @@ JavaScript is disabled by default. Trusted specs must opt in with `AllowJavaScri
 
 ## Adapter boundary
 
+Adapter authors must treat every element as an opaque handle, honor operation cancellation, apply the supplied timeout, avoid returning browser-library objects as JavaScript results, and keep all mutable page operations inside an extraction-wide lease. Timeout or cancellation must not leave work running after the lease is released.
+
 ```go
 type BrowserAdapter interface {
     Navigate(context.Context, string, BrowserNavigateOptions) error
@@ -52,6 +54,8 @@ type BrowserAdapterLease interface {
 The runtime holds the lease across navigation, workflow, and all output reads. `release` must be non-nil and safe to call exactly once; implementations may make it idempotent. Acquisition honors context cancellation.
 
 This contract prevents operations from two concurrent extractions from interleaving on one page. It does not create parallelism; use multiple pages/adapters for that.
+
+The TypeScript contract mirrors these operations with promises, millisecond timeout fields, and optional `AbortSignal` values. `BrowserAdapterLease.acquire(signal)` resolves to an idempotent release callback. The official implementation and its concrete lifecycle are documented separately in `docs/playwright-adapter.md`.
 
 ## Scope
 

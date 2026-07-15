@@ -1,12 +1,13 @@
 # Validation
 
-Validated on 2026-07-14 with Go 1.26.5 on macOS arm64.
+Validated on 2026-07-15 with Go 1.26.5 and Node.js 26.4.0 on macOS arm64.
 
 ## Integrated release check
 
 Passed:
 
 ```bash
+npm ci
 ./scripts/verify-release.sh
 ```
 
@@ -15,7 +16,13 @@ This includes:
 - `gofmt` verification;
 - module-path and release-clean nested `go.mod` checks;
 - golden Validated IR comparison;
+- section-complete normative conformance coverage inventory checks;
 - implementation-to-diagnostics documentation consistency;
+- independent Go consumer compilation, public-signature internal-package checks, and strict TypeScript API consumer typechecking;
+- independent TypeScript parser/compiler compilation of the representative valid fixture, exact canonical IR comparison, and exact shared invalid-fixture diagnostics;
+- shared Go/TypeScript parser and import corpora covering exact acceptance, diagnostic messages, UTF-8 byte spans, ordering, invalid UTF-8, loader errors, aliases, document kinds, cycles, and bounded mutation smoke tests;
+- TypeScript package typechecking, source lint, tests, coverage thresholds, intended-file allowlisting, secret/local-path inspection, `npm pack`, and a clean-consumer install and import smoke test;
+- manifest-complete Go conformance execution and exact comparison of shared Go/TypeScript observations in the dated language-neutral result format;
 - `go vet ./...`;
 - `go test ./...`;
 - `go test -race ./...`;
@@ -56,6 +63,10 @@ Passed:
 
 - all `.github/**/*.yml` files parsed as YAML;
 - `actionlint` validation of all GitHub Actions workflows;
+- the pinned Node.js 26 / `npm ci` API-contract workflow path;
+- the Node.js 26 TypeScript contract-slice and conformance-coverage workflow paths;
+- the Node.js 26 package verification gate on Linux and macOS, including public root and `./node` entry-point imports;
+- fixture registration, missing-artifact, suite-selection, result-schema, and unapproved-divergence failure tests;
 - core and adapter semantic-version tag validation;
 - `manifest.json` JSON parsing;
 - source ZIP integrity and post-extraction root-module tests.

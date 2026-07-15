@@ -1,6 +1,7 @@
 extractor "rod-e2e" version="2026-07-15" language-version="2026-07-15" {
   source "html" {
     fetch mode="browser" url="http://127.0.0.1:18080"
+    session policy="optional"
     workflow {
       click "#load"
       wait-for "#value" state="visible"
@@ -18,6 +19,10 @@ extractor "rod-e2e" version="2026-07-15" language-version="2026-07-15" {
       """# scope="document" returns="string"
   }
 
+  field "item_count" type="int" required=#true {
+    evaluate-js "() => document.querySelectorAll('li').length" scope="document" returns="int"
+  }
+
   collection "items" on-row-error="fail" {
     select "li"
     field "id" type="string" required=#true {
@@ -27,6 +32,10 @@ extractor "rod-e2e" version="2026-07-15" language-version="2026-07-15" {
     field "text" type="string" required=#true {
       select ".label" match="one"
       value "text"
+    }
+    field "dataset" type="object" required=#true {
+      select ".id" match="one"
+      evaluate-js "(element) => ({ id: element.dataset.id })" scope="current" returns="object"
     }
   }
 }

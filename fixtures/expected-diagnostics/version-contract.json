@@ -1,0 +1,56 @@
+{
+  "integer-version.kdl": [
+    {
+      "code": "E_DOCUMENT_VERSION_INVALID",
+      "severity": "error",
+      "message": "version must be a real calendar date in YYYY-MM-DD form",
+      "span": { "file": "integer-version.kdl", "start": { "offset": 36, "line": 1, "column": 37 }, "end": { "offset": 37, "line": 1, "column": 38 } },
+      "path": "extractor.version"
+    }
+  ],
+  "missing-document-version.kdl": [
+    {
+      "code": "E_DOCUMENT_VERSION_REQUIRED",
+      "severity": "error",
+      "message": "document requires version",
+      "span": { "file": "missing-document-version.kdl", "start": { "offset": 0, "line": 1, "column": 1 }, "end": { "offset": 145, "line": 5, "column": 2 } },
+      "path": "extractor.version"
+    }
+  ],
+  "malformed-document-version.kdl": [
+    {
+      "code": "E_DOCUMENT_VERSION_INVALID",
+      "severity": "error",
+      "message": "version must be a real calendar date in YYYY-MM-DD form",
+      "span": { "file": "malformed-document-version.kdl", "start": { "offset": 47, "line": 1, "column": 48 }, "end": { "offset": 59, "line": 1, "column": 60 } },
+      "path": "extractor.version"
+    }
+  ],
+  "missing-language-version.kdl": [
+    {
+      "code": "E_LANGUAGE_VERSION_REQUIRED",
+      "severity": "error",
+      "message": "document requires language-version",
+      "span": { "file": "missing-language-version.kdl", "start": { "offset": 0, "line": 1, "column": 1 }, "end": { "offset": 136, "line": 5, "column": 2 } },
+      "path": "extractor.language-version"
+    }
+  ],
+  "malformed-language-version.kdl": [
+    {
+      "code": "E_LANGUAGE_VERSION_INVALID",
+      "severity": "error",
+      "message": "language-version must be a real calendar date in YYYY-MM-DD form",
+      "span": { "file": "malformed-language-version.kdl", "start": { "offset": 77, "line": 1, "column": 78 }, "end": { "offset": 88, "line": 1, "column": 89 } },
+      "path": "extractor.language-version"
+    }
+  ],
+  "unknown-language-version.kdl": [
+    {
+      "code": "E_LANGUAGE_VERSION_UNSUPPORTED",
+      "severity": "error",
+      "message": "unsupported language-version \"2026-07-16\"",
+      "span": { "file": "unknown-language-version.kdl", "start": { "offset": 75, "line": 1, "column": 76 }, "end": { "offset": 87, "line": 1, "column": 88 } },
+      "path": "extractor.language-version"
+    }
+  ]
+}

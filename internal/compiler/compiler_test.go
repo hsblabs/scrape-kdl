@@ -1,13 +1,16 @@
 package compiler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 
+	"github.com/hsblabs/scrape-kdl/internal/diagnostic"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
 
@@ -54,7 +57,7 @@ func TestCompileSourceRetainsVirtualDisplayPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, diagnostics := CompileSource("<stdin>", source)
+	got, diagnostics := CompileSource(context.Background(), "<stdin>", source, nil)
 	if diagnostics.HasErrors() || got == nil {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -131,26 +134,19 @@ func TestInvalidFixtures(t *testing.T) {
 }
 
 func TestVersionFixturesHaveExactDiagnostics(t *testing.T) {
-	tests := []struct {
-		path string
-		code string
-	}{
-		{path: "integer-version.kdl", code: "E_DOCUMENT_VERSION_INVALID"},
-		{path: "missing-document-version.kdl", code: "E_DOCUMENT_VERSION_REQUIRED"},
-		{path: "malformed-document-version.kdl", code: "E_DOCUMENT_VERSION_INVALID"},
-		{path: "missing-language-version.kdl", code: "E_LANGUAGE_VERSION_REQUIRED"},
-		{path: "malformed-language-version.kdl", code: "E_LANGUAGE_VERSION_INVALID"},
-		{path: "unknown-language-version.kdl", code: "E_LANGUAGE_VERSION_UNSUPPORTED"},
+	data, err := os.ReadFile(fixture("expected-diagnostics", "version-contract.json"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.path, func(t *testing.T) {
-			diagnostics := ValidateFile(fixture("invalid", tt.path))
-			codes := make([]string, len(diagnostics))
-			for index, item := range diagnostics {
-				codes[index] = item.Code
-			}
-			if !slices.Equal(codes, []string{tt.code}) {
-				t.Fatalf("diagnostic codes = %v, want [%s]", codes, tt.code)
+	var expected map[string]diagnostic.List
+	if err := json.Unmarshal(data, &expected); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range expected {
+		t.Run(path, func(t *testing.T) {
+			got := ValidateFile(fixture("invalid", path))
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("diagnostics = %#v, want %#v", got, want)
 			}
 		})
 	}

@@ -1,9 +1,11 @@
 # Versioning policy
 
-The Go modules follow Semantic Versioning independently.
+The Go modules and npm packages follow Semantic Versioning independently.
 
 - Core module: `github.com/hsblabs/scrape-kdl`
 - go-rod adapter: `github.com/hsblabs/scrape-kdl/adapters/rod`
+- TypeScript core: `@hsblabs/scrape-kdl`
+- Playwright adapter: `@hsblabs/scrape-kdl-playwright`
 
 Core release tags use `vX.Y.Z`. Adapter release tags use `adapters/rod/vX.Y.Z`.
 
@@ -16,3 +18,14 @@ Stable diagnostic codes are part of the language tooling contract. Their message
 The CLI contract candidate begins at v0.5. Changes to commands, help, streams, JSON envelopes, exit status classes, signals, or secret input before v0.9 require compatibility notes and a migration path. These behaviors freeze at v0.9 and receive v1 Semantic Versioning guarantees.
 
 The adapter may release more frequently than the core. Its `go.mod` must depend on a published core version and must not contain a local `replace` directive.
+
+The npm packages are ESM-only and require Node.js 26 or later. Package versions do not select a language or IR contract; the supported opaque identifiers are exposed separately by the package API. Before publication, workspace manifests use `0.0.0-development`, and packed artifacts must contain no `workspace:`, `file:`, or local-path dependency.
+
+Release candidates and stable releases follow this dependency order:
+
+1. validate and tag the Go core and CLI source;
+2. validate the packed TypeScript core against a clean consumer, then publish the core npm package;
+3. validate and publish the go-rod and Playwright adapters against already published compatible core versions;
+4. build CLI archives from the validated Go core tag.
+
+An adapter release may be retried without changing a core version. The Playwright adapter must declare a published compatible `@hsblabs/scrape-kdl` range and must never rely on the workspace-only development version in a published artifact. Publication remains a separate project-owner gate; repository verification only prepares and inspects artifacts.
