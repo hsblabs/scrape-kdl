@@ -18,6 +18,8 @@ Hosts should apply:
 - separate browser contexts for unrelated tenants;
 - explicit review before enabling JavaScript or external transforms.
 
+Injected source loaders are host-owned authority boundaries. They receive lexically resolved import paths and should constrain those paths to the intended source set, honor cancellation, and avoid embedding source contents or credentials in returned errors. The compiler performs parsing, cycle detection, hashing, and validation after loading; it does not grant an injected loader filesystem, network, or subprocess access.
+
 `session policy="none"` suppresses only the explicit runtime `Session`. It does not clear an `http.Client` cookie jar or an existing browser context. Hosts that require credential-free execution must provide isolated stateless clients or contexts.
 
 CLI users should pass cookies and sensitive headers through `--session-file` or `--session-file -` rather than command-line values. Files should be readable only by the intended user and removed or rotated according to the host application's secret-management policy.

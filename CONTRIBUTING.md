@@ -5,12 +5,14 @@ Contributions are accepted through GitHub issues and pull requests.
 ## Development requirements
 
 - Go 1.26 or later
+- Node.js 26 or later and npm for TypeScript contract checks
 - GNU Make or compatible shell commands
 - Chromium only for go-rod E2E tests
 
 Run the offline verification suite before opening a pull request:
 
 ```bash
+npm ci
 make verify
 ```
 
@@ -31,7 +33,7 @@ Language changes must include:
 - expected IR changes;
 - runtime tests when execution semantics change.
 
-Public Go API changes must explain compatibility impact. Generated or golden files must be updated by the same pull request.
+Public Go or TypeScript API changes must explain compatibility impact and update both independent consumer contract checks. Generated or golden files must be updated by the same pull request.
 
 ## Commit and pull request scope
 

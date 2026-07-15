@@ -1,0 +1,14 @@
+{
+  "name": "scrape-kdl-contract-workspace",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "typecheck:api": "tsc --project testdata/api-consumers/typescript/tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}
