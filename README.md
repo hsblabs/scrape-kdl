@@ -141,8 +141,8 @@ See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and
 The `@hsblabs/scrape-kdl` workspace is an ESM-only, publishable package scaffold for Node.js 26 and later.
 Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
 The package independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture without invoking Go.
-The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, and HTTP/offline-HTML runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
-The reserved `@hsblabs/scrape-kdl-playwright` workspace remains private until Issue #16 and no concrete browser library is a dependency of the core package.
+The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, HTTP/offline-HTML runtime, and browser-library-neutral runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
+`@hsblabs/scrape-kdl-playwright` is the official Playwright adapter. It owns isolated per-extraction browser contexts and an extraction-wide lease; no concrete browser library is a dependency of the core package.
 See `docs/spec/conformance-coverage.md` and `docs/html-compatibility.md` for the audited rule inventory and parser-compatibility gates.
 
 ## Browser mode
@@ -185,7 +185,7 @@ See `SECURITY.md` and `docs/security-model.md`.
 - Minimum Node.js version: 26 for the TypeScript packages.
 - CI targets Go 1.26 and Node.js 26 on Linux and macOS.
 - The language is built on the KDL 2 data model but the reference parser intentionally supports the subset defined by the Scraping KDL v0.1 specification document series.
-- The HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
+- The Go HTTP runtime's internal parser handles ordinary scraping fixtures but is not yet a complete WHATWG HTML tree builder.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
 - The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
 - The checked-in TypeScript package has the complete compiler pipeline plus a publishable boundary and package gates; execution is not yet complete.

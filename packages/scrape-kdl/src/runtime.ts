@@ -14,7 +14,7 @@ const MAX_REDIRECTS = 20;
 
 class MissingValue extends Error {}
 
-interface RuntimeState {
+export interface RuntimeState {
   readonly ir: ExtractorIR;
   readonly options: ExecutionOptions;
   readonly transforms: ReadonlyMap<string, TransformIR>;
@@ -25,8 +25,12 @@ interface RuntimeState {
 }
 
 export async function executeProgram(ir: ExtractorIR, inputs: Readonly<Record<string, JsonValue>> = {}, options: ExecutionOptions = {}): Promise<ExtractionResult> {
+  if (ir.source.fetch.mode === "browser") {
+    const { executeBrowserProgram } = await import("./browser-runtime.js");
+    return executeBrowserProgram(ir, inputs, options);
+  }
   checkAbort(options.signal, "output");
-  const state = preflight(ir, options);
+  const state = preflightRuntime(ir, options, "http");
   const resolvedInputs = resolveInputs(ir, inputs);
   if (ir.source.sessionPolicy === "required" && options.session === undefined) throw new ExecutionError("E_SESSION_REQUIRED", "source requires a runtime session");
   const target = expandTemplate(ir, resolvedInputs);
@@ -41,39 +45,42 @@ export async function executeProgram(ir: ExtractorIR, inputs: Readonly<Record<st
 
 export async function executeHTML(ir: ExtractorIR, html: string, options: ExecutionOptions = {}): Promise<ExtractionResult> {
   checkAbort(options.signal, "output");
-  return executeDocument(preflight(ir, options), parseHTML(html));
+  return executeDocument(preflightRuntime(ir, options, "http"), parseHTML(html));
 }
 
-function preflight(ir: ExtractorIR, options: ExecutionOptions): RuntimeState {
-  if (ir.source.fetch.mode !== "http") throw new ExecutionError("E_BROWSER_RUNTIME_MISSING", `HTTP runtime cannot execute fetch mode ${JSON.stringify(ir.source.fetch.mode)}`);
+export function preflightRuntime(ir: ExtractorIR, options: ExecutionOptions, mode: "http" | "browser"): RuntimeState {
+  if (ir.source.fetch.mode !== mode) {
+    const code = mode === "http" ? "E_BROWSER_RUNTIME_MISSING" : "E_BROWSER_MODE_REQUIRED";
+    throw new ExecutionError(code, `${mode === "http" ? "HTTP" : "browser"} runtime cannot execute fetch mode ${JSON.stringify(ir.source.fetch.mode)}`);
+  }
   const transforms = new Map<string, TransformIR>();
   for (const transform of ir.transforms) {
     if (transforms.has(transform.symbolId)) throw new ExecutionError("E_IR_INVALID", `duplicate declared transform symbol ${JSON.stringify(transform.symbolId)}`, { path: "transforms" });
     transforms.set(transform.symbolId, transform);
     if (transform.kind === "external" && options.externalTransforms?.[transform.symbol] === undefined) throw new ExecutionError("E_EXTERNAL_TRANSFORM_MISSING", `external transform ${JSON.stringify(transform.symbol)} is not registered`, { path: transform.name });
   }
-  preflightOutput(ir.output);
+  preflightOutput(ir.output, mode);
   const state: RuntimeState = { ir, options, transforms, callStack: new Set(), warnings: [], partial: false };
   return options.signal === undefined ? state : { ...state, signal: options.signal };
 }
 
-function preflightOutput(object: OutputObjectIR): void {
+function preflightOutput(object: OutputObjectIR, mode: "http" | "browser"): void {
   for (const member of object.members) {
     if (member.kind === "field") {
       if (member.selection !== undefined) {
         try { parseSelector(member.selection.selector); }
         catch (error) { throw new ExecutionError("E_SELECTOR_INVALID", errorMessage(error), { path: member.id, cause: error }); }
       }
-      if (member.valueSource.kind === "javascript") throw new ExecutionError("E_BROWSER_RUNTIME_MISSING", "HTTP runtime cannot execute JavaScript value sources", { path: member.id });
+      if (mode === "http" && member.valueSource.kind === "javascript") throw new ExecutionError("E_BROWSER_RUNTIME_MISSING", "HTTP runtime cannot execute JavaScript value sources", { path: member.id });
     } else {
       try { parseSelector(member.selector); }
       catch (error) { throw new ExecutionError("E_SELECTOR_INVALID", errorMessage(error), { path: member.id, cause: error }); }
-      preflightOutput(member.row);
+      preflightOutput(member.row, mode);
     }
   }
 }
 
-function resolveInputs(ir: ExtractorIR, provided: Readonly<Record<string, JsonValue>>): Map<string, JsonScalar> {
+export function resolveInputs(ir: ExtractorIR, provided: Readonly<Record<string, JsonValue>>): Map<string, JsonScalar> {
   const known = new Map(ir.inputs.map((input) => [input.name, input]));
   const unknown = Object.keys(provided).filter((name) => !known.has(name)).sort(compareCodePoints)[0];
   if (unknown !== undefined) throw new ExecutionError("E_INPUT_UNKNOWN", `unknown input ${JSON.stringify(unknown)}`, { path: `input.${unknown}` });
@@ -97,7 +104,7 @@ function inputMatches(value: JsonValue, type: string): boolean {
   return type === "float" && typeof value === "number" && Number.isFinite(value);
 }
 
-function expandTemplate(ir: ExtractorIR, inputs: ReadonlyMap<string, JsonScalar>): URL {
+export function expandTemplate(ir: ExtractorIR, inputs: ReadonlyMap<string, JsonScalar>): URL {
   let output = "";
   for (const segment of ir.source.fetch.urlTemplate.segments) {
     if (segment.kind === "literal") output += segment.value;
@@ -127,7 +134,7 @@ function percentEncode(value: string): string {
   ).join("");
 }
 
-async function enforceURLPolicy(options: ExecutionOptions, url: URL): Promise<void> {
+export async function enforceURLPolicy(options: ExecutionOptions, url: URL): Promise<void> {
   if (options.urlPolicy === undefined) return;
   try { await options.urlPolicy(options.signal === undefined ? {} : { signal: options.signal }, url); }
   catch (error) { throw new ExecutionError("E_URL_POLICY", `URL ${JSON.stringify(url.href)} rejected by policy: ${errorMessage(error)}`, { cause: error }); }
@@ -380,7 +387,7 @@ async function executeCollection(state: RuntimeState, scope: DocumentNode | Elem
   return output;
 }
 
-async function applyCalls(state: RuntimeState, input: JsonValue, calls: readonly ResolvedTransformCallIR[], path: string): Promise<JsonValue> {
+export async function applyCalls(state: RuntimeState, input: JsonValue, calls: readonly ResolvedTransformCallIR[], path: string): Promise<JsonValue> {
   let value = input;
   for (const call of calls) {
     checkCanceled(state, path);
@@ -562,7 +569,7 @@ function parseBoolean(value: string, arguments_: Readonly<Record<string, JsonSca
   throw new Error(`${JSON.stringify(value)} is neither configured true nor false value`);
 }
 
-function matchesRuntimeType(value: JsonValue, type: TypeRef): boolean {
+export function matchesRuntimeType(value: JsonValue, type: TypeRef): boolean {
   if (type.kind === "nullable") return value === null || matchesRuntimeType(value, type.inner);
   if (type.kind === "array") return Array.isArray(value) && value.every((item) => matchesRuntimeType(item, type.element));
   if (type.name === "unknown") return isJSONCompatible(value);
@@ -576,7 +583,7 @@ function matchesRuntimeType(value: JsonValue, type: TypeRef): boolean {
   const range = ranges[type.name]; return range === undefined || value >= range[0] && value <= range[1];
 }
 
-function isJSONCompatible(value: unknown): value is JsonValue {
+export function isJSONCompatible(value: unknown): value is JsonValue {
   if (value === null || typeof value === "string" || typeof value === "boolean") return true;
   if (typeof value === "number") return Number.isFinite(value);
   if (Array.isArray(value)) return value.every(isJSONCompatible);
@@ -588,7 +595,7 @@ function scalarEqual(left: JsonScalar, right: JsonValue): boolean { return typeo
 function typeString(type: TypeRef): string { return type.kind === "primitive" ? type.name : type.kind === "array" ? `${typeString(type.element)}[]` : `${typeString(type.inner)}?`; }
 function jsonType(value: JsonValue): string { return value === null ? "null" : Array.isArray(value) ? "array" : typeof value; }
 function checkCanceled(state: RuntimeState, path: string): void { checkAbort(state.signal, path); }
-function checkAbort(signal: AbortSignal | undefined, path: string): void { if (signal?.aborted === true) throw new ExecutionError("E_EXECUTION_CANCELED", errorMessage(signal.reason), { path, cause: signal.reason }); }
-function executionMessage(error: unknown): string { return error instanceof ExecutionError && error.path !== undefined ? `${error.code} at ${error.path}: ${error.message}` : errorMessage(error); }
-function errorMessage(error: unknown): string { return error instanceof Error ? error.message : String(error ?? "operation canceled"); }
+export function checkAbort(signal: AbortSignal | undefined, path: string): void { if (signal?.aborted === true) throw new ExecutionError("E_EXECUTION_CANCELED", errorMessage(signal.reason), { path, cause: signal.reason }); }
+export function executionMessage(error: unknown): string { return error instanceof ExecutionError && error.path !== undefined ? `${error.code} at ${error.path}: ${error.message}` : errorMessage(error); }
+export function errorMessage(error: unknown): string { return error instanceof Error ? error.message : String(error ?? "operation canceled"); }
 function compareCodePoints(left: string, right: string): number { const a = Array.from(left); const b = Array.from(right); for (let index = 0; index < Math.min(a.length, b.length); index++) { const difference = a[index]!.codePointAt(0)! - b[index]!.codePointAt(0)!; if (difference !== 0) return difference; } return a.length - b.length; }

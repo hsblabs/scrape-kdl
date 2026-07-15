@@ -118,11 +118,16 @@
       "status": "release-blocking",
       "categories": ["valid", "browser"],
       "suites": ["release", "browser", "typescript-slice"],
-      "artifacts": [{ "path": "fixtures/valid/rod-browser-e2e.kdl", "role": "source" }],
-      "expectations": { "outcome": "valid" },
+      "artifacts": [
+        { "path": "fixtures/valid/rod-browser-e2e.kdl", "role": "source" },
+        { "path": "fixtures/html/rod-browser-e2e.html", "role": "browser-page" },
+        { "path": "fixtures/expected-output/rod-browser-e2e.json", "role": "expected-output" }
+      ],
+      "expectations": { "outcome": "valid", "output": "fixtures/expected-output/rod-browser-e2e.json" },
       "executions": [
         { "implementation": "go", "job": "core", "stages": ["validate", "compile"] },
         { "implementation": "typescript", "job": "core", "stages": ["validate", "compile"] },
+        { "implementation": "typescript", "job": "browser-e2e", "stages": ["browser"] },
         { "implementation": "go", "job": "browser-e2e", "stages": ["browser"] }
       ]
     },

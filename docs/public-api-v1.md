@@ -23,7 +23,7 @@ Go and TypeScript expose the same observable capabilities:
 | inspect extraction results | `Result`, `Warning`, `ExecutionError` | `ExtractionResult`, `Warning`, `ExecutionError` |
 | discover compatibility | `SupportedLanguageVersions`, `SupportedIRVersions` | `supportedLanguageVersions`, `supportedIRVersions` |
 
-The contract snapshot remains in `docs/api/typescript/`. The publishable implementation boundary is checked directly through `@hsblabs/scrape-kdl` and `@hsblabs/scrape-kdl/node`; declaration-to-schema and clean-consumer gates keep the package aligned with the approved Issue #19 surface. The root package implements the complete compiler and HTTP/offline-HTML runtime while preserving that approved surface.
+The contract snapshot remains in `docs/api/typescript/`. The publishable implementation boundary is checked directly through `@hsblabs/scrape-kdl` and `@hsblabs/scrape-kdl/node`; declaration-to-schema and clean-consumer gates keep the package aligned with the approved Issue #19 surface. The root package implements the complete compiler plus HTTP, offline-HTML, and browser-library-neutral runtimes while preserving that approved surface.
 
 The core declarations map to `@hsblabs/scrape-kdl`; Node.js file conveniences map to `@hsblabs/scrape-kdl/node`. The separate `@hsblabs/scrape-kdl-playwright` package supplies an official `BrowserAdapter` without adding Playwright to the core package's runtime dependencies.
 

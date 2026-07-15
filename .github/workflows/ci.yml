@@ -80,3 +80,17 @@ jobs:
           go-version: "1.26.x"
           cache-dependency-path: adapters/rod/go.mod
       - run: ./scripts/verify-rod.sh
+
+  playwright-chromium:
+    name: Playwright adapter / Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-node@v6.2.0
+        with:
+          node-version: "26.x"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: make test-playwright-e2e
