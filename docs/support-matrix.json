@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "2026-07-15",
+  "minimums": { "go": "1.26", "node": "26" },
+  "targets": [
+    { "os": "linux", "arch": "amd64", "tier": "supported" },
+    { "os": "linux", "arch": "arm64", "tier": "supported" },
+    { "os": "darwin", "arch": "amd64", "tier": "supported" },
+    { "os": "darwin", "arch": "arm64", "tier": "supported" }
+  ],
+  "browsers": [
+    { "name": "chromium", "tier": "supported", "blocking": true },
+    { "name": "firefox", "tier": "best-effort", "blocking": false },
+    { "name": "webkit", "tier": "best-effort", "blocking": false }
+  ],
+  "adapters": [
+    { "name": "go-rod", "runtime": "go", "browser": "chromium", "tier": "supported" },
+    { "name": "playwright", "runtime": "node", "browser": "chromium", "tier": "supported" },
+    { "name": "playwright-firefox", "runtime": "node", "browser": "firefox", "tier": "best-effort" },
+    { "name": "playwright-webkit", "runtime": "node", "browser": "webkit", "tier": "best-effort" }
+  ],
+  "outOfScope": ["windows"]
+}

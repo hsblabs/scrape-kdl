@@ -13,6 +13,7 @@
     "build:contract-slice": "npm run build --workspace @hsblabs/scrape-kdl",
     "conformance:typescript-slice": "npm run build:contract-slice && node packages/scrape-kdl/test/manifest-runner.mjs",
     "coverage:typescript": "npm run build:typescript && node --test --experimental-test-coverage --test-coverage-lines=70 --test-coverage-branches=60 --test-coverage-functions=80 packages/scrape-kdl/test/*.test.mjs",
+    "examples:typescript": "npm run build:typescript && node scripts/check-examples.mjs",
     "lint:typescript": "node scripts/lint-typescript.mjs",
     "package:check": "npm run build:typescript && node scripts/check-npm-package.mjs",
     "test:contract-slice": "npm run build:contract-slice && node packages/scrape-kdl/test/contract.test.mjs",

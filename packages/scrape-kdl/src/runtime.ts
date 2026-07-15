@@ -539,14 +539,18 @@ function parseInteger(value: string, type: string, radix: number): number {
   if (value === "" || value.includes("_") || radix < 2 || radix > 36) throw new Error(`invalid integer ${JSON.stringify(value)}`);
   const negative = value.startsWith("-"); if (negative && type.startsWith("u")) throw new Error("unsigned integer rejects negative input");
   const signless = value.replace(/^[+-]/u, "");
-  if (signless === "" || [...signless.toLowerCase()].some((character) => digitValue(character) < 0 || digitValue(character) >= radix)) throw new Error(`invalid integer ${JSON.stringify(value)}`);
+  const operation = type.startsWith("u") ? "ParseUint" : "ParseInt";
+  const parsedInput = type.startsWith("u") ? value.replace(/^\+/u, "") : value;
+  if (signless === "" || [...signless.toLowerCase()].some((character) => digitValue(character) < 0 || digitValue(character) >= radix)) {
+    throw new Error(`parse ${type}: strconv.${operation}: parsing ${JSON.stringify(parsedInput)}: invalid syntax`);
+  }
   let parsed = 0n; for (const character of signless.toLowerCase()) parsed = parsed * BigInt(radix) + BigInt(digitValue(character)); if (negative) parsed = -parsed;
   const ranges: Readonly<Record<string, readonly [bigint, bigint]>> = {
     i8: [-128n, 127n], u8: [0n, 255n], i16: [-32768n, 32767n], u16: [0n, 65535n],
     i32: [-2147483648n, 2147483647n], u32: [0n, 4294967295n], int: [-(1n << 63n), (1n << 63n) - 1n],
     i64: [-(1n << 63n), (1n << 63n) - 1n], u64: [0n, (1n << 64n) - 1n],
   };
-  const range = ranges[type]; if (range === undefined || parsed < range[0] || parsed > range[1]) throw new Error(`parse ${type}: value out of range`);
+  const range = ranges[type]; if (range === undefined || parsed < range[0] || parsed > range[1]) throw new Error(`parse ${type}: strconv.${operation}: parsing ${JSON.stringify(parsedInput)}: value out of range`);
   const result = Number(parsed); if (!Number.isSafeInteger(result)) throw new Error(`parse ${type}: value is outside the TypeScript safe integer range`); return result;
 }
 

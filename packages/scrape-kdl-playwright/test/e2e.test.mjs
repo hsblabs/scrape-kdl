@@ -16,6 +16,34 @@ const [fixtureSource, fixtureHTML, expected] = await Promise.all([
   readFile(new URL("fixtures/expected-output/rod-browser-e2e.json", root), "utf8").then(JSON.parse),
 ]);
 
+test(`Chromium matches every portable HTML and pinned WPT observation`, { timeout: 60_000, skip: browserName !== "chromium" }, async () => {
+  const manifest = JSON.parse(await readFile(new URL("fixtures/html-compat/manifest.json", root), "utf8"));
+  assert.deepEqual(manifest.approvedDivergences, []);
+  assert.ok(manifest.upstream.selectedTests.length >= 3);
+  const browser = await browserType.launch({ headless: true });
+  const page = await browser.newPage();
+  try {
+    for (const fixture of manifest.cases) {
+      assert.equal(fixture.parserMode, "document");
+      await page.setContent(await readFile(new URL(fixture.input, root), "utf8"), { waitUntil: "domcontentloaded" });
+      for (const observation of fixture.observations) {
+        const actual = await page.locator(observation.selector).evaluateAll((nodes, expectedObservation) => ({
+          text: expectedObservation.text === undefined ? undefined : nodes.map((node) => node.textContent),
+          innerHTML: expectedObservation.innerHTML === undefined ? undefined : nodes.map((node) => node.innerHTML),
+          attributes: expectedObservation.attributes === undefined ? undefined : nodes.map((node, index) =>
+            Object.fromEntries(Object.keys(expectedObservation.attributes[index]).map((name) => [name, node.getAttribute(name)]))),
+        }), observation);
+        if (observation.text !== undefined) assert.deepEqual(actual.text, observation.text, `${fixture.id}/${observation.selector}/text`);
+        if (observation.innerHTML !== undefined) assert.deepEqual(actual.innerHTML, observation.innerHTML, `${fixture.id}/${observation.selector}/innerHTML`);
+        if (observation.attributes !== undefined) assert.deepEqual(actual.attributes, observation.attributes, `${fixture.id}/${observation.selector}/attributes`);
+      }
+    }
+  } finally {
+    await page.close();
+    await browser.close();
+  }
+});
+
 async function fixtureServer() {
   const observations = [];
   const server = createServer((request, response) => {

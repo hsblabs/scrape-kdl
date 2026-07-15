@@ -190,9 +190,9 @@ See `SECURITY.md` and `docs/security-model.md`.
 - The Go HTTP runtime uses pinned `golang.org/x/net/html` WHATWG tree construction and is checked against the versioned portable HTML compatibility manifest.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
 - The TypeScript compiler and runtime are primary v1 deliverables; type generation, a language server, an inspector UI, and a browser extension remain future milestones.
-- The checked-in TypeScript package has the complete compiler pipeline plus a publishable boundary and package gates; execution is not yet complete.
+- The checked-in TypeScript packages include the complete compiler, HTTP/browser runtimes, and official Playwright adapter with publishable package gates.
 
-See `docs/compatibility.md` and `docs/kdl-parser-conformance.md`.
+See `docs/compatibility.md`, `docs/kdl-parser-conformance.md`, and `docs/release-gates.md`. The release-gate document links the executable support/example matrix and measured performance policy.
 
 ## Development
 

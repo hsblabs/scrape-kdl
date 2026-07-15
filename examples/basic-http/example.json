@@ -7,6 +7,9 @@
   "source": "extractor.kdl",
   "inputs": "inputs.json",
   "expected": { "ir": "expected-ir.json", "output": "expected-output.json" },
-  "executions": [{ "implementation": "go", "mode": "local-http", "fixture": "page.html" }],
+  "executions": [
+    { "implementation": "go", "mode": "local-http", "fixture": "page.html" },
+    { "implementation": "typescript", "mode": "local-http", "fixture": "page.html" }
+  ],
   "adapters": []
 }

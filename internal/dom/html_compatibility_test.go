@@ -22,14 +22,20 @@ type htmlCompatibilitySource struct {
 	Revision      string   `json:"revision"`
 	SelectedTests []string `json:"selectedTests"`
 }
-
 type htmlCompatibilityCase struct {
 	ID              string                         `json:"id"`
 	Input           string                         `json:"input"`
 	DecodedEncoding string                         `json:"decodedEncoding"`
 	ParserMode      string                         `json:"parserMode"`
 	UpstreamTestID  string                         `json:"upstreamTestId"`
+	UpstreamSource  *htmlCompatibilityReduction    `json:"upstreamSource"`
 	Observations    []htmlCompatibilityObservation `json:"observations"`
+}
+
+type htmlCompatibilityReduction struct {
+	Path      string `json:"path"`
+	Revision  string `json:"revision"`
+	Reduction string `json:"reduction"`
 }
 
 type htmlCompatibilityObservation struct {
@@ -58,6 +64,9 @@ func TestPinnedHTMLCompatibilityManifest(t *testing.T) {
 	if len(manifest.Cases) < 5 {
 		t.Fatalf("manifest cases = %d, want at least 5", len(manifest.Cases))
 	}
+	if len(manifest.Upstream.SelectedTests) < 3 {
+		t.Fatalf("selected upstream tests = %#v", manifest.Upstream.SelectedTests)
+	}
 	seen := map[string]bool{}
 	for _, fixture := range manifest.Cases {
 		fixture := fixture
@@ -68,6 +77,9 @@ func TestPinnedHTMLCompatibilityManifest(t *testing.T) {
 			seen[fixture.ID] = true
 			if fixture.DecodedEncoding != "utf-8" || fixture.ParserMode != "document" || fixture.UpstreamTestID == "" {
 				t.Fatalf("unsupported fixture metadata: %#v", fixture)
+			}
+			if fixture.UpstreamSource != nil && (fixture.UpstreamSource.Path == "" || fixture.UpstreamSource.Revision != manifest.Upstream.Revision || fixture.UpstreamSource.Reduction == "") {
+				t.Fatalf("invalid upstream reduction: %#v", fixture.UpstreamSource)
 			}
 			documentData, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(fixture.Input)))
 			if err != nil {

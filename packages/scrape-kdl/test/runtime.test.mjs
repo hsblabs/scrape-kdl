@@ -154,7 +154,8 @@ test("built-in failures retain the stable transform error code", async () => {
   field "number" type="u8" required=#true { select "#number"; value "text"; apply "parse-int" as="u8" }
 }`);
   await assert.rejects(executeHTML(program.ir, `<span id="number">not-an-integer</span>`),
-    (error) => error instanceof ExecutionError && error.code === "E_TRANSFORM" && error.path === "output.number");
+    (error) => error instanceof ExecutionError && error.code === "E_TRANSFORM" && error.path === "output.number"
+      && error.message === "parse u8: strconv.ParseUint: parsing \"not-an-integer\": invalid syntax");
 });
 
 test("response bounds, timeout, cancellation, and charset decoding have stable codes", async () => {
