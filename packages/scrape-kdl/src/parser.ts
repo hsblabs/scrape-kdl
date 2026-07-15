@@ -50,9 +50,22 @@ export interface Document {
 }
 
 type TokenKind =
-  | "invalid" | "eof" | "newline" | "semicolon" | "slashdash"
-  | "lbrace" | "rbrace" | "equals" | "lparen" | "rparen"
-  | "identifier" | "string" | "int" | "float" | "bool" | "null";
+  | "invalid"
+  | "eof"
+  | "newline"
+  | "semicolon"
+  | "slashdash"
+  | "lbrace"
+  | "rbrace"
+  | "equals"
+  | "lparen"
+  | "rparen"
+  | "identifier"
+  | "string"
+  | "int"
+  | "float"
+  | "bool"
+  | "null";
 
 interface Token {
   readonly kind: TokenKind;
@@ -72,7 +85,10 @@ class Lexer {
   #line = 1;
   #column = 1;
 
-  constructor(readonly path: string, readonly source: string) {}
+  constructor(
+    readonly path: string,
+    readonly source: string,
+  ) {}
 
   next(): Token {
     for (;;) {
@@ -80,18 +96,26 @@ class Lexer {
       const start = this.#position();
       const character = this.#peek();
       switch (character) {
-        case " ": case "\t": case "\r":
+        case " ":
+        case "\t":
+        case "\r":
           this.#advance();
           continue;
         case "\n":
           this.#advance();
           return this.#token("newline", "\n", start);
-        case ";": return this.#punctuation("semicolon", start);
-        case "{": return this.#punctuation("lbrace", start);
-        case "}": return this.#punctuation("rbrace", start);
-        case "=": return this.#punctuation("equals", start);
-        case "(": return this.#punctuation("lparen", start);
-        case ")": return this.#punctuation("rparen", start);
+        case ";":
+          return this.#punctuation("semicolon", start);
+        case "{":
+          return this.#punctuation("lbrace", start);
+        case "}":
+          return this.#punctuation("rbrace", start);
+        case "=":
+          return this.#punctuation("equals", start);
+        case "(":
+          return this.#punctuation("lparen", start);
+        case ")":
+          return this.#punctuation("rparen", start);
         case "/":
           if (this.#peek(1) === "/") {
             this.#skipLineComment();
@@ -107,8 +131,10 @@ class Lexer {
             return this.#token("slashdash", "/-", start);
           }
           break;
-        case "\"": return this.#scanQuotedString(start);
-        case "#": return this.#scanHashToken(start);
+        case '"':
+          return this.#scanQuotedString(start);
+        case "#":
+          return this.#scanHashToken(start);
       }
       if (isNumberStart(character, this.#peek(1))) return this.#scanNumber(start);
       if (isIdentifierStart(character)) return this.#scanIdentifier(start);
@@ -164,12 +190,18 @@ class Lexer {
     let value = "";
     while (!this.#eof()) {
       const character = this.#advance();
-      if (character === "\"") return this.#token("string", this.source.slice(begin, this.#index), start, value);
+      if (character === '"') return this.#token("string", this.source.slice(begin, this.#index), start, value);
       if (character === "\\") {
         if (this.#eof()) break;
         const escaped = this.#advance();
         const escapes: Readonly<Record<string, string>> = {
-          n: "\n", r: "\r", t: "\t", b: "\b", f: "\f", "\\": "\\", "\"": "\"",
+          n: "\n",
+          r: "\r",
+          t: "\t",
+          b: "\b",
+          f: "\f",
+          "\\": "\\",
+          '"': '"',
         };
         const replacement = escapes[escaped];
         if (replacement !== undefined) {
@@ -193,7 +225,12 @@ class Lexer {
           const hexadecimal = this.source.slice(hexStart, this.#index);
           this.#advance();
           const codePoint = /^[0-9a-fA-F]+$/u.test(hexadecimal) ? Number.parseInt(hexadecimal, 16) : Number.NaN;
-          if (!Number.isInteger(codePoint) || codePoint < 0 || codePoint > 0x10ffff || codePoint >= 0xd800 && codePoint <= 0xdfff) {
+          if (
+            !Number.isInteger(codePoint) ||
+            codePoint < 0 ||
+            codePoint > 0x10ffff ||
+            (codePoint >= 0xd800 && codePoint <= 0xdfff)
+          ) {
             const span = this.#span(start);
             this.#diagnostic("E_KDL_SYNTAX", "invalid Unicode escape", span);
             return { kind: "invalid", text: this.source.slice(begin, this.#index), span };
@@ -220,7 +257,9 @@ class Lexer {
   #scanHashToken(start: Position): Token {
     const begin = this.#index;
     for (const [raw, kind, value] of [
-      ["#true", "bool", true], ["#false", "bool", false], ["#null", "null", null],
+      ["#true", "bool", true],
+      ["#false", "bool", false],
+      ["#null", "null", null],
     ] as const) {
       if (this.source.startsWith(raw, this.#index) && isBoundary(this.#peek(raw.length))) {
         for (let index = 0; index < raw.length; index++) this.#advance();
@@ -229,20 +268,21 @@ class Lexer {
     }
     let hashes = 0;
     while (this.#peek(hashes) === "#") hashes++;
-    if (this.#peek(hashes) !== "\"") {
+    if (this.#peek(hashes) !== '"') {
       this.#advance();
       const span = this.#span(start);
       this.#diagnostic("E_KDL_SYNTAX", "invalid hash-prefixed token", span);
       return { kind: "invalid", text: "#", span };
     }
     for (let index = 0; index < hashes; index++) this.#advance();
-    const quoteCount = this.#peek() === "\"" && this.#peek(1) === "\"" && this.#peek(2) === "\"" ? 3 : 1;
+    const quoteCount = this.#peek() === '"' && this.#peek(1) === '"' && this.#peek(2) === '"' ? 3 : 1;
     for (let index = 0; index < quoteCount; index++) this.#advance();
     const contentStart = this.#index;
     while (!this.#eof()) {
-      const quoteMatches = quoteCount === 3
-        ? this.#peek() === "\"" && this.#peek(1) === "\"" && this.#peek(2) === "\""
-        : this.#peek() === "\"";
+      const quoteMatches =
+        quoteCount === 3
+          ? this.#peek() === '"' && this.#peek(1) === '"' && this.#peek(2) === '"'
+          : this.#peek() === '"';
       if (quoteMatches && this.#hashesMatch(quoteCount, hashes)) {
         let content = this.source.slice(contentStart, this.#index);
         for (let index = 0; index < quoteCount + hashes; index++) this.#advance();
@@ -316,8 +356,12 @@ class Lexer {
     return { kind: "int", text: raw, value: Number(value), integerValue: value, span: this.#span(start) };
   }
 
-  #eof(): boolean { return this.#index >= this.source.length; }
-  #peek(distance = 0): string { return this.source[this.#index + distance] ?? ""; }
+  #eof(): boolean {
+    return this.#index >= this.source.length;
+  }
+  #peek(distance = 0): string {
+    return this.source[this.#index + distance] ?? "";
+  }
 
   #advance(): string {
     if (this.#eof()) return "";
@@ -332,8 +376,12 @@ class Lexer {
     return character;
   }
 
-  #position(): Position { return { offset: this.#offset, line: this.#line, column: this.#column }; }
-  #span(start: Position): Span { return { file: this.path, start, end: this.#position() }; }
+  #position(): Position {
+    return { offset: this.#offset, line: this.#line, column: this.#column };
+  }
+  #span(start: Position): Span {
+    return { file: this.path, start, end: this.#position() };
+  }
 
   #token(kind: TokenKind, text: string, start: Position, value?: ScalarValue): Token {
     const token: Token = { kind, text, span: this.#span(start) };
@@ -399,7 +447,10 @@ class Parser {
     for (;;) {
       const kind = this.#current.kind as TokenKind;
       switch (kind) {
-        case "eof": case "newline": case "semicolon": case "rbrace": {
+        case "eof":
+        case "newline":
+        case "semicolon":
+        case "rbrace": {
           const end = arguments_.at(-1)?.span ?? properties.at(-1)?.span ?? start;
           if (kind === "newline" || kind === "semicolon") this.#advance();
           return { name, arguments: arguments_, properties, children, span: mergeSpan(start, end) };
@@ -434,13 +485,18 @@ class Parser {
             this.#advance();
             this.#advance();
             const value = this.#parseValue();
-            if (value !== undefined) properties.push({ name: propertyName, value, span: mergeSpan(propertyStart, value.span) });
+            if (value !== undefined)
+              properties.push({ name: propertyName, value, span: mergeSpan(propertyStart, value.span) });
             break;
           }
           const value = this.#parseValue();
           if (value !== undefined) arguments_.push(value);
           else {
-            this.#error("E_KDL_SYNTAX", `unexpected token ${JSON.stringify(this.#current.text)} in node`, this.#current.span);
+            this.#error(
+              "E_KDL_SYNTAX",
+              `unexpected token ${JSON.stringify(this.#current.text)} in node`,
+              this.#current.span,
+            );
             this.#advance();
           }
         }
@@ -506,15 +562,22 @@ class Parser {
       this.#advance();
       this.#advance();
       if ((this.#current.kind as TokenKind) === "lparen") this.#skipTypeAnnotation();
-      if (this.#parseValue() === undefined) this.#error("E_KDL_SYNTAX", "slashdashed property is missing a value", marker);
+      if (this.#parseValue() === undefined)
+        this.#error("E_KDL_SYNTAX", "slashdashed property is missing a value", marker);
       return;
     }
     if (this.#parseValue() === undefined) {
-      this.#error("E_KDL_SYNTAX", "slashdash inside a node must suppress an argument, property, or children block", marker);
+      this.#error(
+        "E_KDL_SYNTAX",
+        "slashdash inside a node must suppress an argument, property, or children block",
+        marker,
+      );
     }
   }
 
-  #skipSlashdashLineSpace(): void { while (this.#current.kind === "newline") this.#advance(); }
+  #skipSlashdashLineSpace(): void {
+    while (this.#current.kind === "newline") this.#advance();
+  }
 
   #skipChildBlock(): void {
     const open = this.#current.span;
@@ -531,7 +594,12 @@ class Parser {
     const token = this.#current;
     if (!(["string", "int", "float", "bool", "null"] as const).includes(token.kind as ValueKind)) return undefined;
     this.#advance();
-    const value: Value = { kind: token.kind as ValueKind, raw: token.text, value: token.value ?? null, span: token.span };
+    const value: Value = {
+      kind: token.kind as ValueKind,
+      raw: token.text,
+      value: token.value ?? null,
+      span: token.span,
+    };
     return token.integerValue === undefined ? value : { ...value, integerValue: token.integerValue };
   }
 
@@ -594,20 +662,31 @@ function parseInteger(raw: string, base: number): bigint | undefined {
 function isBaseDigit(character: string, base: number): boolean {
   if (base === 2) return character === "0" || character === "1";
   if (base === 8) return character >= "0" && character <= "7";
-  return isDigit(character) || character >= "a" && character <= "f" || character >= "A" && character <= "F";
+  return isDigit(character) || (character >= "a" && character <= "f") || (character >= "A" && character <= "F");
 }
 
 function isIdentifierStart(character: string): boolean {
-  return character === "_" || character === "-" || character >= "A" && character <= "Z" || character >= "a" && character <= "z";
+  return (
+    character === "_" ||
+    character === "-" ||
+    (character >= "A" && character <= "Z") ||
+    (character >= "a" && character <= "z")
+  );
 }
 
 function isIdentifierContinue(character: string): boolean {
   return isIdentifierStart(character) || isDigit(character) || character === "." || character === "/";
 }
 
-function isDigit(character: string): boolean { return character >= "0" && character <= "9"; }
-function isNumberStart(character: string, next: string): boolean { return isDigit(character) || (character === "+" || character === "-") && isDigit(next); }
-function isBoundary(character: string): boolean { return character === "" || [" ", "\t", "\r", "\n", ";", "}", "{"].includes(character); }
+function isDigit(character: string): boolean {
+  return character >= "0" && character <= "9";
+}
+function isNumberStart(character: string, next: string): boolean {
+  return isDigit(character) || ((character === "+" || character === "-") && isDigit(next));
+}
+function isBoundary(character: string): boolean {
+  return character === "" || [" ", "\t", "\r", "\n", ";", "}", "{"].includes(character);
+}
 
 function quoteRune(character: string): string {
   if (character === "'") return "'\\''";
@@ -624,13 +703,18 @@ function quoteRune(character: string): string {
   return `'${character}'`;
 }
 
-export function parse(path: string, source: string): { readonly document: Document; readonly diagnostics: readonly ParseDiagnostic[] } {
+export function parse(
+  path: string,
+  source: string,
+): { readonly document: Document; readonly diagnostics: readonly ParseDiagnostic[] } {
   const parser = new Parser(new Lexer(path, source));
   const document = parser.parse();
-  const diagnostics = [...parser.diagnostics].sort((left, right) =>
-    compareCodePoints(left.span.file, right.span.file)
-    || left.span.start.offset - right.span.start.offset
-    || compareCodePoints(left.code, right.code));
+  const diagnostics = [...parser.diagnostics].sort(
+    (left, right) =>
+      compareCodePoints(left.span.file, right.span.file) ||
+      left.span.start.offset - right.span.start.offset ||
+      compareCodePoints(left.code, right.code),
+  );
   return { document, diagnostics };
 }
 

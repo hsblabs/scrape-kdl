@@ -46,16 +46,34 @@ export async function loadSourceGraph(source: Source, options: CompileOptions = 
 
   const displayPath = (path: string): string => relativePath(entryDirectory, path);
 
-  const load = async (path: string, expected: "extractor" | "module", fromPath?: string): Promise<MutableLoadedDocument | undefined> => {
+  const load = async (
+    path: string,
+    expected: "extractor" | "module",
+    fromPath?: string,
+  ): Promise<MutableLoadedDocument | undefined> => {
     path = cleanPath(path);
     if (loading.has(path)) {
-      diagnostics.push(diagnostic("E_IMPORT_CYCLE", `import cycle includes ${JSON.stringify(displayPath(path))}`, zeroSpan(displayPath(path)), ""));
+      diagnostics.push(
+        diagnostic(
+          "E_IMPORT_CYCLE",
+          `import cycle includes ${JSON.stringify(displayPath(path))}`,
+          zeroSpan(displayPath(path)),
+          "",
+        ),
+      );
       return undefined;
     }
     const cached = documents.get(path);
     if (cached !== undefined) {
       if (expected === "module" && cached.kind !== "module") {
-        diagnostics.push(diagnostic("E_IMPORT_KIND", `imported file ${JSON.stringify(path)} is not a module document`, cached.document.span, ""));
+        diagnostics.push(
+          diagnostic(
+            "E_IMPORT_KIND",
+            `imported file ${JSON.stringify(path)} is not a module document`,
+            cached.document.span,
+            "",
+          ),
+        );
       }
       return cached;
     }
@@ -70,9 +88,10 @@ export async function loadSourceGraph(source: Source, options: CompileOptions = 
         return undefined;
       } else {
         try {
-          const context = options.signal === undefined
-            ? { fromPath: fromPath ?? entryPath }
-            : { fromPath: fromPath ?? entryPath, signal: options.signal };
+          const context =
+            options.signal === undefined
+              ? { fromPath: fromPath ?? entryPath }
+              : { fromPath: fromPath ?? entryPath, signal: options.signal };
           const loaded = await options.loader.load(path, context);
           options.signal?.throwIfAborted();
           bytes = copyBytes(loaded);
@@ -95,7 +114,11 @@ export async function loadSourceGraph(source: Source, options: CompileOptions = 
       if (parsed.diagnostics.some((item) => item.severity === "error")) return undefined;
 
       const loaded: MutableLoadedDocument = {
-        path, displayPath: displayPath(path), bytes, document: parsed.document, imports: new Map(),
+        path,
+        displayPath: displayPath(path),
+        bytes,
+        document: parsed.document,
+        imports: new Map(),
       };
       documents.set(path, loaded);
 
@@ -103,16 +126,29 @@ export async function loadSourceGraph(source: Source, options: CompileOptions = 
       let seenRoot = false;
       for (const node of parsed.document.nodes) {
         if (node.name === "import") {
-          if (seenRoot) diagnostics.push(diagnostic("E_DOCUMENT_ROOT", "imports must appear before the document root", node.span, ""));
+          if (seenRoot)
+            diagnostics.push(
+              diagnostic("E_DOCUMENT_ROOT", "imports must appear before the document root", node.span, ""),
+            );
           await loadImport(loaded, node);
           continue;
         }
         seenRoot = true;
         if (node.name === "extractor" || node.name === "module") roots.push(node);
-        else diagnostics.push(diagnostic("E_UNKNOWN_NODE", `top-level node ${JSON.stringify(node.name)} is not allowed`, node.span, ""));
+        else
+          diagnostics.push(
+            diagnostic("E_UNKNOWN_NODE", `top-level node ${JSON.stringify(node.name)} is not allowed`, node.span, ""),
+          );
       }
       if (roots.length !== 1) {
-        diagnostics.push(diagnostic("E_DOCUMENT_ROOT", `document must contain exactly one extractor or module root; found ${roots.length}`, parsed.document.span, ""));
+        diagnostics.push(
+          diagnostic(
+            "E_DOCUMENT_ROOT",
+            `document must contain exactly one extractor or module root; found ${roots.length}`,
+            parsed.document.span,
+            "",
+          ),
+        );
         return loaded;
       }
       loaded.root = roots[0];
@@ -121,7 +157,9 @@ export async function loadSourceGraph(source: Source, options: CompileOptions = 
         diagnostics.push(diagnostic("E_IMPORT_KIND", "import target must be a module document", loaded.root.span, ""));
       }
       if (expected === "extractor" && loaded.kind !== "extractor") {
-        diagnostics.push(diagnostic("E_DOCUMENT_ROOT", "entry document must be an extractor document", loaded.root.span, ""));
+        diagnostics.push(
+          diagnostic("E_DOCUMENT_ROOT", "entry document must be an extractor document", loaded.root.span, ""),
+        );
       }
       return loaded;
     } finally {
@@ -138,14 +176,20 @@ export async function loadSourceGraph(source: Source, options: CompileOptions = 
     }
     const alias = stringProperty(node, "as");
     if (alias === undefined || alias === "") {
-      diagnostics.push(diagnostic("E_IMPORT_ALIAS_REQUIRED", "import requires non-empty string property as", node.span, "imports"));
+      diagnostics.push(
+        diagnostic("E_IMPORT_ALIAS_REQUIRED", "import requires non-empty string property as", node.span, "imports"),
+      );
       return;
     }
     if (!/^[a-z][a-z0-9_]*$/u.test(alias)) {
-      diagnostics.push(diagnostic("E_IDENTIFIER_INVALID", `invalid identifier ${JSON.stringify(alias)}`, node.span, "imports"));
+      diagnostics.push(
+        diagnostic("E_IDENTIFIER_INVALID", `invalid identifier ${JSON.stringify(alias)}`, node.span, "imports"),
+      );
     }
     if (document.imports.has(alias)) {
-      diagnostics.push(diagnostic("E_DUPLICATE_SYMBOL", `duplicate import alias ${JSON.stringify(alias)}`, node.span, "imports"));
+      diagnostics.push(
+        diagnostic("E_DUPLICATE_SYMBOL", `duplicate import alias ${JSON.stringify(alias)}`, node.span, "imports"),
+      );
       return;
     }
     if (pathArgument.includes("://") || pathArgument.startsWith("/")) {
@@ -168,16 +212,45 @@ export async function loadSourceGraph(source: Source, options: CompileOptions = 
 
 function validateImportNode(node: Node, diagnostics: LoadDiagnostic[]): void {
   if (node.arguments.length !== 1) {
-    diagnostics.push(diagnostic("E_ARGUMENT_COUNT", `node "import" expects 1..1 positional arguments, got ${node.arguments.length}`, node.span, "imports"));
+    diagnostics.push(
+      diagnostic(
+        "E_ARGUMENT_COUNT",
+        `node "import" expects 1..1 positional arguments, got ${node.arguments.length}`,
+        node.span,
+        "imports",
+      ),
+    );
   }
   const seen = new Set<string>();
   for (const property of node.properties) {
-    if (seen.has(property.name)) diagnostics.push(diagnostic("E_DUPLICATE_PROPERTY", `duplicate property ${JSON.stringify(property.name)}`, property.span, "imports"));
+    if (seen.has(property.name))
+      diagnostics.push(
+        diagnostic(
+          "E_DUPLICATE_PROPERTY",
+          `duplicate property ${JSON.stringify(property.name)}`,
+          property.span,
+          "imports",
+        ),
+      );
     seen.add(property.name);
     if (property.name !== "as") {
-      diagnostics.push(diagnostic("E_UNKNOWN_PROPERTY", `property ${JSON.stringify(property.name)} is not allowed on "import"`, property.span, "imports"));
+      diagnostics.push(
+        diagnostic(
+          "E_UNKNOWN_PROPERTY",
+          `property ${JSON.stringify(property.name)} is not allowed on "import"`,
+          property.span,
+          "imports",
+        ),
+      );
     } else if (property.value.kind !== "string") {
-      diagnostics.push(diagnostic("E_TYPE_MISMATCH", `property "as" has incompatible value kind ${property.value.kind}`, property.value.span, "imports"));
+      diagnostics.push(
+        diagnostic(
+          "E_TYPE_MISMATCH",
+          `property "as" has incompatible value kind ${property.value.kind}`,
+          property.value.span,
+          "imports",
+        ),
+      );
     }
   }
 }
@@ -229,10 +302,15 @@ function joinPath(directory: string, path: string): string {
 }
 
 function relativePath(from: string, target: string): string {
-  const fromParts = cleanPath(from).split("/").filter((part) => part !== "." && part !== "");
-  const targetParts = cleanPath(target).split("/").filter((part) => part !== "." && part !== "");
+  const fromParts = cleanPath(from)
+    .split("/")
+    .filter((part) => part !== "." && part !== "");
+  const targetParts = cleanPath(target)
+    .split("/")
+    .filter((part) => part !== "." && part !== "");
   let shared = 0;
-  while (shared < fromParts.length && shared < targetParts.length && fromParts[shared] === targetParts[shared]) shared++;
+  while (shared < fromParts.length && shared < targetParts.length && fromParts[shared] === targetParts[shared])
+    shared++;
   const result = [...fromParts.slice(shared).map(() => ".."), ...targetParts.slice(shared)].join("/");
   return result === "" ? "." : result;
 }
@@ -256,10 +334,12 @@ function diagnostic(code: string, message: string, span: Span, path: string): Lo
 }
 
 function sortDiagnostics(diagnostics: readonly LoadDiagnostic[]): readonly LoadDiagnostic[] {
-  return [...diagnostics].sort((left, right) =>
-    compareCodePoints(left.span.file, right.span.file)
-    || left.span.start.offset - right.span.start.offset
-    || compareCodePoints(left.code, right.code));
+  return [...diagnostics].sort(
+    (left, right) =>
+      compareCodePoints(left.span.file, right.span.file) ||
+      left.span.start.offset - right.span.start.offset ||
+      compareCodePoints(left.code, right.code),
+  );
 }
 
 function compareCodePoints(left: string, right: string): number {

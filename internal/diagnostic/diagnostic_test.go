@@ -48,7 +48,9 @@ func TestWriteTextSortsAndIncludesOptionalPath(t *testing.T) {
 	}
 	var output bytes.Buffer
 
-	diagnostics.WriteText(&output)
+	if err := diagnostics.WriteText(&output); err != nil {
+		t.Fatal(err)
+	}
 
 	want := "a.kdl:1:2: warning W_JAVASCRIPT_PRESENT: first [output.title]\n" +
 		"b.kdl:3:4: error E_TYPE_MISMATCH: second\n"
@@ -73,6 +75,14 @@ func TestWriteJSONSortsAndPropagatesWriterFailure(t *testing.T) {
 	wantErr := errors.New("write failed")
 	if err := diagnostics.WriteJSON(errorWriter{err: wantErr}); !errors.Is(err, wantErr) {
 		t.Fatalf("WriteJSON error = %v, want %v", err, wantErr)
+	}
+}
+
+func TestWriteTextPropagatesWriterFailure(t *testing.T) {
+	wantErr := errors.New("write failed")
+	diagnostics := List{diagnosticAt("E_KDL_SYNTAX", SeverityError, "a.kdl", 1)}
+	if err := diagnostics.WriteText(errorWriter{err: wantErr}); !errors.Is(err, wantErr) {
+		t.Fatalf("WriteText error = %v, want %v", err, wantErr)
 	}
 }
 

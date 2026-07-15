@@ -19,11 +19,22 @@ assert.equal(packageJSON.engines.node, ">=26");
 assert.match(goMod, /^go 1\.26$/mu);
 assert.deepEqual(matrix.outOfScope, ["windows"]);
 assert.ok(!matrix.targets.some(({ os }) => os === "windows"));
-assert.deepEqual(matrix.targets.map(({ os, arch }) => `${os}/${arch}`).sort(), ["darwin/amd64", "darwin/arm64", "linux/amd64", "linux/arm64"]);
-assert.deepEqual(matrix.browsers.filter(({ blocking }) => blocking).map(({ name }) => name), ["chromium"]);
+assert.deepEqual(matrix.targets.map(({ os, arch }) => `${os}/${arch}`).sort(), [
+  "darwin/amd64",
+  "darwin/arm64",
+  "linux/amd64",
+  "linux/arm64",
+]);
+assert.deepEqual(
+  matrix.browsers.filter(({ blocking }) => blocking).map(({ name }) => name),
+  ["chromium"],
+);
 for (const target of matrix.targets) assert.match(compatibility, new RegExp(`\\b${target.os}/${target.arch}\\b`, "u"));
 
-const requested = values.target === undefined ? matrix.targets : matrix.targets.filter(({ os, arch }) => `${os}/${arch}` === values.target);
+const requested =
+  values.target === undefined
+    ? matrix.targets
+    : matrix.targets.filter(({ os, arch }) => `${os}/${arch}` === values.target);
 assert.ok(requested.length > 0, `unknown support target ${JSON.stringify(values.target)}`);
 const temporary = await mkdtemp(join(tmpdir(), "scrape-kdl-support-"));
 try {

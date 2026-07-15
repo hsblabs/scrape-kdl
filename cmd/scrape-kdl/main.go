@@ -46,6 +46,25 @@ type command struct {
 	io commandIO
 }
 
+type errorTrackingWriter struct {
+	writer io.Writer
+	err    error
+}
+
+func (writer *errorTrackingWriter) Write(data []byte) (int, error) {
+	if writer.err != nil {
+		return 0, writer.err
+	}
+	written, err := writer.writer.Write(data)
+	if err == nil && written != len(data) {
+		err = io.ErrShortWrite
+	}
+	if err != nil {
+		writer.err = err
+	}
+	return written, err
+}
+
 func main() {
 	streams := commandIO{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr}
 	os.Exit(runWithSignals(os.Args[1:], streams))
@@ -84,7 +103,16 @@ func runWithSignals(args []string, streams commandIO) int {
 	}
 }
 
-func runContext(ctx context.Context, args []string, streams commandIO) int {
+func runContext(ctx context.Context, args []string, streams commandIO) (code int) {
+	stdout := &errorTrackingWriter{writer: streams.stdout}
+	stderr := &errorTrackingWriter{writer: streams.stderr}
+	streams.stdout = stdout
+	streams.stderr = stderr
+	defer func() {
+		if stdout.err != nil || stderr.err != nil {
+			code = exitProcessing
+		}
+	}()
 	cli := command{io: streams}
 	if len(args) == 0 {
 		cli.conciseRoot(streams.stderr)
@@ -156,7 +184,9 @@ func (cli command) runValidate(ctx context.Context, args []string) int {
 		return cli.fail(jsonOutput, err)
 	}
 	if len(diagnostics) > 0 {
-		diagnostics.WriteText(cli.io.stderr)
+		if err := diagnostics.WriteText(cli.io.stderr); err != nil {
+			return exitProcessing
+		}
 	}
 	if jsonOutput {
 		if err := cli.writeJSON(struct {
@@ -197,14 +227,18 @@ func (cli command) runCompile(ctx context.Context, args []string) int {
 		return cli.fail(jsonOutput, err)
 	}
 	if len(diagnostics) > 0 {
-		diagnostics.WriteText(cli.io.stderr)
+		if err := diagnostics.WriteText(cli.io.stderr); err != nil {
+			return exitProcessing
+		}
 	}
 	if diagnostics.HasErrors() || program == nil {
 		if jsonOutput {
-			_ = cli.writeJSON(struct {
+			if err := cli.writeJSON(struct {
 				OK          bool            `json:"ok"`
 				Diagnostics diagnostic.List `json:"diagnostics"`
-			}{OK: false, Diagnostics: nonNilDiagnostics(diagnostics)})
+			}{OK: false, Diagnostics: nonNilDiagnostics(diagnostics)}); err != nil {
+				return exitProcessing
+			}
 		}
 		return exitProcessing
 	}
@@ -292,11 +326,15 @@ func (cli command) runExtract(ctx context.Context, args []string) int {
 		return cli.fail(jsonOutput, err)
 	}
 	if len(diagnostics) > 0 {
-		diagnostics.WriteText(cli.io.stderr)
+		if err := diagnostics.WriteText(cli.io.stderr); err != nil {
+			return exitProcessing
+		}
 	}
 	if diagnostics.HasErrors() || program == nil {
 		if jsonOutput {
-			_ = cli.writeJSON(jsonFailure{OK: false, Error: cliError{Message: "compilation failed"}})
+			if err := cli.writeJSON(jsonFailure{OK: false, Error: cliError{Message: "compilation failed"}}); err != nil {
+				return exitProcessing
+			}
 		}
 		return exitProcessing
 	}
@@ -449,14 +487,18 @@ func (cli command) fail(jsonOutput bool, err error) int {
 		if errors.As(err, &execution) {
 			failure = cliError{Code: execution.Code, Message: execution.Message, Path: execution.Path}
 		}
-		_ = cli.writeJSON(jsonFailure{OK: false, Error: failure})
+		if writeErr := cli.writeJSON(jsonFailure{OK: false, Error: failure}); writeErr != nil {
+			return exitProcessing
+		}
 	}
 	return exitProcessing
 }
 
 func (cli command) usageFailure(jsonOutput bool, commandName string, err error) int {
 	if jsonOutput {
-		_ = cli.writeJSON(jsonFailure{OK: false, Error: cliError{Message: err.Error()}})
+		if writeErr := cli.writeJSON(jsonFailure{OK: false, Error: cliError{Message: err.Error()}}); writeErr != nil {
+			return exitProcessing
+		}
 	}
 	return cli.usageError(commandName, err.Error())
 }

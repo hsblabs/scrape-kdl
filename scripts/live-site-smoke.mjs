@@ -14,10 +14,15 @@ const source = `extractor "live-site-smoke" version="2026-07-15" language-versio
 }`;
 const compiled = await compile({ path: "live-site-smoke.kdl", data: source });
 assert.ok(compiled.program, JSON.stringify(compiled.diagnostics));
-await compiled.program.extract({}, {
-  requestTimeoutMs: 15_000,
-  maxResponseBytes: 2 << 20,
-  urlPolicy(_context, url) { assert.equal(url.origin, target.origin, "cross-origin redirect rejected"); },
-  userAgent: "scrape-kdl-live-site-smoke/1",
-});
+await compiled.program.extract(
+  {},
+  {
+    requestTimeoutMs: 15_000,
+    maxResponseBytes: 2 << 20,
+    urlPolicy(_context, url) {
+      assert.equal(url.origin, target.origin, "cross-origin redirect rejected");
+    },
+    userAgent: "scrape-kdl-live-site-smoke/1",
+  },
+);
 console.log(`live-site smoke passed for ${target.origin}`);

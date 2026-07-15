@@ -33,6 +33,7 @@ The reference runtime provides:
 - response-size and timeout limits;
 - a host-supplied URL policy for initial targets and HTTP redirects;
 - JSON-compatible JavaScript result validation;
+- RE2-compatible, linear-time regular-expression execution in both reference runtimes;
 - optional adapter-wide extraction leases to prevent page-operation interleaving;
 - structured error codes that avoid embedding session values.
 

@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { canonicalJSONStringify } from "../dist/canonical-json.js";
 import { supportedIRVersions, supportedLanguageVersions } from "../dist/index.js";
-import { runTypeScriptSlice } from "./manifest-runner.mjs";
+import { runTypeScriptConformance } from "./manifest-runner.mjs";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 
-const manifestResult = await runTypeScriptSlice({ root });
+const manifestResult = await runTypeScriptConformance({ root });
 assert.equal(manifestResult.status, "passed", JSON.stringify(manifestResult.cases.filter((testCase) => testCase.status === "failed"), null, 2));
 assert.equal(manifestResult.cases.length, 17, "the manifest must retain the complete shared TypeScript compiler suite");
 assert.deepEqual(manifestResult.cases.map((testCase) => testCase.id), [

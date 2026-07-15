@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compileContractSlice } from "../dist/compiler.js";
+import { compileSource } from "../dist/compiler.js";
 
 async function compileText(data) {
-  return compileContractSlice({ path: "extractor.kdl", data });
+  return compileSource({ path: "extractor.kdl", data });
 }
 
 test("semantic compiler lowers browser workflows, transforms, defaults, and capabilities", async () => {

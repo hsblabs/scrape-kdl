@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"math"
 	"net/http"
@@ -13,6 +15,12 @@ import (
 
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) {
+	return 0, errors.New("writer failed")
+}
 
 func captureRun(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
@@ -76,6 +84,19 @@ func TestRunTopLevelCommands(t *testing.T) {
 				t.Fatalf("run(%q) = code %d, stdout %q, stderr %q", tt.args, code, stdout, stderr)
 			}
 		})
+	}
+}
+
+func TestRunPropagatesHelpAndVersionWriterFailures(t *testing.T) {
+	for _, args := range [][]string{{"--help"}, {"version"}} {
+		code := runContext(context.Background(), args, commandIO{
+			stdin:  strings.NewReader(""),
+			stdout: failingWriter{},
+			stderr: io.Discard,
+		})
+		if code != exitProcessing {
+			t.Fatalf("runContext(%q) code = %d, want %d", args, code, exitProcessing)
+		}
 	}
 }
 

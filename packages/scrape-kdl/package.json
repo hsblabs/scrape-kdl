@@ -43,6 +43,7 @@
     "access": "public"
   },
   "dependencies": {
-    "parse5": "8.0.1"
+    "parse5": "8.0.1",
+    "re2js": "2.8.6"
   }
 }

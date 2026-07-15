@@ -14,12 +14,17 @@ import (
 
 func (c *Compiler) compileReachableTransforms(root *loadedDocument) []ir.Transform {
 	seen := map[string]bool{}
+	visitedDocuments := map[*loadedDocument]bool{}
 	out := []ir.Transform{}
 	var visit func(*loadedDocument, string)
 	visit = func(d *loadedDocument, origin string) {
 		if d == nil {
 			return
 		}
+		if visitedDocuments[d] {
+			return
+		}
+		visitedDocuments[d] = true
 		for _, alias := range d.importOrder {
 			visit(d.imports[alias], "imported")
 		}

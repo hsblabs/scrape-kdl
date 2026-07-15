@@ -6,23 +6,14 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hsblabs/scrape-kdl/internal/builtincontract"
 	"github.com/hsblabs/scrape-kdl/internal/diagnostic"
 	"github.com/hsblabs/scrape-kdl/internal/kdl"
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
 
-var builtinNames = map[string]struct{}{
-	"trim": {}, "normalize-whitespace": {}, "lowercase": {}, "uppercase": {},
-	"replace": {}, "regex-replace": {}, "regex-capture": {}, "substring": {},
-	"split": {}, "join": {}, "prepend": {}, "append": {}, "parse-int": {},
-	"parse-float": {}, "parse-bool": {}, "to-string": {}, "empty-to-null": {},
-	"coalesce": {}, "url-resolve": {}, "url-query": {}, "url-path": {},
-	"path-segment": {}, "assert-matches": {}, "assert-enum": {},
-	"assert-min": {}, "assert-max": {},
-}
-
 func isBuiltin(name string) bool {
-	_, ok := builtinNames[name]
+	_, ok := builtincontract.Lookup(name)
 	return ok
 }
 
@@ -107,75 +98,41 @@ func applyBuiltin(name string, input typesys.Type, node *kdl.Node) (typesys.Type
 }
 
 func builtinAllowedProperties(name string) map[string]valueExpectation {
-	switch name {
-	case "trim", "normalize-whitespace", "lowercase", "uppercase", "join", "to-string", "empty-to-null", "url-path":
-		if name == "join" {
-			return map[string]valueExpectation{"separator": expectString}
-		}
-		return map[string]valueExpectation{}
-	case "replace":
-		return map[string]valueExpectation{"old": expectString, "new": expectString, "count": expectNonNegativeInt}
-	case "regex-replace":
-		return map[string]valueExpectation{"pattern": expectString, "replacement": expectString, "flags": expectString, "count": expectNonNegativeInt}
-	case "regex-capture":
-		return map[string]valueExpectation{"pattern": expectString, "group": expectNonNegativeInt, "flags": expectString}
-	case "substring":
-		return map[string]valueExpectation{"start": expectInt, "end": expectInt}
-	case "split":
-		return map[string]valueExpectation{"separator": expectString, "limit": expectNonNegativeInt}
-	case "prepend", "append":
-		return map[string]valueExpectation{"value": expectString}
-	case "parse-int":
-		return map[string]valueExpectation{"as": expectString, "radix": expectInt}
-	case "parse-float":
-		return map[string]valueExpectation{"as": expectString}
-	case "parse-bool":
-		return map[string]valueExpectation{"case-sensitive": expectBool, "true": expectString, "false": expectString}
-	case "coalesce":
-		return map[string]valueExpectation{"value": expectScalar}
-	case "url-resolve":
-		return map[string]valueExpectation{"base": expectString}
-	case "url-query":
-		return map[string]valueExpectation{"name": expectString, "index": expectNonNegativeInt}
-	case "path-segment":
-		return map[string]valueExpectation{"index": expectInt}
-	case "assert-matches":
-		return map[string]valueExpectation{"pattern": expectString, "flags": expectString}
-	case "assert-min", "assert-max":
-		return map[string]valueExpectation{"value": expectNumber}
-	case "assert-enum":
-		return map[string]valueExpectation{}
-	default:
+	definition, ok := builtincontract.Lookup(name)
+	if !ok {
 		return nil
 	}
+	result := make(map[string]valueExpectation, len(definition.Properties))
+	for property, expectation := range definition.Properties {
+		result[property] = builtinValueExpectation(expectation)
+	}
+	return result
 }
 
 func builtinRequiredProperties(name string) []string {
-	switch name {
-	case "replace":
-		return []string{"old", "new"}
-	case "regex-replace":
-		return []string{"pattern", "replacement"}
-	case "regex-capture":
-		return []string{"pattern"}
-	case "substring":
-		return []string{"start"}
-	case "split", "join":
-		return []string{"separator"}
-	case "prepend", "append", "coalesce", "assert-min", "assert-max":
-		return []string{"value"}
-	case "parse-int", "parse-float":
-		return []string{"as"}
-	case "url-resolve":
-		return []string{"base"}
-	case "url-query":
-		return []string{"name"}
-	case "path-segment":
-		return []string{"index"}
-	case "assert-matches":
-		return []string{"pattern"}
-	default:
+	definition, ok := builtincontract.Lookup(name)
+	if !ok {
 		return nil
+	}
+	return append([]string(nil), definition.Required...)
+}
+
+func builtinValueExpectation(expectation builtincontract.Expectation) valueExpectation {
+	switch expectation {
+	case builtincontract.String:
+		return expectString
+	case builtincontract.Bool:
+		return expectBool
+	case builtincontract.Int:
+		return expectInt
+	case builtincontract.NonNegativeInt:
+		return expectNonNegativeInt
+	case builtincontract.Number:
+		return expectNumber
+	case builtincontract.Scalar:
+		return expectScalar
+	default:
+		panic(fmt.Sprintf("unknown built-in property expectation %q", expectation))
 	}
 }
 

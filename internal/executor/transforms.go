@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 
+	"github.com/hsblabs/scrape-kdl/internal/builtincontract"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
@@ -48,6 +48,20 @@ func newTransformRuntime(ctx context.Context, extractor *ir.Extractor, external 
 }
 
 func (runtime *transformRuntime) preflight() error {
+	if err := runtime.preflightStatic(); err != nil {
+		return err
+	}
+	return runtime.preflightExternalBindings()
+}
+
+func (runtime *transformRuntime) preflightStatic() error {
+	if err := runtime.preflightExternalDeclarations(); err != nil {
+		return err
+	}
+	return runtime.preflightStaticAfterBindings()
+}
+
+func (runtime *transformRuntime) preflightExternalDeclarations() error {
 	if runtime.hasDuplicate {
 		return &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("duplicate declared transform symbol %q", runtime.duplicateID), Path: "transforms"}
 	}
@@ -58,10 +72,11 @@ func (runtime *transformRuntime) preflight() error {
 		if external.Symbol == "" {
 			return &ExecutionError{Code: "E_IR_INVALID", Message: "external transform symbol must be non-empty", Path: external.Name}
 		}
-		if _, exists := runtime.external[external.Symbol]; !exists {
-			return &ExecutionError{Code: "E_EXTERNAL_TRANSFORM_MISSING", Message: fmt.Sprintf("external transform symbol %q is not registered", external.Symbol), Path: external.Name}
-		}
 	}
+	return nil
+}
+
+func (runtime *transformRuntime) preflightStaticAfterBindings() error {
 	for _, transform := range runtime.extractor.Transforms {
 		switch typed := transform.(type) {
 		case ir.PipelineTransform:
@@ -97,6 +112,15 @@ func (runtime *transformRuntime) preflight() error {
 		}
 	}
 	return runtime.preflightOutputCalls(runtime.extractor.Output)
+}
+
+func (runtime *transformRuntime) preflightExternalBindings() error {
+	for _, external := range runtime.externalDecls {
+		if _, exists := runtime.external[external.Symbol]; !exists {
+			return &ExecutionError{Code: "E_EXTERNAL_TRANSFORM_MISSING", Message: fmt.Sprintf("external transform symbol %q is not registered", external.Symbol), Path: external.Name}
+		}
+	}
+	return nil
 }
 
 func preflightTransformTypes(input, output typesys.Type, path string) error {
@@ -269,40 +293,31 @@ func transformSignature(transform ir.Transform) (typesys.Type, typesys.Type, str
 }
 
 func preflightBuiltinCallSignature(name string, call ir.TransformCall, path string) error {
-	signature := builtinRuntimeSignatures[name]
-	if len(call.PositionalArguments) < signature.minPositional || (signature.maxPositional >= 0 && len(call.PositionalArguments) > signature.maxPositional) {
+	signature, _ := builtincontract.Lookup(name)
+	if len(call.PositionalArguments) < signature.MinPositional || (signature.MaxPositional >= 0 && len(call.PositionalArguments) > signature.MaxPositional) {
 		var cause error
-		if signature.maxPositional < 0 {
-			cause = fmt.Errorf("built-in %q requires at least %d positional arguments, got %d", name, signature.minPositional, len(call.PositionalArguments))
+		if signature.MaxPositional < 0 {
+			cause = fmt.Errorf("built-in %q requires at least %d positional arguments, got %d", name, signature.MinPositional, len(call.PositionalArguments))
 		} else {
-			cause = fmt.Errorf("built-in %q accepts %d..%d positional arguments, got %d", name, signature.minPositional, signature.maxPositional, len(call.PositionalArguments))
+			cause = fmt.Errorf("built-in %q accepts %d..%d positional arguments, got %d", name, signature.MinPositional, signature.MaxPositional, len(call.PositionalArguments))
 		}
 		return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
 	}
 	present := make(map[string]struct{}, len(call.NamedArguments))
 	for _, argument := range call.NamedArguments {
 		present[argument.Name] = struct{}{}
-		if !argumentNameListed(signature.allowed, argument.Name) {
+		if _, allowed := signature.Properties[argument.Name]; !allowed {
 			cause := fmt.Errorf("argument %q is not allowed on built-in %q", argument.Name, name)
 			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
 		}
 	}
-	for _, required := range strings.Fields(signature.required) {
+	for _, required := range signature.Required {
 		if _, ok := present[required]; !ok {
 			cause := fmt.Errorf("built-in %q requires argument %q", name, required)
 			return &ExecutionError{Code: "E_TRANSFORM", Message: cause.Error(), Path: path, Cause: cause}
 		}
 	}
 	return nil
-}
-
-func argumentNameListed(names, name string) bool {
-	for _, candidate := range strings.Fields(names) {
-		if candidate == name {
-			return true
-		}
-	}
-	return false
 }
 
 func preflightCallArguments(call ir.TransformCall, path string) error {

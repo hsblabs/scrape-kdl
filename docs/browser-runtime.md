@@ -41,6 +41,12 @@ type BrowserAdapter interface {
 
 `BrowserElement` is opaque. A Playwright adapter can store a Locator or ElementHandle; a go-rod adapter can store `*rod.Element`.
 
+## Optional bounded query
+
+Adapters may implement `BrowserAdapterQueryLimit` with `QueryLimit(context.Context, BrowserElement, string, int)`. The TypeScript equivalent exposes `queryLimit(scope, selector, limit, options)`. The runtime uses this capability for `match="first"` and `match="one"`, where at most one or two handles are needed, and falls back to `QueryAll` for existing adapters. The core passes only positive limits; adapters should return no more than that many handles in document order.
+
+The official Playwright adapter bounds the returned locator handles without materializing the complete match set. The go-rod adapter currently preserves compatibility by truncating its query result; a future adapter-native bounded query can improve transport cost without changing the core contract.
+
 ## Optional extraction lease
 
 Adapters wrapping a single mutable page should implement:
@@ -56,6 +62,8 @@ The runtime holds the lease across navigation, workflow, and all output reads. `
 This contract prevents operations from two concurrent extractions from interleaving on one page. It does not create parallelism; use multiple pages/adapters for that.
 
 The TypeScript contract mirrors these operations with promises, millisecond timeout fields, and optional `AbortSignal` values. `BrowserAdapterLease.acquire(signal)` resolves to an idempotent release callback. The official implementation and its concrete lifecycle are documented separately in `docs/playwright-adapter.md`.
+
+Compiled programs prepare immutable selectors, transforms, regular expressions, and output preflight state once. Per-extraction inputs, external-transform bindings, cancellation, session state, URL policy, and browser leases remain dynamic and are never cached in that prepared plan.
 
 ## Scope
 

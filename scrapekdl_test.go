@@ -183,7 +183,7 @@ func TestPublicExtractPreservesContextCancellation(t *testing.T) {
 	cancel()
 	_, err := program.Extract(ctx, map[string]any{"id": "42"}, scrapekdl.Options{})
 	var executionError *scrapekdl.ExecutionError
-	if !errors.As(err, &executionError) || executionError.Code != "E_HTTP_FETCH" {
+	if !errors.As(err, &executionError) || executionError.Code != "E_EXECUTION_CANCELED" {
 		t.Fatalf("canceled extraction error = %v", err)
 	}
 	if !errors.Is(err, context.Canceled) {

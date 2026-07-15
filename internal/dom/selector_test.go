@@ -39,6 +39,71 @@ func TestQueryAllPortableSelectors(t *testing.T) {
 	}
 }
 
+func TestQueryLimitPreservesDocumentOrderAndStopsAtLimit(t *testing.T) {
+	document, err := ParseHTML(strings.NewReader(`<main><i id="one"></i><i id="two"></i><i id="three"></i></main>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	selector, err := ParseSelector("i")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	limited := QueryLimit(document, selector, 2)
+	if len(limited) != 2 {
+		t.Fatalf("limited matches = %d, want 2", len(limited))
+	}
+	for index, want := range []string{"one", "two"} {
+		if got, _ := limited[index].Attr("id"); got != want {
+			t.Fatalf("limited[%d] id = %q, want %q", index, got, want)
+		}
+	}
+	if got := len(QueryLimit(document, selector, 0)); got != 3 {
+		t.Fatalf("unbounded matches = %d, want 3", got)
+	}
+}
+
+func BenchmarkQueryAllLargeDocument(b *testing.B) {
+	document, selector := benchmarkSelectorDocument(b)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		if got := len(QueryAll(document, selector)); got != 10_000 {
+			b.Fatalf("matches = %d", got)
+		}
+	}
+}
+
+func BenchmarkQueryLimitLargeDocument(b *testing.B) {
+	document, selector := benchmarkSelectorDocument(b)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		if got := len(QueryLimit(document, selector, 1)); got != 1 {
+			b.Fatalf("matches = %d", got)
+		}
+	}
+}
+
+func benchmarkSelectorDocument(b *testing.B) (*Node, Selector) {
+	b.Helper()
+	var source strings.Builder
+	source.WriteString("<main>")
+	for range 10_000 {
+		source.WriteString(`<i class="entry"></i>`)
+	}
+	source.WriteString("</main>")
+	document, err := ParseHTML(strings.NewReader(source.String()))
+	if err != nil {
+		b.Fatal(err)
+	}
+	selector, err := ParseSelector(".entry")
+	if err != nil {
+		b.Fatal(err)
+	}
+	return document, selector
+}
+
 func TestQueryAllPortableSelectorOperatorsAndTypePseudos(t *testing.T) {
 	document := mustParseHTML(t, `<main>
 <div id="attrs" data-token="alpha beta" lang="en-US" data-value="prefix-middle-suffix"></div>

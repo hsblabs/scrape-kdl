@@ -70,13 +70,19 @@ func ParseSelector(input string) (Selector, error) {
 }
 
 func QueryAll(root *Node, selector Selector) []*Node {
+	return QueryLimit(root, selector, 0)
+}
+
+// QueryLimit returns matching descendants in document order and stops after
+// limit matches. A non-positive limit preserves QueryAll behavior.
+func QueryLimit(root *Node, selector Selector, limit int) []*Node {
 	if root == nil {
 		return nil
 	}
 	seen := map[*Node]bool{}
 	result := make([]*Node, 0)
-	var walk func(*Node)
-	walk = func(node *Node) {
+	var walk func(*Node) bool
+	walk = func(node *Node) bool {
 		for _, child := range node.Children {
 			if child.Type == ElementNode {
 				for _, group := range selector.Groups {
@@ -84,13 +90,19 @@ func QueryAll(root *Node, selector Selector) []*Node {
 						if !seen[child] {
 							seen[child] = true
 							result = append(result, child)
+							if limit > 0 && len(result) >= limit {
+								return true
+							}
 						}
 						break
 					}
 				}
-				walk(child)
+				if walk(child) {
+					return true
+				}
 			}
 		}
+		return false
 	}
 	walk(root)
 	return result
@@ -208,30 +220,27 @@ func matchAttribute(actual string, present bool, selector AttributeSelector) boo
 func matchPseudo(node *Node, pseudo PseudoSelector) bool {
 	switch pseudo.Name {
 	case "first-child":
-		children := node.Parent.ElementChildren()
-		return len(children) > 0 && children[0] == node
+		return node.elementIndex == 1
 	case "last-child":
-		children := node.Parent.ElementChildren()
-		return len(children) > 0 && children[len(children)-1] == node
+		return node.Parent != nil && node.elementIndex == node.Parent.elementCount
 	case "only-child":
-		children := node.Parent.ElementChildren()
-		return len(children) == 1 && children[0] == node
+		return node.Parent != nil && node.Parent.elementCount == 1
 	case "empty":
 		return node.IsEmpty()
 	case "first-of-type":
-		return elementTypePosition(node, false) == 1
+		return node.typeIndex == 1
 	case "last-of-type":
-		return elementTypePosition(node, true) == 1
+		return reverseTypePosition(node) == 1
 	case "only-of-type":
-		return countElementTypeSiblings(node) == 1
+		return node.Parent != nil && node.Parent.typeCounts[node.Tag] == 1
 	case "nth-child":
-		return pseudo.Nth != nil && pseudo.Nth.matches(elementPosition(node, false))
+		return pseudo.Nth != nil && pseudo.Nth.matches(node.elementIndex)
 	case "nth-last-child":
-		return pseudo.Nth != nil && pseudo.Nth.matches(elementPosition(node, true))
+		return pseudo.Nth != nil && node.Parent != nil && pseudo.Nth.matches(node.Parent.elementCount-node.elementIndex+1)
 	case "nth-of-type":
-		return pseudo.Nth != nil && pseudo.Nth.matches(elementTypePosition(node, false))
+		return pseudo.Nth != nil && pseudo.Nth.matches(node.typeIndex)
 	case "nth-last-of-type":
-		return pseudo.Nth != nil && pseudo.Nth.matches(elementTypePosition(node, true))
+		return pseudo.Nth != nil && pseudo.Nth.matches(reverseTypePosition(node))
 	case "not":
 		return pseudo.Negation != nil && !matchesCompound(node, *pseudo.Negation)
 	default:
@@ -239,57 +248,11 @@ func matchPseudo(node *Node, pseudo PseudoSelector) bool {
 	}
 }
 
-func elementPosition(node *Node, reverse bool) int {
-	children := node.Parent.ElementChildren()
-	if reverse {
-		for i := len(children) - 1; i >= 0; i-- {
-			if children[i] == node {
-				return len(children) - i
-			}
-		}
+func reverseTypePosition(node *Node) int {
+	if node.Parent == nil {
 		return 0
 	}
-	for i, child := range children {
-		if child == node {
-			return i + 1
-		}
-	}
-	return 0
-}
-
-func elementTypePosition(node *Node, reverse bool) int {
-	children := node.Parent.ElementChildren()
-	position := 0
-	if reverse {
-		for i := len(children) - 1; i >= 0; i-- {
-			if strings.EqualFold(children[i].Tag, node.Tag) {
-				position++
-			}
-			if children[i] == node {
-				return position
-			}
-		}
-		return 0
-	}
-	for _, child := range children {
-		if strings.EqualFold(child.Tag, node.Tag) {
-			position++
-		}
-		if child == node {
-			return position
-		}
-	}
-	return 0
-}
-
-func countElementTypeSiblings(node *Node) int {
-	count := 0
-	for _, child := range node.Parent.ElementChildren() {
-		if strings.EqualFold(child.Tag, node.Tag) {
-			count++
-		}
-	}
-	return count
+	return node.Parent.typeCounts[node.Tag] - node.typeIndex + 1
 }
 
 func (expression NthExpression) matches(position int) bool {

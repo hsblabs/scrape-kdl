@@ -371,6 +371,17 @@ func (a *Adapter) QueryAll(ctx context.Context, scope scrapekdl.BrowserElement, 
 	return out, nil
 }
 
+func (a *Adapter) QueryLimit(ctx context.Context, scope scrapekdl.BrowserElement, selector string, limit int) ([]scrapekdl.BrowserElement, error) {
+	elements, err := a.QueryAll(ctx, scope, selector)
+	if err != nil {
+		return nil, err
+	}
+	if limit >= 0 && len(elements) > limit {
+		return elements[:limit], nil
+	}
+	return elements, nil
+}
+
 func (a *Adapter) Text(ctx context.Context, element scrapekdl.BrowserElement) (string, error) {
 	el, err := rodElement(ctx, element)
 	if err != nil {

@@ -10,44 +10,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hsblabs/scrape-kdl/internal/builtincontract"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
 
-type builtinRuntimeSignature struct {
-	allowed       string
-	required      string
-	minPositional int
-	maxPositional int
-}
-
-var builtinRuntimeSignatures = map[string]builtinRuntimeSignature{
-	"trim": {}, "normalize-whitespace": {}, "lowercase": {}, "uppercase": {},
-	"replace":        {allowed: "old new count", required: "old new"},
-	"regex-replace":  {allowed: "pattern replacement flags count", required: "pattern replacement"},
-	"regex-capture":  {allowed: "pattern group flags", required: "pattern"},
-	"substring":      {allowed: "start end", required: "start"},
-	"split":          {allowed: "separator limit", required: "separator"},
-	"join":           {allowed: "separator", required: "separator"},
-	"prepend":        {allowed: "value", required: "value"},
-	"append":         {allowed: "value", required: "value"},
-	"parse-int":      {allowed: "as radix", required: "as"},
-	"parse-float":    {allowed: "as", required: "as"},
-	"parse-bool":     {allowed: "case-sensitive true false"},
-	"to-string":      {},
-	"empty-to-null":  {},
-	"coalesce":       {allowed: "value", required: "value"},
-	"url-resolve":    {allowed: "base", required: "base"},
-	"url-query":      {allowed: "name index", required: "name"},
-	"url-path":       {},
-	"path-segment":   {allowed: "index", required: "index"},
-	"assert-matches": {allowed: "pattern flags", required: "pattern"},
-	"assert-enum":    {minPositional: 1, maxPositional: -1},
-	"assert-min":     {allowed: "value", required: "value"},
-	"assert-max":     {allowed: "value", required: "value"},
-}
-
 func isKnownBuiltinRuntime(name string) bool {
-	_, ok := builtinRuntimeSignatures[name]
+	_, ok := builtincontract.Lookup(name)
 	return ok
 }
 

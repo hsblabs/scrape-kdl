@@ -29,6 +29,19 @@ This includes:
 - CLI build, validation, offline extraction, and version output;
 - go-rod adapter compilation and tests against the local API contract stub.
 
+## Architecture and performance hardening
+
+The pre-Issue #18 architecture review changes passed `make verify`, `make release-check`, `make test-rod`, `make test-rod-e2e`, and `make test-playwright-e2e`. The checks cover the shared HTTP/browser output walker, immutable prepared execution plans, RE2-compatible TypeScript regular expressions, cross-runtime cancellation, exact public API/IR/diagnostic/built-in contract gates, and CLI writer failures.
+
+The 10,000-element selector probe measured the following on Apple M2:
+
+| Runtime | Full query | First-result query |
+| --- | ---: | ---: |
+| Go | 1.045 ms | 0.00017 ms |
+| TypeScript | 2.322 ms | 0.001 ms |
+
+The Go benchmark reported 1,061,877 B and 10,097 allocations per full query versus 24 B and 2 allocations for the first-result query. These observations are environment-specific evidence, not an absolute v1 performance SLA.
+
 ## Parser fuzz smoke
 
 Passed three independent short fuzz runs:
@@ -64,7 +77,7 @@ Passed:
 - all `.github/**/*.yml` files parsed as YAML;
 - `actionlint` validation of all GitHub Actions workflows;
 - the pinned Node.js 26 / `npm ci` API-contract workflow path;
-- the Node.js 26 TypeScript contract-slice and conformance-coverage workflow paths;
+- the complete Node.js 26 TypeScript contract and conformance-coverage workflow paths;
 - the Node.js 26 package verification gate on Linux and macOS, including public root and `./node` entry-point imports;
 - fixture registration, missing-artifact, suite-selection, result-schema, and unapproved-divergence failure tests;
 - core and adapter semantic-version tag validation;
@@ -79,6 +92,7 @@ Passed:
 - `go mod verify` for the go-rod adapter through an isolated local workspace;
 - `staticcheck` from `honnef.co/go/tools v0.7.0` for the root module and go-rod adapter;
 - `govulncheck` from `golang.org/x/vuln v1.6.0` for the root module and go-rod adapter, with no reachable vulnerabilities found;
+- `npm audit --omit=dev`, with no known runtime dependency vulnerabilities found;
 - ten shuffled repetitions of the root test suite.
 
 The scan tools were run through temporary `go install ...@latest` binaries. Adapter scans used a temporary source copy with a local root-module replacement so the committed release-clean `adapters/rod/go.mod` and `go.sum` remained unchanged.

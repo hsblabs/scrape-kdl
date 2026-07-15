@@ -170,6 +170,39 @@ func TestExecuteFieldWarningAndExternalTransform(t *testing.T) {
 	}
 }
 
+func TestExecuteHTMLCollectionMaximumStopsAtFirstOverflow(t *testing.T) {
+	path := compileTestSpec(t, `extractor "collection-maximum" version="2026-07-15" language-version="2026-07-15" {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  transform "observe" input="string" output="string" { external symbol="observe" }
+  collection "items" max-items=1 {
+    select "li"
+    field "value" type="string" required=#true {
+      select ".value"; value "text"; apply "observe"
+    }
+  }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	calls := 0
+	_, err := ExecuteHTML(context.Background(), extractor, `<li><b class="value">1</b></li><li><b class="value">2</b></li><li><b class="value">3</b></li>`, Options{
+		ExternalTransforms: map[string]ExternalTransform{
+			"observe": func(_ context.Context, input any) (any, error) {
+				calls++
+				return input, nil
+			},
+		},
+	})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_COLLECTION_CARDINALITY" {
+		t.Fatalf("error = %#v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("external transform calls = %d, want 2", calls)
+	}
+}
+
 func TestExecuteHTMLCancellationBoundaries(t *testing.T) {
 	path := compileTestSpec(t, `extractor "offline-cancellation" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
@@ -1714,7 +1747,7 @@ func TestExecuteHTTPPreservesParentCancellation(t *testing.T) {
 
 	_, err := Execute(ctx, extractor, nil, Options{HTTPClient: client})
 	var execution *ExecutionError
-	if !errors.As(err, &execution) || execution.Code != "E_HTTP_FETCH" {
+	if !errors.As(err, &execution) || execution.Code != "E_EXECUTION_CANCELED" {
 		t.Fatalf("error = %v", err)
 	}
 	if !errors.Is(err, context.Canceled) {

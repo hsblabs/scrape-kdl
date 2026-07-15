@@ -1,8 +1,12 @@
-import { compileContractSlice } from "./compiler.js";
-import { executeProgram } from "./runtime.js";
+import {
+  compileSource,
+  supportedIRVersions as compilerSupportedIRVersions,
+  supportedLanguageVersions as compilerSupportedLanguageVersions,
+} from "./compiler.js";
+import { executeProgram, prepareRuntime, type RuntimePlan } from "./runtime.js";
 import type { DiagnosticIR, ExtractorIR, JsonValue } from "./ir.js";
 
-export type * from "./ir.js";
+export type { DiagnosticIR, ExtractorIR, JsonValue } from "./ir.js";
 export { ExecutionError } from "./execution-error.js";
 
 export interface Source {
@@ -53,7 +57,7 @@ export interface Program {
 
 export async function compile(source: Source, options: CompileOptions = {}): Promise<CompileResult> {
   options.signal?.throwIfAborted();
-  const result = await compileContractSlice(source, options);
+  const result = await compileSource(source, options);
   options.signal?.throwIfAborted();
   if (result.ir === undefined) return { diagnostics: result.diagnostics };
   return { program: new ProgramSnapshot(result.ir), diagnostics: result.diagnostics };
@@ -64,11 +68,11 @@ export async function validate(source: Source, options: CompileOptions = {}): Pr
 }
 
 export function supportedLanguageVersions(): readonly string[] {
-  return Object.freeze(["2026-07-15"]);
+  return Object.freeze([...compilerSupportedLanguageVersions()]);
 }
 
 export function supportedIRVersions(): readonly string[] {
-  return Object.freeze(["2026-07-15"]);
+  return Object.freeze([...compilerSupportedIRVersions()]);
 }
 
 export interface ExternalTransformContext {
@@ -115,21 +119,42 @@ export interface BrowserOperationOptions {
 
 export interface BrowserAdapter {
   navigate(url: string, options: BrowserNavigateOptions): Promise<void>;
-  waitFor(selector: string, state: "attached" | "visible" | "hidden" | "detached", options: BrowserOperationOptions): Promise<void>;
+  waitFor(
+    selector: string,
+    state: "attached" | "visible" | "hidden" | "detached",
+    options: BrowserOperationOptions,
+  ): Promise<void>;
   click(selector: string, options: BrowserOperationOptions): Promise<void>;
   fill(selector: string, value: string, options: BrowserOperationOptions): Promise<void>;
   press(selector: string, key: string, options: BrowserOperationOptions): Promise<void>;
   scroll(x: number, y: number, options: Pick<BrowserOperationOptions, "signal">): Promise<void>;
   waitForNetworkIdle(idleMs: number, options: BrowserOperationOptions): Promise<void>;
   evaluate(source: string, options: BrowserEvaluateOptions): Promise<JsonValue>;
-  queryAll(scope: BrowserElement | undefined, selector: string, options: Pick<BrowserOperationOptions, "signal">): Promise<readonly BrowserElement[]>;
+  queryAll(
+    scope: BrowserElement | undefined,
+    selector: string,
+    options: Pick<BrowserOperationOptions, "signal">,
+  ): Promise<readonly BrowserElement[]>;
   text(element: BrowserElement, options: Pick<BrowserOperationOptions, "signal">): Promise<string>;
   html(element: BrowserElement, options: Pick<BrowserOperationOptions, "signal">): Promise<string>;
-  attribute(element: BrowserElement, name: string, options: Pick<BrowserOperationOptions, "signal">): Promise<string | undefined>;
+  attribute(
+    element: BrowserElement,
+    name: string,
+    options: Pick<BrowserOperationOptions, "signal">,
+  ): Promise<string | undefined>;
 }
 
 export interface BrowserAdapterLease {
   acquire(signal?: AbortSignal): Promise<() => void>;
+}
+
+export interface BrowserAdapterQueryLimit {
+  queryLimit(
+    scope: BrowserElement | undefined,
+    selector: string,
+    limit: number,
+    options: Pick<BrowserOperationOptions, "signal">,
+  ): Promise<readonly BrowserElement[]>;
 }
 
 export interface URLPolicyContext {
@@ -165,9 +190,11 @@ export interface ExtractionResult {
 class ProgramSnapshot implements Program {
   readonly ir: ExtractorIR;
   readonly metadata: ProgramMetadata;
+  readonly #plan: RuntimePlan;
 
   constructor(ir: ExtractorIR) {
     this.ir = deepFreeze(structuredClone(ir));
+    this.#plan = prepareRuntime(this.ir, this.ir.source.fetch.mode);
     this.metadata = deepFreeze({
       name: ir.name,
       version: ir.version,
@@ -178,8 +205,11 @@ class ProgramSnapshot implements Program {
     });
   }
 
-  async extract(inputs: Readonly<Record<string, JsonValue>> = {}, options: ExecutionOptions = {}): Promise<ExtractionResult> {
-    return executeProgram(this.ir, inputs, options);
+  async extract(
+    inputs: Readonly<Record<string, JsonValue>> = {},
+    options: ExecutionOptions = {},
+  ): Promise<ExtractionResult> {
+    return executeProgram(this.ir, inputs, options, this.#plan);
   }
 }
 

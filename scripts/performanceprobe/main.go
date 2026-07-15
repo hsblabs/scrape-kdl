@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	scrapekdl "github.com/hsblabs/scrape-kdl"
+	"github.com/hsblabs/scrape-kdl/internal/dom"
 )
 
 const (
@@ -43,10 +45,32 @@ func main() {
 	}
 	compileCalibration := func() { var value any; must(json.Unmarshal(irData, &value)) }
 	extractCalibration := func() { var value any; must(json.Unmarshal(outputData, &value)) }
+	var selectorHTML strings.Builder
+	selectorHTML.WriteString("<main>")
+	for range 10_000 {
+		selectorHTML.WriteString(`<i class="entry"></i>`)
+	}
+	selectorHTML.WriteString("</main>")
+	document, err := dom.ParseHTML(strings.NewReader(selectorHTML.String()))
+	must(err)
+	selector, err := dom.ParseSelector(".entry")
+	must(err)
+	selectorAll := func() {
+		if len(dom.QueryAll(document, selector)) != 10_000 {
+			panic("selector all workload failed")
+		}
+	}
+	selectorFirst := func() {
+		if len(dom.QueryLimit(document, selector, 1)) != 1 {
+			panic("selector first workload failed")
+		}
+	}
 
 	result := map[string]float64{
-		"compileRatio": ratio(measure(compile), measure(compileCalibration)),
-		"extractRatio": ratio(measure(extract), measure(extractCalibration)),
+		"compileRatio":        ratio(measure(compile), measure(compileCalibration)),
+		"extractRatio":        ratio(measure(extract), measure(extractCalibration)),
+		"selectorAllMillis":   milliseconds(measure(selectorAll)),
+		"selectorFirstMillis": milliseconds(measure(selectorFirst)),
 	}
 	encoded, err := json.Marshal(result)
 	must(err)
@@ -71,6 +95,10 @@ func measure(operation func()) time.Duration {
 
 func ratio(workload, calibration time.Duration) float64 {
 	return float64(workload) / float64(calibration)
+}
+
+func milliseconds(duration time.Duration) float64 {
+	return float64(duration) / float64(time.Millisecond)
 }
 
 func mustRead(path string) []byte {

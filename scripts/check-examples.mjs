@@ -18,14 +18,24 @@ for (const entry of await readdir(examplesRoot, { withFileTypes: true })) {
   const source = await readFile(sourcePath);
   const compiled = await compile(
     { path: relative(root, sourcePath), data: source },
-    { loader: { async load(path) { return readFile(join(root, path)); } } },
+    {
+      loader: {
+        async load(path) {
+          return readFile(join(root, path));
+        },
+      },
+    },
   );
   assert.ok(compiled.program, `${entry.name}: ${JSON.stringify(compiled.diagnostics)}`);
   assert.equal(compiled.program.metadata.name, manifest.name);
   assert.equal(compiled.program.metadata.languageVersion, manifest.languageVersion);
   assert.equal(compiled.program.metadata.irVersion, manifest.irVersion);
   const expectedIR = JSON.parse(await readFile(join(directory, manifest.expected.ir), "utf8"));
-  assert.equal(canonicalJSONStringify(compiled.program.ir), canonicalJSONStringify(expectedIR), `${entry.name}: IR differs`);
+  assert.equal(
+    canonicalJSONStringify(compiled.program.ir),
+    canonicalJSONStringify(expectedIR),
+    `${entry.name}: IR differs`,
+  );
   const inputs = JSON.parse(await readFile(join(directory, manifest.inputs), "utf8"));
   const expectedOutput = JSON.parse(await readFile(join(directory, manifest.expected.output), "utf8"));
   const selected = manifest.executions.filter(({ implementation }) => implementation === "typescript");
@@ -33,13 +43,20 @@ for (const entry of await readdir(examplesRoot, { withFileTypes: true })) {
   for (const execution of selected) {
     assert.notEqual(execution.mode, "browser", `${entry.name}: browser entries run in the official adapter gate`);
     const html = await readFile(join(directory, execution.fixture));
-    const result = execution.mode === "offline-html"
-      ? await executeHTML(compiled.program.ir, html.toString())
-      : await compiled.program.extract(inputs, {
-        fetch: fixtureFetch(html),
-        urlPolicy(_context, url) { assert.equal(url.hostname, "example.invalid"); },
-      });
-    assert.equal(canonicalJSONStringify(result), canonicalJSONStringify(expectedOutput), `${entry.name}/${execution.mode}: output differs`);
+    const result =
+      execution.mode === "offline-html"
+        ? await executeHTML(compiled.program.ir, html.toString())
+        : await compiled.program.extract(inputs, {
+            fetch: fixtureFetch(html),
+            urlPolicy(_context, url) {
+              assert.equal(url.hostname, "example.invalid");
+            },
+          });
+    assert.equal(
+      canonicalJSONStringify(result),
+      canonicalJSONStringify(expectedOutput),
+      `${entry.name}/${execution.mode}: output differs`,
+    );
     executions++;
   }
   examples++;

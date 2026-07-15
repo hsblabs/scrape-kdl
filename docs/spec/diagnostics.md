@@ -126,7 +126,7 @@ The following codes are emitted by an interpreter or browser adapter after stati
 - `E_TRANSFORM`: transform execution failed without a more specific code.
 - `E_EXTERNAL_TRANSFORM`: external transform returned an error.
 - `E_EXTERNAL_TRANSFORM_RESULT_TYPE`: external transform returned a value incompatible with its declared output type.
-- `E_EXECUTION_CANCELED`: execution was canceled at a runtime-managed parsing or output-traversal boundary.
+- `E_EXECUTION_CANCELED`: execution was canceled before or during fetch, navigation, workflow, query, read, JavaScript evaluation, parsing, transform execution, or output traversal.
 - `E_OUTPUT_TYPE`: runtime value does not match the field output type.
 
 ## Warnings

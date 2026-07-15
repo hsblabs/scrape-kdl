@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { attribute, innerHTML, parseHTML, queryAll, textContent } from "../dist/dom.js";
 import { compile, ExecutionError } from "../dist/index.js";
@@ -27,6 +28,10 @@ test("parse5 DOM boundary implements the portable selector profile", () => {
     ["#types > span:nth-of-type(2n+1)", 2], ["#types > span:nth-last-of-type(2)", 1],
   ]);
   for (const [selector, count] of cases) assert.equal(queryAll(document, selector).length, count, selector);
+  assert.deepEqual(
+    queryAll(document, "li.entry", 2).map((node) => attribute(node, "data-k")),
+    ["a", "b"],
+  );
   const items = queryAll(document, "#items")[0];
   assert.equal(textContent(items), "ABC");
   assert.equal(attribute(items, "class"), "list");
@@ -67,6 +72,42 @@ test("HTTP runtime matches the shared fixture and runs every built-in family", a
       resolved: "https://example.test/horse", query: "two", path: "/horse/abc", segment: "abc", enum: "Alpha",
     }, warnings: [], partial: false,
   });
+});
+
+test("portable regex execution remains linear for a nested repetition mismatch", async () => {
+  const program = await compileSpec(`${sourcePrefix}
+  field "value" type="string?" required=#false {
+    select "#value"; value "text"; apply "assert-matches" pattern="^(a+)+$"; on-error "warn"
+  }
+}`);
+  const started = performance.now();
+  const result = await executeHTML(program.ir, `<span id="value">${"a".repeat(10_000)}!</span>`);
+  assert.ok(performance.now() - started < 1_000, "portable regex exceeded the bounded linear-time regression budget");
+  assert.equal(result.value.value, null);
+  assert.equal(result.partial, true);
+});
+
+test("collection max-items stops before processing rows beyond the first overflow", async () => {
+  const program = await compileSpec(`${sourcePrefix}
+  transform "observe" input="string" output="string" { external symbol="observe" }
+  collection "items" max-items=1 {
+    select "li"
+    field "value" type="string" required=#true { select ".value"; value "text"; apply "observe" }
+  }
+}`);
+  let calls = 0;
+  await assert.rejects(
+    executeHTML(program.ir, `<li><b class="value">1</b></li><li><b class="value">2</b></li><li><b class="value">3</b></li>`, {
+      externalTransforms: {
+        async observe(_context, input) {
+          calls++;
+          return input;
+        },
+      },
+    }),
+    (error) => error instanceof ExecutionError && error.code === "E_COLLECTION_CARDINALITY",
+  );
+  assert.equal(calls, 2);
 });
 
 test("missing values, field recovery, and row recovery match stable result semantics", async () => {
@@ -178,4 +219,15 @@ test("response bounds, timeout, cancellation, and charset decoding have stable c
   const bytes = new Uint8Array([60, 104, 49, 62, 0x80, 60, 47, 104, 49, 62]);
   const decoded = await program.extract({ id: "x" }, { fetch: async () => new Response(bytes, { headers: { "content-type": "text/html; charset=windows-1252" } }) });
   assert.equal(decoded.value.title, "€");
+});
+
+test("cancellation code matches the shared runtime contract", async () => {
+  const contract = JSON.parse(await readFile(new URL("../../../testdata/runtime-contract/cancellation.json", import.meta.url), "utf8"));
+  const program = await compileSpec(`${sourcePrefix}
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}`);
+  const controller = new AbortController();
+  controller.abort(new Error("canceled"));
+  await assert.rejects(program.extract({ id: "x" }, { signal: controller.signal }),
+    (error) => error instanceof ExecutionError && error.code === contract.code);
 });

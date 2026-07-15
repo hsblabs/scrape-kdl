@@ -62,6 +62,10 @@ class FakeBrowser {
     if (scope?.id.startsWith("row-") && selector === ".label") return [element(`${scope.id}-label`, scope.id === "row-1" ? "A" : "B")];
     return [];
   }
+  async queryLimit(scope, selector, limit, options) {
+    this.calls.push(["queryLimit", selector, limit, options]);
+    return (await this.queryAll(scope, selector)).slice(0, limit);
+  }
   async text(value) { return value.text; }
   async html(value) { return value.html; }
   async attribute(value, name) { return value.attributes[name]; }
@@ -82,6 +86,10 @@ test("browser runtime executes workflows, live reads, transforms, and JavaScript
   assert.equal(browser.calls[0][1], "https://example.test/browser%20fixture");
   assert.equal(browser.calls[0][2].session, session);
   assert.deepEqual(browser.calls.slice(1, 8).map((call) => call[0]), ["waitFor", "click", "fill", "press", "scroll", "networkIdle", "evaluate"]);
+  assert.deepEqual(
+    browser.calls.filter((call) => call[0] === "queryLimit").map((call) => [call[1], call[2]]),
+    [["h1", 2], ["h1", 2], [".id", 2], [".label", 2], [".id", 2], [".label", 2]],
+  );
 });
 
 test("JavaScript, policy, input, and runtime failures occur before browser navigation", async () => {

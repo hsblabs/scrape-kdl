@@ -46,7 +46,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	}
 	if *implementation != "go" {
 		fmt.Fprintf(stderr, "conformance-runner: implementation %q is not available in the Go runner\n", *implementation)
-		fmt.Fprintln(stderr, "Use packages/scrape-kdl/test/manifest-runner.mjs for the TypeScript slice.")
+		fmt.Fprintln(stderr, "Use packages/scrape-kdl/test/manifest-runner.mjs for TypeScript conformance.")
 		return 2
 	}
 	manifest, err := conformance.LoadManifest(*manifestPath)

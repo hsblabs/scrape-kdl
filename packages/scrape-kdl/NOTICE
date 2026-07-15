@@ -2,3 +2,6 @@ scrape-kdl
 Copyright 2026 hsblabs contributors
 
 Licensed under the Apache License, Version 2.0.
+
+This product includes RE2JS, Copyright (c) 2023 Oleksii Vasyliev,
+licensed under the MIT License.

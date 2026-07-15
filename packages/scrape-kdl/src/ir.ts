@@ -116,13 +116,7 @@ export interface InputTemplateSegmentIR {
 }
 
 export type WorkflowStepIR =
-  | WaitForStepIR
-  | ClickStepIR
-  | FillStepIR
-  | PressStepIR
-  | ScrollStepIR
-  | NetworkIdleStepIR
-  | EvaluateJavaScriptStepIR;
+  WaitForStepIR | ClickStepIR | FillStepIR | PressStepIR | ScrollStepIR | NetworkIdleStepIR | EvaluateJavaScriptStepIR;
 
 interface WorkflowStepBase {
   readonly span: SourceSpan;

@@ -50,7 +50,7 @@
     "runtime": { "description": "Offline extraction comparisons." },
     "html": { "description": "Pinned HTML input and observation cases." },
     "browser": { "description": "Browser-contract and official-adapter cases." },
-    "typescript-slice": { "description": "The complete release-blocking TypeScript semantic compiler cross-check." }
+    "typescript-core": { "description": "The complete release-blocking TypeScript semantic compiler cross-check." }
   },
   "approvedDivergences": [],
   "cases": [
@@ -58,7 +58,7 @@
       "id": "valid.basic-http",
       "status": "release-blocking",
       "categories": ["valid", "ir", "runtime", "html"],
-      "suites": ["pr", "release", "language", "ir", "runtime", "html", "typescript-slice"],
+      "suites": ["pr", "release", "language", "ir", "runtime", "html", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/valid/basic-http.kdl", "role": "source" },
         { "path": "fixtures/expected-ir/basic-http.ir.json", "role": "expected-ir" },
@@ -82,7 +82,7 @@
       "id": "valid.race-detail",
       "status": "release-blocking",
       "categories": ["valid", "ir"],
-      "suites": ["pr", "release", "language", "ir", "typescript-slice"],
+      "suites": ["pr", "release", "language", "ir", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/valid/race-detail.kdl", "role": "source" },
         { "path": "fixtures/modules/common.kdl", "role": "import" },
@@ -98,7 +98,7 @@
       "id": "valid.document-version-advance",
       "status": "release-blocking",
       "categories": ["valid"],
-      "suites": ["pr", "release", "language", "typescript-slice"],
+      "suites": ["pr", "release", "language", "typescript-core"],
       "artifacts": [{ "path": "fixtures/valid/document-version-advance.kdl", "role": "source" }],
       "expectations": { "outcome": "valid" },
       "executions": [
@@ -110,7 +110,7 @@
       "id": "valid.browser-js",
       "status": "release-blocking",
       "categories": ["valid", "browser"],
-      "suites": ["pr", "release", "language", "browser", "typescript-slice"],
+      "suites": ["pr", "release", "language", "browser", "typescript-core"],
       "artifacts": [{ "path": "fixtures/valid/browser-js.kdl", "role": "source" }],
       "expectations": { "outcome": "valid" },
       "executions": [
@@ -122,7 +122,7 @@
       "id": "valid.rod-browser-e2e",
       "status": "release-blocking",
       "categories": ["valid", "browser"],
-      "suites": ["release", "browser", "typescript-slice"],
+      "suites": ["release", "browser", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/valid/rod-browser-e2e.kdl", "role": "source" },
         { "path": "fixtures/html/rod-browser-e2e.html", "role": "browser-page" },
@@ -141,7 +141,7 @@
       "id": "invalid.duplicate-property",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/duplicate-property.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
@@ -156,7 +156,7 @@
       "id": "invalid.http-js",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/http-js.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
@@ -171,7 +171,7 @@
       "id": "invalid.import-cycle",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/import-cycle.kdl", "role": "source" },
         { "path": "fixtures/invalid/cycle/a.kdl", "role": "import" },
@@ -188,7 +188,7 @@
       "id": "invalid.timeout-overflow",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/timeout-overflow.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
@@ -203,7 +203,7 @@
       "id": "invalid.regex-lookahead",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/regex-lookahead.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
@@ -218,7 +218,7 @@
       "id": "invalid.transform-type-mismatch",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/transform-type-mismatch.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/go-contract.json", "role": "expected-diagnostics" }
@@ -234,7 +234,7 @@
       "id": "invalid.integer-version",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/integer-version.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
@@ -249,7 +249,7 @@
       "id": "invalid.missing-document-version",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/missing-document-version.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
@@ -264,7 +264,7 @@
       "id": "invalid.malformed-document-version",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/malformed-document-version.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
@@ -279,7 +279,7 @@
       "id": "invalid.missing-language-version",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/missing-language-version.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
@@ -294,7 +294,7 @@
       "id": "invalid.malformed-language-version",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/malformed-language-version.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }
@@ -309,7 +309,7 @@
       "id": "invalid.unknown-language-version",
       "status": "release-blocking",
       "categories": ["invalid"],
-      "suites": ["pr", "release", "language", "invalid", "typescript-slice"],
+      "suites": ["pr", "release", "language", "invalid", "typescript-core"],
       "artifacts": [
         { "path": "fixtures/invalid/unknown-language-version.kdl", "role": "source" },
         { "path": "fixtures/expected-diagnostics/version-contract.json", "role": "expected-diagnostics" }

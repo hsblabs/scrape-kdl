@@ -23,6 +23,20 @@ type fakeBrowser struct {
 	js    any
 }
 
+type queryLimitBrowser struct {
+	*fakeBrowser
+	limits []int
+}
+
+func (browser *queryLimitBrowser) QueryLimit(ctx context.Context, scope BrowserElement, selector string, limit int) ([]BrowserElement, error) {
+	browser.limits = append(browser.limits, limit)
+	elements, err := browser.QueryAll(ctx, scope, selector)
+	if err != nil || len(elements) <= limit {
+		return elements, err
+	}
+	return elements[:limit], nil
+}
+
 func (f *fakeBrowser) Navigate(_ context.Context, url string, _ BrowserNavigateOptions) error {
 	f.calls = append(f.calls, "navigate:"+url)
 	return nil
@@ -118,6 +132,25 @@ func TestExecuteBrowser(t *testing.T) {
 	}
 	if !reflect.DeepEqual(browser.calls[:2], []string{"navigate:https://example.com/race/42", "wait:.race-detail:visible"}) {
 		t.Fatalf("calls=%v", browser.calls)
+	}
+}
+
+func TestExecuteBrowserUsesBoundedQueriesForFirstAndOne(t *testing.T) {
+	path := compileTestSpec(t, `extractor "browser-query-limit" version="2026-07-15" language-version="2026-07-15" {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  field "first" type="string" required=#true { select "h1" match="first"; value "text" }
+  field "one" type="string" required=#true { select "h1" match="one"; value "text" }
+}`)
+	extractor, diagnostics := compiler.CompileFile(path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	browser := &queryLimitBrowser{fakeBrowser: &fakeBrowser{}}
+	if _, err := Execute(context.Background(), extractor, nil, Options{Browser: browser}); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(browser.limits, []int{1, 2}) {
+		t.Fatalf("query limits = %v, want [1 2]", browser.limits)
 	}
 }
 
@@ -903,7 +936,7 @@ func TestExecuteBrowserAcquireFailure(t *testing.T) {
 	browser := &leasedFakeBrowser{acquireErr: context.Canceled}
 	_, err := Execute(context.Background(), extractor, map[string]any{"race_id": "42"}, Options{Browser: browser, AllowJavaScript: true})
 	var execution *ExecutionError
-	if !errors.As(err, &execution) || execution.Code != "E_BROWSER_ACQUIRE" {
+	if !errors.As(err, &execution) || execution.Code != "E_EXECUTION_CANCELED" {
 		t.Fatalf("err=%v", err)
 	}
 	if !errors.Is(err, context.Canceled) {
@@ -1248,7 +1281,7 @@ func TestExecuteBrowserValueSourceFailures(t *testing.T) {
 	}{
 		{name: "query", valueSource: `value "text"`, operation: "query", cause: errors.New("query failed"), wantCode: "E_BROWSER_QUERY"},
 		{name: "query timeout", valueSource: `value "text"`, operation: "query", cause: context.DeadlineExceeded, wantCode: "E_TIMEOUT"},
-		{name: "query cancellation", valueSource: `value "text"`, operation: "query", cause: context.Canceled, wantCode: "E_BROWSER_QUERY"},
+		{name: "query cancellation", valueSource: `value "text"`, operation: "query", cause: context.Canceled, wantCode: "E_EXECUTION_CANCELED"},
 		{name: "text", valueSource: `value "text"`, operation: "text", cause: errors.New("text failed"), wantCode: "E_BROWSER_READ"},
 		{name: "HTML timeout", valueSource: `value "html"`, operation: "html", cause: context.DeadlineExceeded, wantCode: "E_TIMEOUT"},
 		{name: "attribute", valueSource: `value "attr" name="href"`, operation: "attribute", cause: errors.New("attribute failed"), wantCode: "E_BROWSER_READ"},
@@ -1313,7 +1346,7 @@ func TestExecuteBrowserCollectionQueryFailure(t *testing.T) {
 	cause := context.Canceled
 	_, err := Execute(context.Background(), extractor, nil, Options{Browser: &readFailureBrowser{operation: "query", err: cause}})
 	var execution *ExecutionError
-	if !errors.As(err, &execution) || execution.Code != "E_BROWSER_QUERY" || execution.Path != "output.rows" || !errors.Is(err, cause) {
+	if !errors.As(err, &execution) || execution.Code != "E_EXECUTION_CANCELED" || execution.Path != "output.rows" || !errors.Is(err, cause) {
 		t.Fatalf("error = %#v", err)
 	}
 }
@@ -1413,7 +1446,7 @@ func TestExecuteBrowserWorkflowOperationFailures(t *testing.T) {
 	}{
 		{name: "failure", cause: errors.New("workflow failed"), wantCode: "E_BROWSER_WORKFLOW"},
 		{name: "timeout", cause: context.DeadlineExceeded, wantCode: "E_TIMEOUT"},
-		{name: "cancellation", cause: context.Canceled, wantCode: "E_BROWSER_WORKFLOW"},
+		{name: "cancellation", cause: context.Canceled, wantCode: "E_EXECUTION_CANCELED"},
 	}
 	for _, operation := range operations {
 		for _, failure := range causes {
@@ -1457,7 +1490,7 @@ func TestExecuteBrowserWorkflowPreservesParentCancellation(t *testing.T) {
 
 	_, err := Execute(ctx, extractor, map[string]any{"race_id": "42"}, Options{Browser: browser, AllowJavaScript: true})
 	var execution *ExecutionError
-	if !errors.As(err, &execution) || execution.Code != "E_BROWSER_WORKFLOW" {
+	if !errors.As(err, &execution) || execution.Code != "E_EXECUTION_CANCELED" {
 		t.Fatalf("error = %v", err)
 	}
 	if !errors.Is(err, context.Canceled) {

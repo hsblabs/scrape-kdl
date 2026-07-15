@@ -6,6 +6,7 @@
 | Node.js | 26 | 26.x |
 | TypeScript package format | ESM-only | npm pack and clean Node.js consumer |
 | TypeScript HTML parser | parse5 8.0.1 | 8.0.1 |
+| TypeScript regular expressions | re2js 2.8.6 (RE2-compatible) | 2.8.6 |
 | KDL lexical base | KDL 2.0 concepts | Scraping KDL supported subset |
 | Scraping KDL language | `2026-07-15` | `2026-07-15` |
 | Validated IR | `2026-07-15` | `2026-07-15` |
@@ -16,7 +17,7 @@
 
 The executable source for this table is [`support-matrix.json`](./support-matrix.json). Pull-request CI cross-builds all four supported OS/architecture package targets and runs the native Go, Node.js, and clean-consumer gates on Linux and macOS.
 
-The Go and TypeScript core packages intentionally have no browser-library dependency. The TypeScript core pins the roadmap-approved `parse5` dependency for WHATWG HTML tree construction; its transitive `entities` dependency is lockfile-pinned. Browser integrations are separate modules or packages. The official TypeScript adapter pins Playwright 1.61.1. Chromium is the supported v1 browser target; scheduled Firefox and WebKit results remain best effort and do not block v1.
+The Go and TypeScript core packages intentionally have no browser-library dependency. The TypeScript core pins the roadmap-approved `parse5` dependency for WHATWG HTML tree construction and `re2js` for RE2-compatible, linear-time regular expressions; transitive dependencies are lockfile-pinned. Browser integrations are separate modules or packages. The official TypeScript adapter pins Playwright 1.61.1. Chromium is the supported v1 browser target; scheduled Firefox and WebKit results remain best effort and do not block v1.
 
 The Go and TypeScript libraries publish their exact accepted sets through `SupportedLanguageVersions` / `SupportedIRVersions` and `supportedLanguageVersions` / `supportedIRVersions`. These values are opaque identifiers; an earlier date is not implicitly compatible with a later date.
 
@@ -26,6 +27,8 @@ The Go and TypeScript libraries publish their exact accepted sets through `Suppo
 - Add `language-version="2026-07-15"` to every extractor and transform module root.
 - Regenerate Validated IR with `languageVersion` and `irVersion` set to `2026-07-15`; serialized `0.1` IR is rejected before acquisition.
 - Update Go callers for `Program.Version()` returning `string` instead of `int`.
+- Rename workspace automation from `conformance:typescript-slice` to `conformance:typescript` and from `test:contract-slice` to `test:typescript-contract`.
+- TypeScript consumers importing internal `compileContractSlice` or `validateContractSlice` helpers must use the public `compile` and `validate` APIs; the internal result is now named `CompilerResult`.
 
 The former identifiers are not accepted as aliases because doing so would obscure the selected language and IR contracts.
 

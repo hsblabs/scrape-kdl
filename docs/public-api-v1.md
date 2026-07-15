@@ -20,6 +20,7 @@ Go and TypeScript expose the same observable capabilities:
 | inject HTTP behavior and sessions | `http.Client`, `Session`, charset decoder | platform `fetch`, `Session`, decoded UTF-8 runtime contract |
 | execute browser mode | `BrowserAdapter` | `BrowserAdapter` |
 | serialize mutable browser pages | optional `BrowserAdapterLease` | optional `BrowserAdapterLease` |
+| bound first/one browser queries | optional `BrowserAdapterQueryLimit` | optional `BrowserAdapterQueryLimit` |
 | inspect extraction results | `Result`, `Warning`, `ExecutionError` | `ExtractionResult`, `Warning`, `ExecutionError` |
 | discover compatibility | `SupportedLanguageVersions`, `SupportedIRVersions` | `supportedLanguageVersions`, `supportedIRVersions` |
 
@@ -47,7 +48,7 @@ Compilation or validation never performs HTTP or browser activity. A program is 
 
 Execution accepts inputs, session state, URL policy, time and size bounds, external transforms, and an optional browser adapter. JavaScript remains disabled unless explicitly enabled. URL policy applies to initial targets and redirects. Cancellation must reach source loading, HTTP work, browser operations, and external transforms.
 
-Browser elements are opaque adapter-owned handles. The public browser interfaces are declared in the root packages; no internal Go package type or Playwright/rod type appears in a public signature. Official adapters translate their library-specific handles behind this boundary. An adapter wrapping a mutable page may implement the optional extraction-wide lease.
+Browser elements are opaque adapter-owned handles. The public browser interfaces are declared in the root packages; no internal Go package type or Playwright/rod type appears in a public signature. Official adapters translate their library-specific handles behind this boundary. An adapter wrapping a mutable page may implement the optional extraction-wide lease. An adapter may also implement the optional bounded-query interface; the core falls back to `QueryAll`, so this addition does not break existing adapters.
 
 External transforms receive cancellation and JSON-compatible values. Implementations validate returned values immediately against declared output types. Registration does not grant browser, filesystem, or subprocess access.
 

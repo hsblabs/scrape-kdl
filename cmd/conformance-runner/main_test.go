@@ -22,7 +22,7 @@ func TestHelpUsesStdout(t *testing.T) {
 func TestListAndRunEmitJSON(t *testing.T) {
 	manifest := filepath.Join("..", "..", "conformance", "manifest.json")
 	for _, args := range [][]string{
-		{"--manifest", manifest, "--suite", "typescript-slice", "--list"},
+		{"--manifest", manifest, "--suite", "typescript-core", "--list"},
 		{"--manifest", manifest, "--suite", "runtime"},
 	} {
 		var stdout, stderr bytes.Buffer
