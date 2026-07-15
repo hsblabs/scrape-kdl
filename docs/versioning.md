@@ -15,6 +15,8 @@ Document, language, and Validated IR compatibility identifiers are separate from
 
 Stable diagnostic codes are part of the language tooling contract. Their message text may improve without a major language-version change, but code meaning must not silently change.
 
+The CLI contract candidate begins at v0.5. Changes to commands, help, streams, JSON envelopes, exit status classes, signals, or secret input before v0.9 require compatibility notes and a migration path. These behaviors freeze at v0.9 and receive v1 Semantic Versioning guarantees.
+
 The adapter may release more frequently than the core. Its `go.mod` must depend on a published core version and must not contain a local `replace` directive.
 
 The npm packages are ESM-only and require Node.js 26 or later. Package versions do not select a language or IR contract; the supported opaque identifiers are exposed separately by the package API. Before publication, workspace manifests use `0.0.0-development`, and packed artifacts must contain no `workspace:`, `file:`, or local-path dependency.
