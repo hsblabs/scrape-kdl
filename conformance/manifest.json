@@ -26,13 +26,18 @@
     },
     {
       "id": "html-compatibility-2026-07-15",
-      "purpose": "Pinned Go and TypeScript HTML tree-construction, serialization, and portable-selector observations.",
+      "purpose": "Pinned HTML tree-construction, serialization, portable-selector, and WPT observations; the TypeScript inventory also feeds the Chromium differential gate.",
       "consumers": ["go", "typescript"],
       "artifacts": [
         "fixtures/html-compat/manifest.json",
         "fixtures/html-compat/raw-text.html",
         "fixtures/html-compat/optional-tags.html",
-        "fixtures/html-compat/selectors.html"
+        "fixtures/html-compat/selectors.html",
+        "fixtures/html-compat/rcdata-truncated.html",
+        "fixtures/html-compat/tree-construction.html",
+        "fixtures/html-compat/wpt-ambiguous-ampersand.html",
+        "fixtures/html-compat/wpt-foreign-object.html",
+        "fixtures/html-compat/wpt-integration-points.html"
       ]
     }
   ],
