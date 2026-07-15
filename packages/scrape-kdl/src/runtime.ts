@@ -354,7 +354,7 @@ function recoverField(state: RuntimeState, field: FieldIR, path: string, cause: 
     throw new ExecutionError("E_FIELD_EXECUTION", errorMessage(cause), { path, cause });
   }
   state.partial = true;
-  if (field.onError === "warn") state.warnings.push({ code: "W_ERROR_RECOVERED", message: errorMessage(cause), path });
+  if (field.onError === "warn") state.warnings.push({ code: "W_ERROR_RECOVERED", message: executionMessage(cause), path });
   if (field.onError === "default") {
     if (field.default === undefined) throw new ExecutionError("E_IR_INVALID", "on-error default requires a field default", { path });
     return field.default;

@@ -88,6 +88,7 @@ test("missing values, field recovery, and row recovery match stable result seman
     { code: "W_ROW_SKIPPED", path: "output.items", row: 1 },
     { code: "W_PARTIAL_EXTRACTION", path: undefined, row: undefined },
   ]);
+  assert.equal(result.warnings[0].message, "E_TRANSFORM at output.warned: value does not match required pattern");
 });
 
 test("pipeline, match, and external transforms share the declared runtime", async () => {
