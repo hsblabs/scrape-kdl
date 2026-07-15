@@ -22,7 +22,6 @@ type htmlCompatibilitySource struct {
 	Revision      string   `json:"revision"`
 	SelectedTests []string `json:"selectedTests"`
 }
-
 type htmlCompatibilityCase struct {
 	ID              string                         `json:"id"`
 	Input           string                         `json:"input"`

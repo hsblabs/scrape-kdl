@@ -34,7 +34,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	program, diagnostics := scrapekdl.CompileFile(*spec)
+	program, diagnostics := scrapekdl.CompileFile(context.Background(), *spec)
 	if diagnostics.HasErrors() {
 		_ = json.NewEncoder(os.Stderr).Encode(diagnostics)
 		os.Exit(1)

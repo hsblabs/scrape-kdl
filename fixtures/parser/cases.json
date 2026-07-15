@@ -1,0 +1,201 @@
+[
+  {
+    "name": "complete-subset",
+    "source": "/* nested /* block */ comment */\nnode #\"raw\"# 0x10 0o10 0b10 -0x2 1.5 #true #null { child \"value\" }\n",
+    "diagnostics": []
+  },
+  {
+    "name": "type-annotation",
+    "source": "(type) node\n",
+    "diagnostics": [
+      {
+        "code": "E_TYPE_ANNOTATION_UNSUPPORTED",
+        "severity": "error",
+        "message": "KDL type annotations are not supported",
+        "span": {
+          "file": "type-annotation.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 1, "line": 1, "column": 2 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "invalid-base",
+    "source": "node 0x\n",
+    "diagnostics": [
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "unexpected token \"0x\" in node",
+        "span": {
+          "file": "invalid-base.kdl",
+          "start": { "offset": 5, "line": 1, "column": 6 },
+          "end": { "offset": 7, "line": 1, "column": 8 }
+        }
+      },
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "integer base prefix must be followed by a digit",
+        "span": {
+          "file": "invalid-base.kdl",
+          "start": { "offset": 5, "line": 1, "column": 6 },
+          "end": { "offset": 7, "line": 1, "column": 8 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unexpected-character",
+    "source": "node @\n",
+    "diagnostics": [
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "unexpected token \"@\" in node",
+        "span": {
+          "file": "unexpected-character.kdl",
+          "start": { "offset": 5, "line": 1, "column": 6 },
+          "end": { "offset": 6, "line": 1, "column": 7 }
+        }
+      },
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "unexpected character '@'",
+        "span": {
+          "file": "unexpected-character.kdl",
+          "start": { "offset": 5, "line": 1, "column": 6 },
+          "end": { "offset": 6, "line": 1, "column": 7 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unexpected-closing-brace",
+    "source": "}\n",
+    "diagnostics": [
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "unexpected closing brace",
+        "span": {
+          "file": "unexpected-closing-brace.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 1, "line": 1, "column": 2 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unterminated-comment",
+    "source": "/*",
+    "diagnostics": [
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "unterminated block comment",
+        "span": {
+          "file": "unterminated-comment.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 2, "line": 1, "column": 3 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "slashdash-missing-node",
+    "source": "/-\n",
+    "diagnostics": [
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "slashdash before a node must be followed by a node",
+        "span": {
+          "file": "slashdash-missing-node.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 2, "line": 1, "column": 3 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unicode-character",
+    "source": "é\n",
+    "diagnostics": [
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "expected node name",
+        "span": {
+          "file": "unicode-character.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 2, "line": 1, "column": 2 }
+        }
+      },
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "unexpected character 'é'",
+        "span": {
+          "file": "unicode-character.kdl",
+          "start": { "offset": 0, "line": 1, "column": 1 },
+          "end": { "offset": 2, "line": 1, "column": 2 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "integer-overflow",
+    "source": "node 9223372036854775808\n",
+    "diagnostics": [
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "unexpected token \"9223372036854775808\" in node",
+        "span": {
+          "file": "integer-overflow.kdl",
+          "start": { "offset": 5, "line": 1, "column": 6 },
+          "end": { "offset": 24, "line": 1, "column": 25 }
+        }
+      },
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "invalid integer literal",
+        "span": {
+          "file": "integer-overflow.kdl",
+          "start": { "offset": 5, "line": 1, "column": 6 },
+          "end": { "offset": 24, "line": 1, "column": 25 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "float-overflow",
+    "source": "node 1e9999\n",
+    "diagnostics": [
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "unexpected token \"1e9999\" in node",
+        "span": {
+          "file": "float-overflow.kdl",
+          "start": { "offset": 5, "line": 1, "column": 6 },
+          "end": { "offset": 11, "line": 1, "column": 12 }
+        }
+      },
+      {
+        "code": "E_KDL_SYNTAX",
+        "severity": "error",
+        "message": "invalid float literal",
+        "span": {
+          "file": "float-overflow.kdl",
+          "start": { "offset": 5, "line": 1, "column": 6 },
+          "end": { "offset": 11, "line": 1, "column": 12 }
+        }
+      }
+    ]
+  }
+]

@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,32 +49,64 @@ type transformDecl struct {
 }
 
 type Compiler struct {
-	diags        diagnostic.List
-	documents    map[string]*loadedDocument
-	loading      map[string]bool
-	files        []ir.SourceFile
-	capabilities map[string]struct{}
-	jsPresent    bool
-	entryDir     string
-	virtualFiles map[string][]byte
-	displayPaths map[string]string
+	ctx           context.Context
+	loader        SourceLoader
+	sources       map[string][]byte
+	absolutePaths bool
+	diags         diagnostic.List
+	documents     map[string]*loadedDocument
+	loading       map[string]bool
+	files         []ir.SourceFile
+	capabilities  map[string]struct{}
+	jsPresent     bool
+	entryDir      string
 }
+
+type SourceLoader func(context.Context, string) ([]byte, error)
 
 func New() *Compiler {
 	return &Compiler{
-		documents:    map[string]*loadedDocument{},
-		loading:      map[string]bool{},
-		capabilities: map[string]struct{}{},
-		virtualFiles: map[string][]byte{},
-		displayPaths: map[string]string{},
+		ctx:           context.Background(),
+		loader:        func(_ context.Context, path string) ([]byte, error) { return os.ReadFile(path) },
+		sources:       map[string][]byte{},
+		absolutePaths: true,
+		documents:     map[string]*loadedDocument{},
+		loading:       map[string]bool{},
+		capabilities:  map[string]struct{}{},
 	}
 }
 
 func CompileFile(path string) (*ir.Extractor, diagnostic.List) {
+	return CompileFileContext(context.Background(), path)
+}
+
+func CompileFileContext(ctx context.Context, path string) (*ir.Extractor, diagnostic.List) {
+	if ctx == nil {
+		panic("compiler: nil context")
+	}
 	c := New()
+	c.ctx = ctx
 	absPath := absClean(path)
 	c.entryDir = filepath.Dir(absPath)
-	root := c.loadDocument(absPath, docExtractor)
+	return c.compile(absPath)
+}
+
+func CompileSource(ctx context.Context, path string, data []byte, loader SourceLoader) (*ir.Extractor, diagnostic.List) {
+	if ctx == nil {
+		panic("compiler: nil context")
+	}
+	path = filepath.Clean(path)
+	c := New()
+	c.ctx = ctx
+	c.loader = loader
+	c.absolutePaths = false
+	c.entryDir = filepath.Dir(path)
+	c.sources[path] = append([]byte(nil), data...)
+	return c.compile(path)
+}
+
+func (c *Compiler) compile(path string) (*ir.Extractor, diagnostic.List) {
+	root := c.loadDocument(path, docExtractor)
 	if root == nil || c.diags.HasErrors() {
 		return nil, c.diags.Sorted()
 	}
@@ -92,35 +125,8 @@ func ValidateFile(path string) diagnostic.List {
 	return diags
 }
 
-// CompileSource compiles an in-memory entry document. Relative imports resolve
-// from the current working directory while diagnostics retain displayPath.
-func CompileSource(displayPath string, data []byte) (*ir.Extractor, diagnostic.List) {
-	c := New()
-	entryPath := absClean(".scrape-kdl-stdin.kdl")
-	c.entryDir = filepath.Dir(entryPath)
-	c.virtualFiles[entryPath] = append([]byte(nil), data...)
-	c.displayPaths[entryPath] = displayPath
-	root := c.loadDocument(entryPath, docExtractor)
-	if root == nil || c.diags.HasErrors() {
-		return nil, c.diags.Sorted()
-	}
-	out := c.compileExtractor(root)
-	if c.jsPresent {
-		c.diags.Add("W_JAVASCRIPT_PRESENT", diagnostic.SeverityWarning, "specification contains trusted JavaScript execution", root.root.Span, "source")
-	}
-	if c.diags.HasErrors() {
-		return nil, c.diags.Sorted()
-	}
-	return out, c.diags.Sorted()
-}
-
-func ValidateSource(displayPath string, data []byte) diagnostic.List {
-	_, diags := CompileSource(displayPath, data)
-	return diags
-}
-
 func (c *Compiler) loadDocument(path string, expected documentKind) *loadedDocument {
-	path = absClean(path)
+	path = c.cleanPath(path)
 	if c.loading[path] {
 		span := zeroSpan(c.displayPath(path))
 		c.diags.Add("E_IMPORT_CYCLE", diagnostic.SeverityError, fmt.Sprintf("import cycle includes %q", c.displayPath(path)), span, "")
@@ -135,15 +141,28 @@ func (c *Compiler) loadDocument(path string, expected documentKind) *loadedDocum
 	c.loading[path] = true
 	defer delete(c.loading, path)
 
-	data, ok := c.virtualFiles[path]
+	if err := c.ctx.Err(); err != nil {
+		c.diags.Add("E_KDL_SYNTAX", diagnostic.SeverityError, fmt.Sprintf("read %q: %v", c.displayPath(path), err), zeroSpan(c.displayPath(path)), "")
+		return nil
+	}
+	data, ok := c.sources[path]
+	var err error
 	if !ok {
-		var err error
-		data, err = os.ReadFile(path)
-		if err != nil {
-			c.diags.Add("E_KDL_SYNTAX", diagnostic.SeverityError, fmt.Sprintf("read %q: %v", c.displayPath(path), err), zeroSpan(c.displayPath(path)), "")
-			return nil
+		if c.loader == nil {
+			err = fmt.Errorf("no source loader configured")
+		} else {
+			data, err = c.loader(c.ctx, path)
 		}
 	}
+	if err != nil {
+		c.diags.Add("E_KDL_SYNTAX", diagnostic.SeverityError, fmt.Sprintf("read %q: %v", c.displayPath(path), err), zeroSpan(c.displayPath(path)), "")
+		return nil
+	}
+	if err := c.ctx.Err(); err != nil {
+		c.diags.Add("E_KDL_SYNTAX", diagnostic.SeverityError, fmt.Sprintf("read %q: %v", c.displayPath(path), err), zeroSpan(c.displayPath(path)), "")
+		return nil
+	}
+	data = append([]byte(nil), data...)
 	displayPath := c.displayPath(path)
 	doc, parseDiags := kdl.Parse(displayPath, data)
 	c.diags = append(c.diags, parseDiags...)
@@ -200,6 +219,13 @@ func (c *Compiler) loadDocument(path string, expected documentKind) *loadedDocum
 	return d
 }
 
+func (c *Compiler) cleanPath(path string) string {
+	if c.absolutePaths {
+		return absClean(path)
+	}
+	return filepath.Clean(path)
+}
+
 func (c *Compiler) compileImportHeader(d *loadedDocument, n *kdl.Node) {
 	validateNode(&c.diags, n, 1, 1, map[string]valueExpectation{"as": expectString}, "imports")
 	pathArg, ok := stringArg(n, 0)
@@ -221,7 +247,7 @@ func (c *Compiler) compileImportHeader(d *loadedDocument, n *kdl.Node) {
 		c.diags.Add("E_REMOTE_IMPORT_UNSUPPORTED", diagnostic.SeverityError, "import path must be relative", n.Span, "imports")
 		return
 	}
-	resolved := absClean(filepath.Join(filepath.Dir(d.path), filepath.FromSlash(pathArg)))
+	resolved := c.cleanPath(filepath.Join(filepath.Dir(d.path), filepath.FromSlash(pathArg)))
 	imp := c.loadDocument(resolved, docModule)
 	d.imports[alias] = imp
 	d.importOrder = append(d.importOrder, alias)
@@ -346,9 +372,6 @@ func (c *Compiler) compileExtractor(d *loadedDocument) *ir.Extractor {
 }
 
 func (c *Compiler) displayPath(path string) string {
-	if display, ok := c.displayPaths[path]; ok {
-		return display
-	}
 	if c.entryDir == "" {
 		return filepath.ToSlash(filepath.Clean(path))
 	}

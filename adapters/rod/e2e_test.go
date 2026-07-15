@@ -4,11 +4,14 @@ package rodadapter
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/go-rod/rod"
@@ -41,55 +44,28 @@ func TestE2ELauncherDisablesSandboxOnlyOnGitHubActions(t *testing.T) {
 }
 
 func TestBrowserExtractionE2E(t *testing.T) {
+	page, err := os.ReadFile(filepath.Join("..", "..", "fixtures", "html", "rod-browser-e2e.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(`<!doctype html><html><body>
-			<button id="load" onclick="document.querySelector('#value').textContent='ready'">load</button>
-			<div id="value">pending</div>
-			<ul><li><span class="id" data-id="1"></span><span class="label">A</span></li><li><span class="id" data-id="2"></span><span class="label">B</span></li></ul>
-		</body></html>`))
+		_, _ = w.Write(page)
 	}))
 	defer server.Close()
 
 	dir := t.TempDir()
 	spec := filepath.Join(dir, "e2e.kdl")
-	content := `extractor "rod-e2e" version="2026-07-15" language-version="2026-07-15" {
-		source "html" {
-			fetch mode="browser" url="` + server.URL + `"
-			workflow {
-				click "#load"
-				wait-for "#value" state="visible"
-			}
-		}
-		field "value" type="string" required=#true {
-			select "#value" match="one"
-			value "text"
-		}
-		field "title" type="string" required=#true {
-			evaluate-js #"""
-				() => document.title || "untitled"
-				"""# scope="document" returns="string"
-		}
-		field "item_count" type="int" required=#true {
-			evaluate-js "() => document.querySelectorAll('li').length" scope="document" returns="int"
-		}
-		collection "items" on-row-error="fail" {
-			select "li"
-			field "id" type="string" required=#true { select ".id" match="one"; value "attr" name="data-id" }
-			field "text" type="string" required=#true { select ".label" match="one"; value "text" }
-			field "dataset" type="object" required=#true {
-				select ".id" match="one"
-				evaluate-js #"""
-					(element) => ({ id: element.dataset.id })
-					"""# scope="current" returns="object"
-			}
-		}
-	}`
+	source, err := os.ReadFile(filepath.Join("..", "..", "fixtures", "valid", "rod-browser-e2e.kdl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := strings.Replace(string(source), "http://127.0.0.1:18080", server.URL, 1)
 	if err := os.WriteFile(spec, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	program, diagnostics := scrapekdl.CompileFile(spec)
+	program, diagnostics := scrapekdl.CompileFile(context.Background(), spec)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics: %+v", diagnostics)
 	}
@@ -110,26 +86,23 @@ func TestBrowserExtractionE2E(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Value["value"] != "ready" {
-		t.Fatalf("value = %#v", result.Value["value"])
+	actualJSON, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if result.Value["title"] != "untitled" {
-		t.Fatalf("title = %#v", result.Value["title"])
+	expectedJSON, err := os.ReadFile(filepath.Join("..", "..", "fixtures", "expected-output", "rod-browser-e2e.json"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if result.Value["item_count"] != int64(2) {
-		t.Fatalf("item_count = %#v (%T)", result.Value["item_count"], result.Value["item_count"])
+	var actual, expected any
+	if err := json.Unmarshal(actualJSON, &actual); err != nil {
+		t.Fatal(err)
 	}
-	items, ok := result.Value["items"].([]any)
-	if !ok || len(items) != 2 {
-		t.Fatalf("items = %#v", result.Value["items"])
+	if err := json.Unmarshal(expectedJSON, &expected); err != nil {
+		t.Fatal(err)
 	}
-	first, ok := items[0].(map[string]any)
-	if !ok || first["id"] != "1" || first["text"] != "A" {
-		t.Fatalf("items[0] = %#v", items[0])
-	}
-	dataset, ok := first["dataset"].(map[string]any)
-	if !ok || dataset["id"] != "1" {
-		t.Fatalf("items[0].dataset = %#v", first["dataset"])
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("browser result = %#v, want %#v", actual, expected)
 	}
 
 	failureContent := `extractor "rod-js-failure" version="2026-07-15" language-version="2026-07-15" {
@@ -143,7 +116,7 @@ func TestBrowserExtractionE2E(t *testing.T) {
 	if err := os.WriteFile(spec, []byte(failureContent), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	failureProgram, failureDiagnostics := scrapekdl.CompileFile(spec)
+	failureProgram, failureDiagnostics := scrapekdl.CompileFile(context.Background(), spec)
 	if failureDiagnostics.HasErrors() {
 		t.Fatalf("failure compile diagnostics: %+v", failureDiagnostics)
 	}
