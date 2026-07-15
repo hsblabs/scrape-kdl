@@ -65,7 +65,7 @@ func TestRunTopLevelCommands(t *testing.T) {
 		wantStderr string
 	}{
 		{name: "missing command", wantCode: 2, wantStderr: "usage: scrape-kdl"},
-		{name: "help", args: []string{"--help"}, wantCode: 0, wantStdout: "usage: scrape-kdl"},
+		{name: "help", args: []string{"--help"}, wantCode: 0, wantStdout: "USAGE"},
 		{name: "version", args: []string{"version"}, wantCode: 0, wantStdout: "scrape-kdl dev"},
 		{name: "unknown", args: []string{"missing"}, wantCode: 2, wantStderr: `unknown command "missing"`},
 	}
@@ -104,7 +104,11 @@ func TestRunValidate(t *testing.T) {
 		t.Fatalf("validate success = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = captureRun(t, "validate", valid, "--json")
-	if code != 0 || strings.TrimSpace(stdout) != "null" || stderr != "" {
+	var validation struct {
+		OK          bool  `json:"ok"`
+		Diagnostics []any `json:"diagnostics"`
+	}
+	if code != 0 || json.Unmarshal([]byte(stdout), &validation) != nil || !validation.OK || len(validation.Diagnostics) != 0 || stderr != "" {
 		t.Fatalf("validate JSON = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, _, stderr = captureRun(t, "validate", invalid)
@@ -128,7 +132,7 @@ func TestRunCompile(t *testing.T) {
 	}
 	outPath := filepath.Join(t.TempDir(), "program.json")
 	code, stdout, stderr = captureRun(t, "compile", valid, "--out", outPath)
-	if code != 0 || stdout != "wrote: "+outPath+"\n" || stderr != "" {
+	if code != 0 || stdout != "" || stderr != "wrote: "+outPath+"\n" {
 		t.Fatalf("compile output = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	if data, err := os.ReadFile(outPath); err != nil || json.Unmarshal(data, &compiled) != nil {
@@ -157,7 +161,7 @@ func TestRunExtractOffline(t *testing.T) {
 	}
 	outPath := filepath.Join(t.TempDir(), "result.json")
 	code, stdout, stderr = captureRun(t, "extract", "--html", html, "--out", outPath, valid)
-	if code != 0 || stdout != "wrote: "+outPath+"\n" || stderr != "" {
+	if code != 0 || stdout != "" || stderr != "wrote: "+outPath+"\n" {
 		t.Fatalf("extract output = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	if data, err := os.ReadFile(outPath); err != nil || json.Unmarshal(data, &result) != nil {
@@ -188,9 +192,9 @@ func TestParseValidateArgs(t *testing.T) {
 }
 
 func TestParseCompileArgs(t *testing.T) {
-	path, output, ok := parseCompileArgs([]string{"--emit-ir", "example.kdl", "--out", "result.json"})
-	if !ok || path != "example.kdl" || output != "result.json" {
-		t.Fatalf("parseCompileArgs success = %q, %q, %v", path, output, ok)
+	path, output, jsonOutput, ok := parseCompileArgs([]string{"--emit-ir", "example.kdl", "--out", "result.json"})
+	if !ok || path != "example.kdl" || output != "result.json" || jsonOutput {
+		t.Fatalf("parseCompileArgs success = %q, %q, %v, %v", path, output, jsonOutput, ok)
 	}
 	for _, args := range [][]string{
 		nil,
@@ -200,7 +204,7 @@ func TestParseCompileArgs(t *testing.T) {
 		{"one.kdl", "two.kdl"},
 		{"--unknown", "example.kdl"},
 	} {
-		if _, _, ok := parseCompileArgs(args); ok {
+		if _, _, _, ok := parseCompileArgs(args); ok {
 			t.Fatalf("parseCompileArgs(%q) succeeded", args)
 		}
 	}
@@ -257,48 +261,7 @@ func TestParseCLIInputValueRejectsUnsupportedAndInfiniteFloat(t *testing.T) {
 	}
 }
 
-func TestParseSession(t *testing.T) {
-	if session, err := parseSession(nil, nil, false); err != nil || session != nil {
-		t.Fatalf("absent session = %#v, %v", session, err)
-	}
-	if session, err := parseSession(nil, nil, true); err != nil || session == nil {
-		t.Fatalf("explicit empty session = %#v, %v", session, err)
-	}
-
-	session, err := parseSession(
-		[]string{" Accept-Language : ja ", "X-Test: one", "X-Test: two"},
-		[]string{" session =a=b"},
-		false,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(session.Headers, http.Header{"Accept-Language": {"ja"}, "X-Test": {"one", "two"}}) {
-		t.Fatalf("headers = %#v", session.Headers)
-	}
-	if len(session.Cookies) != 1 || session.Cookies[0].Name != "session" || session.Cookies[0].Value != "a=b" {
-		t.Fatalf("cookies = %#v", session.Cookies)
-	}
-
-	for _, test := range []struct {
-		name    string
-		headers []string
-		cookies []string
-	}{
-		{name: "header separator", headers: []string{"missing"}},
-		{name: "header name", headers: []string{": value"}},
-		{name: "cookie separator", cookies: []string{"missing"}},
-		{name: "cookie name", cookies: []string{" =value"}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if _, err := parseSession(test.headers, test.cookies, false); err == nil {
-				t.Fatal("invalid session value succeeded")
-			}
-		})
-	}
-}
-
-func TestDecodeAndMergeSessionDocuments(t *testing.T) {
+func TestDecodeSessionDocuments(t *testing.T) {
 	session, err := decodeSessionDocument(strings.NewReader(`{
   "headers": {"Authorization": ["Bearer secret"], "X-Test": ["one", "two"]},
   "cookies": [{"name": "session", "value": "secret"}]
@@ -311,15 +274,6 @@ func TestDecodeAndMergeSessionDocuments(t *testing.T) {
 	}
 	if len(session.Cookies) != 1 || session.Cookies[0].Name != "session" || session.Cookies[0].Value != "secret" {
 		t.Fatalf("cookies = %#v", session.Cookies)
-	}
-
-	extra, err := parseSession([]string{"X-Test: three"}, []string{"other=value"}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	merged := mergeSessions(session, extra)
-	if !reflect.DeepEqual(merged.Headers["X-Test"], []string{"one", "two", "three"}) || len(merged.Cookies) != 2 {
-		t.Fatalf("merged session = %#v", merged)
 	}
 
 	for _, document := range []string{
@@ -336,17 +290,18 @@ func TestDecodeAndMergeSessionDocuments(t *testing.T) {
 }
 
 func TestReadSessionFile(t *testing.T) {
+	cli := command{io: commandIO{stdin: strings.NewReader("")}}
 	path := filepath.Join(t.TempDir(), "session.json")
 	if err := os.WriteFile(path, []byte(`{"headers":{},"cookies":[]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if session, err := readSessionFile(path); err != nil || session == nil {
+	if session, err := cli.readSessionFile(path); err != nil || session == nil {
 		t.Fatalf("readSessionFile() = %#v, %v", session, err)
 	}
-	if session, err := readSessionFile(""); err != nil || session != nil {
+	if session, err := cli.readSessionFile(""); err != nil || session != nil {
 		t.Fatalf("readSessionFile(empty) = %#v, %v", session, err)
 	}
-	if _, err := readSessionFile(filepath.Join(t.TempDir(), "missing.json")); err == nil {
+	if _, err := cli.readSessionFile(filepath.Join(t.TempDir(), "missing.json")); err == nil {
 		t.Fatal("missing session file succeeded")
 	}
 }

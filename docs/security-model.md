@@ -20,7 +20,7 @@ Hosts should apply:
 
 `session policy="none"` suppresses only the explicit runtime `Session`. It does not clear an `http.Client` cookie jar or an existing browser context. Hosts that require credential-free execution must provide isolated stateless clients or contexts.
 
-CLI users should pass cookies and sensitive headers through `--session-file` or `--session-file -` rather than command-line values. Files should be readable only by the intended user and removed or rotated according to the host application's secret-management policy.
+CLI users must pass cookies and sensitive headers through `--session-file` or explicit `--session-file -` standard input; direct secret-bearing header and cookie flags are rejected. Files should be readable only by the intended user and removed or rotated according to the host application's secret-management policy.
 
 ## Runtime safeguards
 

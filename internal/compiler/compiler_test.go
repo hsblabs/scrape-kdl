@@ -49,6 +49,20 @@ func TestCompileBasicHTTP(t *testing.T) {
 	}
 }
 
+func TestCompileSourceRetainsVirtualDisplayPath(t *testing.T) {
+	source, err := os.ReadFile(fixture("valid", "basic-http.kdl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, diagnostics := CompileSource("<stdin>", source)
+	if diagnostics.HasErrors() || got == nil {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	if len(got.Files) != 1 || got.Files[0].Path != "<stdin>" || got.Span.File != "<stdin>" {
+		t.Fatalf("virtual source metadata = %#v, span = %#v", got.Files, got.Span)
+	}
+}
+
 func TestCompileAllowsIndependentDocumentVersion(t *testing.T) {
 	got, diags := CompileFile(fixture("valid", "document-version-advance.kdl"))
 	if diags.HasErrors() || got == nil {

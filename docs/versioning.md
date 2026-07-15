@@ -13,4 +13,6 @@ Document, language, and Validated IR compatibility identifiers are separate from
 
 Stable diagnostic codes are part of the language tooling contract. Their message text may improve without a major language-version change, but code meaning must not silently change.
 
+The CLI contract candidate begins at v0.5. Changes to commands, help, streams, JSON envelopes, exit status classes, signals, or secret input before v0.9 require compatibility notes and a migration path. These behaviors freeze at v0.9 and receive v1 Semantic Versioning guarantees.
+
 The adapter may release more frequently than the core. Its `go.mod` must depend on a published core version and must not contain a local `replace` directive.

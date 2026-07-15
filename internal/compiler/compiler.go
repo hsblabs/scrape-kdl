@@ -55,6 +55,8 @@ type Compiler struct {
 	capabilities map[string]struct{}
 	jsPresent    bool
 	entryDir     string
+	virtualFiles map[string][]byte
+	displayPaths map[string]string
 }
 
 func New() *Compiler {
@@ -62,6 +64,8 @@ func New() *Compiler {
 		documents:    map[string]*loadedDocument{},
 		loading:      map[string]bool{},
 		capabilities: map[string]struct{}{},
+		virtualFiles: map[string][]byte{},
+		displayPaths: map[string]string{},
 	}
 }
 
@@ -88,6 +92,33 @@ func ValidateFile(path string) diagnostic.List {
 	return diags
 }
 
+// CompileSource compiles an in-memory entry document. Relative imports resolve
+// from the current working directory while diagnostics retain displayPath.
+func CompileSource(displayPath string, data []byte) (*ir.Extractor, diagnostic.List) {
+	c := New()
+	entryPath := absClean(".scrape-kdl-stdin.kdl")
+	c.entryDir = filepath.Dir(entryPath)
+	c.virtualFiles[entryPath] = append([]byte(nil), data...)
+	c.displayPaths[entryPath] = displayPath
+	root := c.loadDocument(entryPath, docExtractor)
+	if root == nil || c.diags.HasErrors() {
+		return nil, c.diags.Sorted()
+	}
+	out := c.compileExtractor(root)
+	if c.jsPresent {
+		c.diags.Add("W_JAVASCRIPT_PRESENT", diagnostic.SeverityWarning, "specification contains trusted JavaScript execution", root.root.Span, "source")
+	}
+	if c.diags.HasErrors() {
+		return nil, c.diags.Sorted()
+	}
+	return out, c.diags.Sorted()
+}
+
+func ValidateSource(displayPath string, data []byte) diagnostic.List {
+	_, diags := CompileSource(displayPath, data)
+	return diags
+}
+
 func (c *Compiler) loadDocument(path string, expected documentKind) *loadedDocument {
 	path = absClean(path)
 	if c.loading[path] {
@@ -104,10 +135,14 @@ func (c *Compiler) loadDocument(path string, expected documentKind) *loadedDocum
 	c.loading[path] = true
 	defer delete(c.loading, path)
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		c.diags.Add("E_KDL_SYNTAX", diagnostic.SeverityError, fmt.Sprintf("read %q: %v", c.displayPath(path), err), zeroSpan(c.displayPath(path)), "")
-		return nil
+	data, ok := c.virtualFiles[path]
+	if !ok {
+		var err error
+		data, err = os.ReadFile(path)
+		if err != nil {
+			c.diags.Add("E_KDL_SYNTAX", diagnostic.SeverityError, fmt.Sprintf("read %q: %v", c.displayPath(path), err), zeroSpan(c.displayPath(path)), "")
+			return nil
+		}
 	}
 	displayPath := c.displayPath(path)
 	doc, parseDiags := kdl.Parse(displayPath, data)
@@ -311,6 +346,9 @@ func (c *Compiler) compileExtractor(d *loadedDocument) *ir.Extractor {
 }
 
 func (c *Compiler) displayPath(path string) string {
+	if display, ok := c.displayPaths[path]; ok {
+		return display
+	}
 	if c.entryDir == "" {
 		return filepath.ToSlash(filepath.Clean(path))
 	}

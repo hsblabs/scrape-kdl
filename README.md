@@ -90,7 +90,9 @@ Session files use JSON and should be protected as secrets:
 }
 ```
 
-Use `--session-file -` to read the document from standard input without creating a file. Direct `--header` and `--cookie` values remain accepted for compatibility but are deprecated because they can leak through shell history or process inspection. When combined temporarily during migration, direct values are appended after file values.
+Use `--session-file -` to read the document from standard input without creating a file. The former `--header` and `--cookie` flags were removed at the v0.5 CLI boundary because command arguments can leak through shell history or process inspection. Move those values into the session JSON document.
+
+Every command supports `-h` and `--help`. Use `--json` for a single machine-readable result envelope and `-` for an unambiguous input or output stream. Exit statuses are 0 for success, 1 for processing failure, 2 for usage errors, 130 for `SIGINT`, and 143 for `SIGTERM`. See `docs/cli.md` for the complete automation contract.
 
 Print build metadata:
 
