@@ -8,6 +8,10 @@ cd "$root"
 ./scripts/check-golden.sh
 ./scripts/check-diagnostics.sh
 GOTOOLCHAIN=local go run ./cmd/check-examples
+make api-contract
+make typescript-package
+make conformance-coverage
+make conformance
 GOTOOLCHAIN=local go vet ./...
 GOTOOLCHAIN=local go test ./...
 GOTOOLCHAIN=local go test -race ./...

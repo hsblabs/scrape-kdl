@@ -1,0 +1,16 @@
+{
+  "path": "invalid-utf8.kdl",
+  "bytes": [255],
+  "diagnostics": [
+    {
+      "code": "E_KDL_SYNTAX",
+      "severity": "error",
+      "message": "document is not valid UTF-8",
+      "span": {
+        "file": "invalid-utf8.kdl",
+        "start": { "offset": 0, "line": 1, "column": 1 },
+        "end": { "offset": 0, "line": 1, "column": 1 }
+      }
+    }
+  ]
+}

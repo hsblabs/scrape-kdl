@@ -1,6 +1,7 @@
 package exampleharness
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,7 +9,7 @@ import (
 )
 
 func TestCheckedInExamples(t *testing.T) {
-	report, err := Check(filepath.Join("..", ".."), false)
+	report, err := Check(context.Background(), filepath.Join("..", ".."), false)
 	if err != nil {
 		t.Fatal(err)
 	}
