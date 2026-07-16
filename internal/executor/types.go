@@ -54,6 +54,9 @@ func operationErrorCode(fallback string, err error) string {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return "E_TIMEOUT"
 	}
+	if errors.Is(err, context.Canceled) {
+		return "E_EXECUTION_CANCELED"
+	}
 	return fallback
 }
 

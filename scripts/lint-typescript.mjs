@@ -2,10 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 
 const root = process.cwd();
-const sourceRoots = [
-  "packages/scrape-kdl/src",
-  "packages/scrape-kdl-playwright/src",
-];
+const sourceRoots = ["packages/scrape-kdl/src", "packages/scrape-kdl-playwright/src"];
 const files = [];
 for (const sourceRoot of sourceRoots) await collect(join(root, sourceRoot), files);
 
@@ -16,14 +13,16 @@ for (const path of files.sort()) {
   const source = await readFile(path, "utf8");
   if (source.includes("\r")) problems.push(`${displayPath}: use LF line endings`);
   if (source.includes("\t")) problems.push(`${displayPath}: tabs are not allowed`);
-  if (/@ts-(?:ignore|nocheck)/u.test(source)) problems.push(`${displayPath}: TypeScript suppression directives are not allowed`);
+  if (/@ts-(?:ignore|nocheck)/u.test(source))
+    problems.push(`${displayPath}: TypeScript suppression directives are not allowed`);
   if (/\b(?:as|:) +any\b/u.test(source)) problems.push(`${displayPath}: use an explicit type instead of any`);
   if (/\bconsole\./u.test(source)) problems.push(`${displayPath}: package source must not write to the console`);
   source.split("\n").forEach((line, index) => {
     if (/\s+$/u.test(line)) problems.push(`${displayPath}:${index + 1}: trailing whitespace`);
   });
   for (const match of source.matchAll(/\bfrom +["'](\.[^"']+)["']/gu)) {
-    if (!match[1].endsWith(".js")) problems.push(`${displayPath}: relative import must use its emitted .js extension: ${match[1]}`);
+    if (!match[1].endsWith(".js"))
+      problems.push(`${displayPath}: relative import must use its emitted .js extension: ${match[1]}`);
   }
 }
 

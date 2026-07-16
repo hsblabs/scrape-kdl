@@ -26,13 +26,15 @@ export function compareResults(goResult, typeScriptResult, manifest) {
         continue;
       }
       if (isDeepStrictEqual(goObservations.get(observation.kind), observation.value)) continue;
-      const approval = manifest.approvedDivergences.find((candidate) =>
-        candidate.case === typeScriptCase.id
-        && candidate.observation === observation.kind
-        && candidate.implementations.includes("go")
-        && candidate.implementations.includes("typescript"),
+      const approval = manifest.approvedDivergences.find(
+        (candidate) =>
+          candidate.case === typeScriptCase.id &&
+          candidate.observation === observation.kind &&
+          candidate.implementations.includes("go") &&
+          candidate.implementations.includes("typescript"),
       );
-      if (approval === undefined) differences.push(`${typeScriptCase.id}/${observation.kind}: unapproved Go/TypeScript difference`);
+      if (approval === undefined)
+        differences.push(`${typeScriptCase.id}/${observation.kind}: unapproved Go/TypeScript difference`);
     }
   }
   return { comparisons, cases: typeScriptResult.cases.length, differences };
@@ -43,11 +45,13 @@ function validateResult(result, implementation, manifestVersion) {
   if (result.schemaVersion !== "2026-07-15") problems.push(`${implementation}: invalid result schemaVersion`);
   if (result.manifestVersion !== manifestVersion) problems.push(`${implementation}: result manifestVersion drift`);
   if (result.implementation !== implementation) problems.push(`${implementation}: result implementation drift`);
-  if (!(["passed", "failed"].includes(result.status))) problems.push(`${implementation}: invalid result status`);
+  if (!["passed", "failed"].includes(result.status)) problems.push(`${implementation}: invalid result status`);
   if (!Array.isArray(result.cases)) return [...problems, `${implementation}: result cases must be an array`];
   for (const testCase of result.cases) {
-    if (typeof testCase.id !== "string" || !["passed", "failed"].includes(testCase.status)) problems.push(`${implementation}: invalid case identity or status`);
-    if (!Array.isArray(testCase.observations) || !Array.isArray(testCase.differences)) problems.push(`${implementation}/${testCase.id}: observations and differences must be arrays`);
+    if (typeof testCase.id !== "string" || !["passed", "failed"].includes(testCase.status))
+      problems.push(`${implementation}: invalid case identity or status`);
+    if (!Array.isArray(testCase.observations) || !Array.isArray(testCase.differences))
+      problems.push(`${implementation}/${testCase.id}: observations and differences must be arrays`);
     for (const observation of testCase.observations ?? []) {
       if (!["diagnostics", "ir", "runtime", "browser"].includes(observation.kind) || !("value" in observation)) {
         problems.push(`${implementation}/${testCase.id}: invalid observation`);
@@ -87,11 +91,15 @@ async function main() {
     ]);
     const comparison = compareResults(goResult, typeScriptResult, manifest);
     if (comparison.differences.length > 0) {
-      console.error(`compare-conformance: ${comparison.differences.length} difference(s)\n- ${comparison.differences.join("\n- ")}`);
+      console.error(
+        `compare-conformance: ${comparison.differences.length} difference(s)\n- ${comparison.differences.join("\n- ")}`,
+      );
       process.exitCode = 1;
       return;
     }
-    console.log(`cross-language conformance: ${comparison.cases} cases and ${comparison.comparisons} observations matched`);
+    console.log(
+      `cross-language conformance: ${comparison.cases} cases and ${comparison.comparisons} observations matched`,
+    );
   } catch (error) {
     console.error(`compare-conformance: ${error.message}`);
     process.exitCode = 1;

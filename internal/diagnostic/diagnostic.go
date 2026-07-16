@@ -54,13 +54,13 @@ func (l List) Sorted() List {
 	return out
 }
 
-func (l List) WriteText(w io.Writer) {
+func (l List) WriteText(w io.Writer) error {
 	for _, d := range l.Sorted() {
 		path := ""
 		if d.Path != "" {
 			path = " [" + d.Path + "]"
 		}
-		fmt.Fprintf(w, "%s:%d:%d: %s %s: %s%s\n",
+		if _, err := fmt.Fprintf(w, "%s:%d:%d: %s %s: %s%s\n",
 			d.Span.File,
 			d.Span.Start.Line,
 			d.Span.Start.Column,
@@ -68,8 +68,11 @@ func (l List) WriteText(w io.Writer) {
 			d.Code,
 			d.Message,
 			path,
-		)
+		); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (l List) WriteJSON(w io.Writer) error {

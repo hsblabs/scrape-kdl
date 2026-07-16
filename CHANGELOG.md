@@ -4,6 +4,12 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## Unreleased — M5 release hardening
 
+- Prepared immutable execution plans once per compiled program, centralized output recovery/cardinality semantics across HTTP and browser modes, bounded first/one selector queries and collection overflow work, and de-duplicated diamond import traversal.
+- Replaced TypeScript native regular-expression execution with the pinned RE2-compatible `re2js` runtime and added a nested-repetition regression test.
+- Added machine-checked built-in, diagnostic, TypeScript export, and exact IR declaration contract gates; narrowed the exported IR types to the approved public surface.
+- Added optional `BrowserAdapterQueryLimit` support with backward-compatible fallback, plus Playwright and go-rod implementations.
+- Aligned runtime cancellation on `E_EXECUTION_CANCELED`, added a shared cross-runtime fixture, and propagated CLI diagnostic/JSON writer failures.
+- Renamed TypeScript "slice" implementation and automation identifiers to the completed compiler/runtime terminology; use `conformance:typescript` and `test:typescript-contract` in workspace automation.
 - Replaced the untagged integer/`0.1` working-draft identifiers with independent `2026-07-15` document, language, and Validated IR date strings; `Program.Version` now returns a string and the Go API exposes exact supported-version registries.
 - Added the dated Validated IR schema layout, canonical JSON normalization, schema/golden validation, declaration-shape drift checks, and acquisition-time file/capability metadata preflight.
 - Defined equivalent Go and TypeScript v1 API candidates, made Go compilation context-first with injected source loading, removed internal executor aliases from public browser signatures, and added independent consumer contract checks. This is a pre-v0.9 Go API break: `CompileFile` and `ValidateFile` now require `context.Context`.

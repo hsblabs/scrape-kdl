@@ -106,6 +106,22 @@ func TestIRDeclarationShapesMatchSchema(t *testing.T) {
 	}
 }
 
+func TestIRTypeScriptDeclarationsMatchApprovedSnapshot(t *testing.T) {
+	root := repositoryRoot(t)
+	approved, err := os.ReadFile(filepath.Join(root, "docs", "ir", "typescript", "index.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := os.ReadFile(filepath.Join(root, "packages", "scrape-kdl", "src", "ir.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementationText, _, _ := strings.Cut(string(implementation), "\n// Internal compatibility name retained for callers of the pre-v1 compiler.")
+	if strings.TrimSpace(implementationText) != strings.TrimSpace(string(approved)) {
+		t.Fatal("TypeScript IR declarations differ from docs/ir/typescript/index.ts")
+	}
+}
+
 func loadSchemaShapes(t *testing.T, path string) map[string]declarationShape {
 	t.Helper()
 	data, err := os.ReadFile(path)

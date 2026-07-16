@@ -1,4 +1,4 @@
-.PHONY: test race vet build format-check module-check golden diagnostics examples examples-go examples-typescript html-differential ir-contract api-contract typescript-contract typescript-package conformance-coverage conformance release-matrix hardening validate-example extract-example verify
+.PHONY: test race vet build format-check module-check golden diagnostics examples examples-go examples-typescript html-differential ir-contract builtin-contract api-contract typescript-contract typescript-package conformance-coverage conformance release-matrix hardening validate-example extract-example verify
 .PHONY: package-go performance support-matrix support-matrix-target test-rod-contract test-rod test-rod-e2e test-playwright-e2e release-check release-gate release-dist
 
 test:
@@ -38,9 +38,16 @@ examples-typescript:
 ir-contract:
 	GOTOOLCHAIN=local go test ./internal/canonicaljson ./internal/ir ./scripts -run 'Test(Canonical|IR)'
 
+builtin-contract:
+	GOTOOLCHAIN=local go test ./internal/builtincontract
+	npm run build:typescript
+	node scripts/check-builtin-contract.mjs
+
 api-contract:
 	GOTOOLCHAIN=local go test ./testdata/api-consumers/go
 	GOTOOLCHAIN=local go test ./scripts -run TestGoPublicSignatures
+	npm run build:typescript
+	node scripts/check-typescript-api.mjs
 	npm run typecheck:api
 
 package-go:
@@ -57,7 +64,7 @@ support-matrix-target:
 	node ./scripts/check-support-matrix.mjs --target "$${TARGET:?set TARGET=linux/amd64}"
 
 typescript-contract:
-	npm run test:contract-slice
+	npm run test:typescript-contract
 
 typescript-package:
 	npm run verify:typescript
@@ -104,7 +111,7 @@ test-playwright-e2e:
 	npm run build:typescript
 	npm run test:e2e --workspace @hsblabs/scrape-kdl-playwright
 
-verify: format-check module-check golden diagnostics examples ir-contract api-contract typescript-package conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract
+verify: format-check module-check golden diagnostics examples ir-contract builtin-contract api-contract typescript-package conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract
 
 release-check:
 	./scripts/verify-release.sh

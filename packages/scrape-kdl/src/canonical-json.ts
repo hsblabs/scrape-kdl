@@ -1,9 +1,12 @@
 export function canonicalJSONStringify(value: unknown): string {
   if (value === null) return "null";
   switch (typeof value) {
-    case "boolean": return value ? "true" : "false";
-    case "string": return JSON.stringify(value);
-    case "number": return canonicalNumber(value);
+    case "boolean":
+      return value ? "true" : "false";
+    case "string":
+      return JSON.stringify(value);
+    case "number":
+      return canonicalNumber(value);
     case "object": {
       if (Array.isArray(value)) return `[${value.map(canonicalJSONStringify).join(",")}]`;
       const object = value as Record<string, unknown>;

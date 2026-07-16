@@ -22,12 +22,30 @@ type Node struct {
 	Attrs    map[string]string
 	Parent   *Node
 	Children []*Node
+
+	previousElement *Node
+	lastElement     *Node
+	elementIndex    int
+	typeIndex       int
+	elementCount    int
+	typeCounts      map[string]int
 }
 
 func NewDocument() *Node { return &Node{Type: DocumentNode} }
 
 func (n *Node) appendChild(child *Node) {
 	child.Parent = n
+	if child.Type == ElementNode {
+		child.previousElement = n.lastElement
+		n.lastElement = child
+		n.elementCount++
+		child.elementIndex = n.elementCount
+		if n.typeCounts == nil {
+			n.typeCounts = map[string]int{}
+		}
+		n.typeCounts[child.Tag]++
+		child.typeIndex = n.typeCounts[child.Tag]
+	}
 	n.Children = append(n.Children, child)
 }
 
@@ -131,19 +149,10 @@ func (n *Node) ElementChildren() []*Node {
 }
 
 func (n *Node) PreviousElementSibling() *Node {
-	if n == nil || n.Parent == nil {
+	if n == nil {
 		return nil
 	}
-	var previous *Node
-	for _, child := range n.Parent.Children {
-		if child == n {
-			return previous
-		}
-		if child.Type == ElementNode {
-			previous = child
-		}
-	}
-	return nil
+	return n.previousElement
 }
 
 func (n *Node) IsEmpty() bool {

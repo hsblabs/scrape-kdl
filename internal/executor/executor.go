@@ -38,11 +38,17 @@ var (
 func (m missingValue) Error() string { return m.message }
 
 func Execute(ctx context.Context, extractor *ir.Extractor, inputs map[string]any, options Options) (*Result, error) {
-	options = options.withDefaults()
-	if extractor != nil && extractor.Source.Fetch.Mode == "browser" {
-		return ExecuteBrowser(ctx, extractor, inputs, options)
+	prepared, err := Prepare(extractor)
+	if err != nil {
+		return nil, err
 	}
-	engine, err := newEngine(ctx, extractor, options)
+	return prepared.Execute(ctx, inputs, options)
+}
+
+func executeHTTPPrepared(ctx context.Context, prepared *Prepared, inputs map[string]any, options Options) (*Result, error) {
+	options = options.withDefaults()
+	extractor := prepared.extractor
+	engine, err := newPreparedEngine(ctx, prepared, options)
 	if err != nil {
 		return nil, err
 	}
@@ -75,8 +81,16 @@ func Execute(ctx context.Context, extractor *ir.Extractor, inputs map[string]any
 // It is intended for tests, inspectors, and offline validation; it bypasses
 // source fetch, URL input expansion, and session policy.
 func ExecuteHTML(ctx context.Context, extractor *ir.Extractor, html string, options Options) (*Result, error) {
+	prepared, err := Prepare(extractor)
+	if err != nil {
+		return nil, err
+	}
+	return prepared.ExecuteHTML(ctx, html, options)
+}
+
+func executeHTMLPrepared(ctx context.Context, prepared *Prepared, html string, options Options) (*Result, error) {
 	options = options.withDefaults()
-	engine, err := newEngine(ctx, extractor, options)
+	engine, err := newPreparedEngine(ctx, prepared, options)
 	if err != nil {
 		return nil, err
 	}
@@ -91,34 +105,28 @@ func ExecuteHTML(ctx context.Context, extractor *ir.Extractor, html string, opti
 }
 
 func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*engine, error) {
-	if extractor == nil {
-		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "extractor IR is nil"}
-	}
-	if extractor.Source.Fetch.Mode != "http" {
-		return nil, &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: fmt.Sprintf("HTTP runtime cannot execute fetch mode %q", extractor.Source.Fetch.Mode)}
-	}
-	if err := preflightExtractorStructure(extractor); err != nil {
+	prepared, err := Prepare(extractor)
+	if err != nil {
 		return nil, err
 	}
-	if err := preflightSourceStructure(extractor.Source); err != nil {
-		return nil, err
+	return newPreparedEngine(ctx, prepared, options)
+}
+
+func newPreparedEngine(ctx context.Context, prepared *Prepared, options Options) (*engine, error) {
+	extractor := prepared.extractor
+	if prepared.mode != "http" {
+		return nil, &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: fmt.Sprintf("HTTP runtime cannot execute fetch mode %q", prepared.mode)}
 	}
 	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
-	if err := transforms.preflight(); err != nil {
+	if err := transforms.preflightExternalBindings(); err != nil {
 		return nil, err
 	}
-	if err := preflightOutputStructure(extractor.Output); err != nil {
-		return nil, err
-	}
-	if err := preflightCapabilities(extractor); err != nil {
-		return nil, err
+	if prepared.postBindingError != nil {
+		return nil, prepared.postBindingError
 	}
 	result := &engine{
 		ctx: ctx, extractor: extractor, options: options, transforms: transforms,
-		selectors: map[string]dom.Selector{},
-	}
-	if err := result.preflightOutput(extractor.Output); err != nil {
-		return nil, err
+		selectors: prepared.selectors,
 	}
 	return result, nil
 }
@@ -481,62 +489,23 @@ func (e *engine) selector(source string) (dom.Selector, error) {
 }
 
 func (e *engine) executeDocument(document *dom.Node) (*Result, error) {
-	value, err := e.executeObject(document, e.extractor.Output, "output")
+	walker := newOutputWalker[*dom.Node](e.ctx, e, e.transforms, &e.warnings, &e.partial)
+	value, err := walker.executeObject(document, e.extractor.Output, "output")
 	if err != nil {
 		return nil, err
 	}
 	return finalizeResult(value, e.warnings, e.partial), nil
 }
 
-func (e *engine) executeObject(scope *dom.Node, object ir.OutputObject, path string) (map[string]any, error) {
-	result := make(map[string]any, len(object.Members))
-	for _, member := range object.Members {
-		if err := executionContextError(e.ctx, path); err != nil {
-			return nil, err
-		}
-		switch typed := member.(type) {
-		case ir.Field:
-			value, err := e.executeField(scope, typed, path+"."+typed.Name)
-			if err != nil {
-				return nil, err
-			}
-			result[typed.Name] = value
-		case ir.Collection:
-			value, err := e.executeCollection(scope, typed, path+"."+typed.Name)
-			if err != nil {
-				return nil, err
-			}
-			result[typed.Name] = value
-		default:
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown output member %T", member), Path: path}
-		}
-	}
-	return result, nil
-}
-
-func (e *engine) executeField(scope *dom.Node, field ir.Field, path string) (any, error) {
-	value, err := e.readFieldValue(scope, field, path)
-	if err != nil {
-		if _, missing := err.(missingValue); missing {
-			return e.handleMissing(field, path, err.Error())
-		}
-		return e.recoverField(field, path, err)
-	}
-	value, err = e.transforms.applyCalls(value, field.Transforms, path)
-	if err != nil {
-		return e.recoverField(field, path, err)
-	}
-	if !matchesRuntimeType(value, field.SuccessfulType) {
-		return e.recoverField(field, path, &ExecutionError{Code: "E_OUTPUT_TYPE", Message: fmt.Sprintf("value of type %T is not assignable to %s", value, field.SuccessfulType.String()), Path: path})
-	}
-	return value, nil
-}
-
-func (e *engine) readFieldValue(scope *dom.Node, field ir.Field, path string) (any, error) {
+func (e *engine) readOutputField(scope *dom.Node, field ir.Field, path string) (any, error) {
 	var selected *dom.Node
 	if field.Selection != nil {
 		selector, _ := e.selector(field.Selection.Selector)
-		matches := dom.QueryAll(scope, selector)
+		limit := 1
+		if field.Selection.Match == "one" {
+			limit = 2
+		}
+		matches := dom.QueryLimit(scope, selector, limit)
 		if len(matches) == 0 {
 			return nil, missingValue{message: fmt.Sprintf("selector %q matched no elements", field.Selection.Selector)}
 		}
@@ -572,14 +541,9 @@ func (e *engine) readFieldValue(scope *dom.Node, field ir.Field, path string) (a
 	}
 }
 
-func (e *engine) handleMissing(field ir.Field, path, message string) (any, error) {
-	if field.Required {
-		return nil, &ExecutionError{Code: "E_REQUIRED_VALUE_MISSING", Message: message, Path: path}
-	}
-	if field.Default != nil {
-		return decodeFieldDefault(field, path)
-	}
-	return nil, nil
+func (e *engine) queryOutputRows(scope *dom.Node, collection ir.Collection, _ string) ([]*dom.Node, error) {
+	selector, _ := e.selector(collection.Selector)
+	return dom.QueryAll(scope, selector), nil
 }
 
 func decodeFieldDefault(field ir.Field, path string) (any, error) {
@@ -595,76 +559,6 @@ func decodeFieldDefault(field ir.Field, path string) (any, error) {
 		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("field default of type %T is not assignable to %s", value, field.SuccessfulType.String()), Path: path}
 	}
 	return normalized, nil
-}
-
-func (e *engine) recoverField(field ir.Field, path string, cause error) (any, error) {
-	policy := field.OnError
-	if policy == "" {
-		if field.Required {
-			policy = "fail"
-		} else {
-			policy = "null"
-		}
-	}
-	switch policy {
-	case "fail":
-		if execution, ok := cause.(*ExecutionError); ok {
-			return nil, execution
-		}
-		return nil, &ExecutionError{Code: "E_FIELD_EXECUTION", Message: cause.Error(), Path: path, Cause: cause}
-	case "null":
-		e.partial = true
-		return nil, nil
-	case "warn":
-		e.partial = true
-		e.warnings = append(e.warnings, Warning{Code: "W_ERROR_RECOVERED", Message: cause.Error(), Path: path})
-		return nil, nil
-	case "default":
-		value, err := decodeFieldDefault(field, path)
-		if err != nil {
-			return nil, err
-		}
-		e.partial = true
-		return value, nil
-	default:
-		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown on-error policy %q", policy), Path: path}
-	}
-}
-
-func (e *engine) executeCollection(scope *dom.Node, collection ir.Collection, path string) ([]any, error) {
-	selector, _ := e.selector(collection.Selector)
-	rows := dom.QueryAll(scope, selector)
-	result := make([]any, 0, len(rows))
-	for index, row := range rows {
-		if err := executionContextError(e.ctx, fmt.Sprintf("%s[%d]", path, index)); err != nil {
-			return nil, err
-		}
-		value, err := e.executeObject(row, collection.Row, fmt.Sprintf("%s[%d]", path, index))
-		if err != nil {
-			if isExecutionCanceled(err) {
-				return nil, err
-			}
-			if collection.OnRowError != "skip" {
-				return nil, err
-			}
-			e.partial = true
-			rowIndex := index
-			e.warnings = append(e.warnings, Warning{Code: "W_ROW_SKIPPED", Message: err.Error(), Path: path, Row: &rowIndex})
-			continue
-		}
-		result = append(result, value)
-	}
-	minimum := collection.MinItems
-	if collection.Required && minimum < 1 {
-		minimum = 1
-	}
-	if len(result) < minimum {
-		return nil, &ExecutionError{Code: "E_COLLECTION_CARDINALITY", Message: fmt.Sprintf("collection has %d rows after recovery; minimum is %d", len(result), minimum), Path: path}
-	}
-	if collection.MaxItems != nil && len(result) > *collection.MaxItems {
-		return nil, &ExecutionError{Code: "E_COLLECTION_CARDINALITY", Message: fmt.Sprintf("collection has %d rows; maximum is %d", len(result), *collection.MaxItems), Path: path}
-	}
-	return result, nil
 }
 
 func matchesRuntimeType(value any, target typesys.Type) bool {

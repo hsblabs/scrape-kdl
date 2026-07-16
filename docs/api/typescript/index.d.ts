@@ -114,6 +114,10 @@ export interface BrowserAdapterLease {
   acquire(signal?: AbortSignal): Promise<() => void>;
 }
 
+export interface BrowserAdapterQueryLimit {
+  queryLimit(scope: BrowserElement | undefined, selector: string, limit: number, options: Pick<BrowserOperationOptions, "signal">): Promise<readonly BrowserElement[]>;
+}
+
 export interface URLPolicyContext {
   readonly signal?: AbortSignal;
 }

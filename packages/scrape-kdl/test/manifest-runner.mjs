@@ -2,11 +2,11 @@ import { parseArgs } from "node:util";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { canonicalJSONStringify } from "../dist/canonical-json.js";
-import { compileContractSlice } from "../dist/compiler.js";
+import { compileSource } from "../dist/compiler.js";
 import { executeHTML } from "../dist/runtime.js";
 import { validateJSONSchema } from "../../../scripts/json-schema-validator.mjs";
 
-export async function runTypeScriptSlice({ root, manifestPath = "conformance/manifest.json", suite = "typescript-slice", job = "core" }) {
+export async function runTypeScriptConformance({ root, manifestPath = "conformance/manifest.json", suite = "typescript-core", job = "core" }) {
   const manifest = JSON.parse(await readFile(`${root}/${manifestPath}`, "utf8"));
   const irSchema = JSON.parse(await readFile(`${root}/docs/ir/schema.json`, "utf8"));
   if (manifest.suites[suite] === undefined) throw new Error(`unknown suite ${JSON.stringify(suite)}`);
@@ -36,7 +36,7 @@ export async function runTypeScriptSlice({ root, manifestPath = "conformance/man
 async function runCase(root, manifest, irSchema, testCase, execution) {
   const sourcePath = testCase.artifacts.find((artifact) => artifact.role === "source")?.path;
   if (sourcePath === undefined) throw new Error(`${testCase.id} has no source artifact`);
-  const compiled = await compileContractSlice(
+  const compiled = await compileSource(
     { path: sourcePath, data: await readFile(`${root}/${sourcePath}`) },
     { loader: { async load(path) { return readFile(`${root}/${path}`); } } },
   );
@@ -107,7 +107,7 @@ async function main() {
       options: {
         help: { type: "boolean", short: "h" },
         manifest: { type: "string", default: "conformance/manifest.json" },
-        suite: { type: "string", default: "typescript-slice" },
+        suite: { type: "string", default: "typescript-core" },
         job: { type: "string", default: "core" },
         output: { type: "string", short: "o", default: "-" },
       },
@@ -129,7 +129,7 @@ Usage:
 Flags:
   -h, --help             show this help
       --manifest PATH    manifest path (default: conformance/manifest.json)
-      --suite NAME       focused suite (default: typescript-slice)
+      --suite NAME       focused suite (default: typescript-core)
       --job NAME         manifest job (default: core)
   -o, --output PATH      result path, or - for stdout
 
@@ -137,7 +137,7 @@ The command writes only the stable JSON result to stdout. Errors go to stderr.`)
     return;
   }
   try {
-    const result = await runTypeScriptSlice({ root, manifestPath: options.manifest, suite: options.suite, job: options.job });
+    const result = await runTypeScriptConformance({ root, manifestPath: options.manifest, suite: options.suite, job: options.job });
     const encoded = `${JSON.stringify(result, null, 2)}\n`;
     if (options.output === "-") process.stdout.write(encoded);
     else await writeFile(options.output, encoded);

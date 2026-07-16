@@ -5,8 +5,14 @@ import { join } from "node:path";
 const root = process.cwd();
 const matrix = JSON.parse(await readFile("conformance/release-matrix.json", "utf8"));
 const required = [
-  "static-http", "malformed-truncated-html", "charset-decoding", "sessions-redirects-url-policy",
-  "transforms", "partial-results", "imports", "browser-workflow-javascript",
+  "static-http",
+  "malformed-truncated-html",
+  "charset-decoding",
+  "sessions-redirects-url-policy",
+  "transforms",
+  "partial-results",
+  "imports",
+  "browser-workflow-javascript",
 ];
 assert.equal(matrix.schemaVersion, "2026-07-15");
 assert.equal(matrix.portableDifferencesAllowed, 0);
@@ -31,4 +37,6 @@ for (const entry of await readdir("examples", { withFileTypes: true })) {
   assert.ok(implementations.has("typescript"), `${entry.name}: TypeScript example execution is required`);
 }
 
-console.log(`release matrix: ${matrix.categories.length} categories, zero portable differences, all artifacts and gates declared`);
+console.log(
+  `release matrix: ${matrix.categories.length} categories, zero portable differences, all artifacts and gates declared`,
+);

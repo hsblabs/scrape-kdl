@@ -37,6 +37,7 @@ Implemented:
 - trusted-spec JavaScript opt-in;
 - browser collection extraction;
 - optional adapter lease for extraction-wide serialization.
+- optional bounded browser queries for first/one cardinality.
 
 ## M4: go-rod adapter
 
@@ -59,17 +60,20 @@ Implemented:
 - hexadecimal, octal, and binary integer parsing;
 - browser lease and failure-path tests;
 - release-clean nested module configuration;
-- Go workspace for monorepo development;
+- isolated root and go-rod modules with temporary verification workspaces;
 - CI, browser E2E, and release workflows;
 - Apache-2.0 licensing;
 - security, contribution, support, compatibility, and versioning policies;
 - release archive generation and checksum script;
-- module-path, formatting, and golden-IR checks.
+- module-path, formatting, and golden-IR checks;
 - diagnostic registry drift checks and stable partial-result warnings;
 - dated document, language, and Validated IR compatibility identifiers with explicit supported-version registries;
 - release tag validation and scheduled parser fuzzing;
 - host URL policy for initial targets and HTTP redirects;
-- raw-text/RCDATA, truncated HTML, and common optional-end-tag recovery.
+- raw-text/RCDATA, truncated HTML, and common optional-end-tag recovery;
+- immutable prepared execution plans and a shared HTTP/browser output walker;
+- machine-readable built-in, public API, exact IR, and diagnostic contract gates;
+- RE2-compatible TypeScript regular-expression execution and scaling probes.
 
 ## v1 contract completion
 
@@ -77,25 +81,22 @@ Implemented:
 
 - section-complete conformance coverage inventory for the language, built-in, selector, and diagnostic contracts;
 - exact dated-version grammar and shared Go/TypeScript diagnostic fixtures;
-- a private Node.js 26 npm workspace containing the bounded independent TypeScript parser/compiler cross-check;
-- canonical Go/TypeScript IR equality for the representative static HTTP fixture.
-- a machine-readable fixture manifest, dated result schema, focused suite selection, Go runner, and exact Go/TypeScript slice comparator;
-- CI rejection of unregistered fixtures, missing expected artifacts, schema drift, and unapproved implementation differences.
+- a Node.js 26 npm workspace containing the complete independent TypeScript compiler and runtime;
+- canonical Go/TypeScript IR equality for the representative static HTTP fixture;
+- a machine-readable fixture manifest, dated result schema, focused suite selection, Go runner, and exact Go/TypeScript comparator;
+- CI rejection of unregistered fixtures, missing expected artifacts, schema drift, and unapproved implementation differences;
 - ESM-only npm workspace boundaries for `@hsblabs/scrape-kdl` and the reserved `@hsblabs/scrape-kdl-playwright` adapter package;
 - the approved TypeScript root and Node.js entry points, full readonly IR declarations, and direct package consumer typechecking;
-- Node.js 26 typecheck, source lint, tests, coverage thresholds, package-content inspection, and packed clean-consumer smoke gates on Linux and macOS.
+- Node.js 26 typecheck, formatting, source lint, tests, coverage thresholds, package-content inspection, and packed clean-consumer smoke gates on Linux and macOS;
 - the complete documented TypeScript KDL subset with exact UTF-8 byte spans, stable invalid-UTF-8 rejection, and shared Go/TypeScript parser cases and fuzz seeds;
 - injectable lexical import loading for extractor and module documents, including exact shared diagnostics for missing sources, aliases, remote paths, wrong kinds, import order, and cycles;
 - explicit filesystem import loading only through the TypeScript Node.js entry point.
 
-The TypeScript semantic compiler deliberately remains the v0.2 contract cross-check behind the v0.3 parser, loader, and publishable package boundary.
-The complete semantic compiler, HTTP runtime, and Playwright adapter remain later roadmap work.
+The TypeScript semantic compiler, HTTP runtime, and official Playwright adapter now implement the complete v1 product boundary and share conformance, packaging, browser, and performance gates with Go.
 
 ## Remaining limitations
 
 - Real go-rod and Chromium E2E require a network-enabled environment and browser availability.
-- The HTTP HTML parser is not a complete WHATWG tree builder.
 - The reference KDL parser implements the Scraping KDL v0.1 subset, not every generic KDL representation.
-- The complete TypeScript semantic compiler, runtime, and Playwright adapter are not implemented.
 - Go/TypeScript type and standalone extractor generation are not implemented.
 - Inspector, language server, and browser authoring extension are not implemented.

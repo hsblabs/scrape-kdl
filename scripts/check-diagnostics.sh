@@ -8,8 +8,12 @@ import re
 import sys
 
 implementation = set()
-for path in Path("internal").rglob("*.go"):
-    implementation.update(re.findall(r'"([EW]_[A-Z0-9_]+)"', path.read_text(encoding="utf-8")))
+implementation_roots = [Path("internal"), Path("cmd"), Path("packages/scrape-kdl/src"), Path("packages/scrape-kdl-playwright/src")]
+for root in implementation_roots:
+    for path in root.rglob("*"):
+        if path.suffix not in {".go", ".ts"} or path.name.endswith("_test.go"):
+            continue
+        implementation.update(re.findall(r'"([EW]_[A-Z0-9_]+)"', path.read_text(encoding="utf-8")))
 documented = set(re.findall(r'`([EW]_[A-Z0-9_]+)`', Path("docs/spec/diagnostics.md").read_text(encoding="utf-8")))
 missing = sorted(implementation - documented)
 if missing:

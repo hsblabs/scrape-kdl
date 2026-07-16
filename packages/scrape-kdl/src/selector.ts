@@ -1,8 +1,15 @@
 export type Combinator = "none" | "descendant" | "child" | "adjacent" | "sibling";
 
-export interface Selector { readonly groups: readonly ComplexSelector[]; }
-export interface ComplexSelector { readonly parts: readonly SelectorPart[]; }
-export interface SelectorPart { readonly combinator: Combinator; readonly compound: CompoundSelector; }
+export interface Selector {
+  readonly groups: readonly ComplexSelector[];
+}
+export interface ComplexSelector {
+  readonly parts: readonly SelectorPart[];
+}
+export interface SelectorPart {
+  readonly combinator: Combinator;
+  readonly compound: CompoundSelector;
+}
 export interface CompoundSelector {
   readonly typeName?: string;
   readonly universal: boolean;
@@ -11,9 +18,20 @@ export interface CompoundSelector {
   readonly attributes: readonly AttributeSelector[];
   readonly pseudos: readonly PseudoSelector[];
 }
-export interface AttributeSelector { readonly name: string; readonly operator: string; readonly value: string; }
-export interface PseudoSelector { readonly name: string; readonly nth?: NthExpression; readonly negation?: CompoundSelector; }
-export interface NthExpression { readonly a: number; readonly b: number; }
+export interface AttributeSelector {
+  readonly name: string;
+  readonly operator: string;
+  readonly value: string;
+}
+export interface PseudoSelector {
+  readonly name: string;
+  readonly nth?: NthExpression;
+  readonly negation?: CompoundSelector;
+}
+export interface NthExpression {
+  readonly a: number;
+  readonly b: number;
+}
 
 export function parseSelector(source: string): Selector {
   const parser = new SelectorParser(source);
@@ -49,10 +67,19 @@ class SelectorParser {
       const hadWhitespace = this.skipWhitespace();
       if (this.eof() || this.peek() === "," || this.peek() === ")") break;
       let combinator: Combinator;
-      if (this.peek() === ">") { combinator = "child"; this.index++; this.skipWhitespace(); }
-      else if (this.peek() === "+") { combinator = "adjacent"; this.index++; this.skipWhitespace(); }
-      else if (this.peek() === "~") { combinator = "sibling"; this.index++; this.skipWhitespace(); }
-      else if (hadWhitespace) combinator = "descendant";
+      if (this.peek() === ">") {
+        combinator = "child";
+        this.index++;
+        this.skipWhitespace();
+      } else if (this.peek() === "+") {
+        combinator = "adjacent";
+        this.index++;
+        this.skipWhitespace();
+      } else if (this.peek() === "~") {
+        combinator = "sibling";
+        this.index++;
+        this.skipWhitespace();
+      } else if (hadWhitespace) combinator = "descendant";
       else this.fail("expected combinator");
       parts.push({ combinator, compound: this.parseCompound() });
     }
@@ -67,20 +94,31 @@ class SelectorParser {
     const attributes: AttributeSelector[] = [];
     const pseudos: PseudoSelector[] = [];
     let consumed = false;
-    if (!this.eof() && this.peek() === "*") { universal = true; this.index++; consumed = true; }
-    else if (!this.eof() && isIdentifierStart(this.peek())) { typeName = this.parseIdentifier().toLowerCase(); consumed = true; }
+    if (!this.eof() && this.peek() === "*") {
+      universal = true;
+      this.index++;
+      consumed = true;
+    } else if (!this.eof() && isIdentifierStart(this.peek())) {
+      typeName = this.parseIdentifier().toLowerCase();
+      consumed = true;
+    }
     while (!this.eof()) {
       if (this.peek() === "#") {
         this.index++;
         const value = this.parseIdentifier();
         if (id !== undefined) this.fail("multiple ID selectors are unsupported");
-        id = value; consumed = true;
+        id = value;
+        consumed = true;
       } else if (this.peek() === ".") {
-        this.index++; classes.push(this.parseIdentifier()); consumed = true;
+        this.index++;
+        classes.push(this.parseIdentifier());
+        consumed = true;
       } else if (this.peek() === "[") {
-        attributes.push(this.parseAttribute()); consumed = true;
+        attributes.push(this.parseAttribute());
+        consumed = true;
       } else if (this.peek() === ":") {
-        pseudos.push(this.parsePseudo()); consumed = true;
+        pseudos.push(this.parsePseudo());
+        consumed = true;
       } else break;
     }
     if (!consumed) this.fail("expected compound selector");
@@ -94,7 +132,10 @@ class SelectorParser {
     const name = this.parseIdentifier().toLowerCase();
     this.skipWhitespace();
     if (this.eof()) this.fail("unterminated attribute selector");
-    if (this.peek() === "]") { this.index++; return { name, operator: "", value: "" }; }
+    if (this.peek() === "]") {
+      this.index++;
+      return { name, operator: "", value: "" };
+    }
     const operators = ["~=", "|=", "^=", "$=", "*=", "="];
     const operator = operators.find((candidate) => this.source.startsWith(candidate, this.index));
     if (operator === undefined) this.fail("invalid attribute operator");
@@ -103,8 +144,11 @@ class SelectorParser {
     const value = this.parseAttributeValue();
     const separated = this.skipWhitespace();
     if (separated && !this.eof() && /[iIsS]/u.test(this.peek())) {
-      const flag = this.peek(); this.index++; this.skipWhitespace();
-      if (!this.eof() && this.peek() === "]") this.fail(`attribute selector case-sensitivity flag ${JSON.stringify(flag)} is unsupported`);
+      const flag = this.peek();
+      this.index++;
+      this.skipWhitespace();
+      if (!this.eof() && this.peek() === "]")
+        this.fail(`attribute selector case-sensitivity flag ${JSON.stringify(flag)} is unsupported`);
     }
     if (this.eof() || this.peek() !== "]") this.fail("unterminated attribute selector");
     this.index++;
@@ -114,12 +158,16 @@ class SelectorParser {
   parseAttributeValue(): string {
     if (this.eof()) this.fail("missing attribute value");
     const quote = this.peek();
-    if (quote === "'" || quote === "\"") {
+    if (quote === "'" || quote === '"') {
       this.index++;
       let output = "";
       while (!this.eof() && this.peek() !== quote) {
-        if (this.peek() === "\\") { this.index++; if (this.eof()) this.fail("unterminated escape"); }
-        output += this.peek(); this.index++;
+        if (this.peek() === "\\") {
+          this.index++;
+          if (this.eof()) this.fail("unterminated escape");
+        }
+        output += this.peek();
+        this.index++;
       }
       if (this.eof()) this.fail("unterminated quoted attribute value");
       this.index++;
@@ -135,7 +183,12 @@ class SelectorParser {
     this.index++;
     if (!this.eof() && this.peek() === ":") this.fail("pseudo-elements are unsupported");
     const name = this.parseIdentifier().toLowerCase();
-    if (["first-child", "last-child", "only-child", "empty", "first-of-type", "last-of-type", "only-of-type"].includes(name)) return { name };
+    if (
+      ["first-child", "last-child", "only-child", "empty", "first-of-type", "last-of-type", "only-of-type"].includes(
+        name,
+      )
+    )
+      return { name };
     if (this.eof() || this.peek() !== "(") this.fail(`unsupported pseudo-class ${JSON.stringify(name)}`);
     this.index++;
     const start = this.index;
@@ -144,27 +197,44 @@ class SelectorParser {
     while (!this.eof() && depth > 0) {
       const character = this.peek();
       if (quote !== "") {
-        if (character === "\\") { this.index = Math.min(this.source.length, this.index + 2); continue; }
+        if (character === "\\") {
+          this.index = Math.min(this.source.length, this.index + 2);
+          continue;
+        }
         if (character === quote) quote = "";
-        this.index++; continue;
+        this.index++;
+        continue;
       }
-      if (character === "'" || character === "\"") { quote = character; this.index++; continue; }
+      if (character === "'" || character === '"') {
+        quote = character;
+        this.index++;
+        continue;
+      }
       if (character === "(") depth++;
-      else if (character === ")") { depth--; if (depth === 0) break; }
+      else if (character === ")") {
+        depth--;
+        if (depth === 0) break;
+      }
       this.index++;
     }
     if (this.eof() || depth !== 0) this.fail("unterminated pseudo-class");
     const argument = this.source.slice(start, this.index).trim();
     this.index++;
     if (["nth-child", "nth-last-child", "nth-of-type", "nth-last-of-type"].includes(name)) {
-      try { return { name, nth: parseNth(argument) }; }
-      catch (error) { this.fail(`invalid ${name} expression: ${error instanceof Error ? error.message : String(error)}`); }
+      try {
+        return { name, nth: parseNth(argument) };
+      } catch (error) {
+        this.fail(`invalid ${name} expression: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
     if (name === "not") {
       const nested = new SelectorParser(argument);
       let negation: CompoundSelector;
-      try { negation = nested.parseCompound(); }
-      catch (error) { this.fail(`invalid :not argument: ${error instanceof Error ? error.message : String(error)}`); }
+      try {
+        negation = nested.parseCompound();
+      } catch (error) {
+        this.fail(`invalid :not argument: ${error instanceof Error ? error.message : String(error)}`);
+      }
       nested.skipWhitespace();
       if (!nested.eof()) this.fail(":not only accepts a compound selector");
       return { name, negation };
@@ -179,10 +249,20 @@ class SelectorParser {
     return this.source.slice(start, this.index);
   }
 
-  skipWhitespace(): boolean { const start = this.index; while (!this.eof() && /\s/u.test(this.peek())) this.index++; return this.index > start; }
-  eof(): boolean { return this.index >= this.source.length; }
-  peek(): string { return this.source[this.index]!; }
-  fail(message: string): never { throw new Error(`selector byte ${this.index}: ${message}`); }
+  skipWhitespace(): boolean {
+    const start = this.index;
+    while (!this.eof() && /\s/u.test(this.peek())) this.index++;
+    return this.index > start;
+  }
+  eof(): boolean {
+    return this.index >= this.source.length;
+  }
+  peek(): string {
+    return this.source[this.index]!;
+  }
+  fail(message: string): never {
+    throw new Error(`selector byte ${this.index}: ${message}`);
+  }
 }
 
 function parseNth(input: string): NthExpression {
@@ -208,8 +288,12 @@ function parseNth(input: string): NthExpression {
   return { a, b };
 }
 
-function isIdentifierStart(character: string): boolean { return character === "_" || character === "-" || /[a-zA-Z]/u.test(character); }
-function isIdentifierContinue(character: string): boolean { return isIdentifierStart(character) || /\d/u.test(character); }
+function isIdentifierStart(character: string): boolean {
+  return character === "_" || character === "-" || /[a-zA-Z]/u.test(character);
+}
+function isIdentifierContinue(character: string): boolean {
+  return isIdentifierStart(character) || /\d/u.test(character);
+}
 
 export function nthMatches(expression: NthExpression, position: number): boolean {
   if (position <= 0) return false;

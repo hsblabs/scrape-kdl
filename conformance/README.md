@@ -27,7 +27,7 @@ go run ./cmd/conformance-runner --suite release --job browser-e2e --list
 Emit the complete TypeScript compiler result:
 
 ```bash
-npm run conformance:typescript-slice
+npm run conformance:typescript
 ```
 
 Both runners write only the JSON result to standard output.

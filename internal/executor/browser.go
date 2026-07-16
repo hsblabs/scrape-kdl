@@ -40,6 +40,12 @@ type BrowserAdapterLease interface {
 	Acquire(context.Context) (release func(), err error)
 }
 
+// BrowserAdapterQueryLimit is an optional capability that avoids materializing
+// every match when the runtime only needs the first one or two elements.
+type BrowserAdapterQueryLimit interface {
+	QueryLimit(context.Context, BrowserElement, string, int) ([]BrowserElement, error)
+}
+
 type BrowserAdapter interface {
 	Navigate(context.Context, string, BrowserNavigateOptions) error
 	WaitFor(context.Context, string, string, time.Duration) error
@@ -66,40 +72,31 @@ type browserEngine struct {
 }
 
 func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[string]any, options Options) (*Result, error) {
+	prepared, err := Prepare(extractor)
+	if err != nil {
+		return nil, err
+	}
+	if prepared.mode != "browser" {
+		return nil, &ExecutionError{Code: "E_BROWSER_MODE_REQUIRED", Message: fmt.Sprintf("browser runtime cannot execute fetch mode %q", prepared.mode)}
+	}
+	return executeBrowserPrepared(ctx, prepared, inputs, options)
+}
+
+func executeBrowserPrepared(ctx context.Context, prepared *Prepared, inputs map[string]any, options Options) (*Result, error) {
 	options = options.withDefaults()
-	if extractor == nil {
-		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: "extractor IR is nil"}
-	}
-	if extractor.Source.Fetch.Mode != "browser" {
-		return nil, &ExecutionError{Code: "E_BROWSER_MODE_REQUIRED", Message: fmt.Sprintf("browser runtime cannot execute fetch mode %q", extractor.Source.Fetch.Mode)}
-	}
+	extractor := prepared.extractor
 	if options.Browser == nil {
 		return nil, &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: "browser-mode extractor requires Options.Browser"}
 	}
 	if !options.AllowJavaScript && containsJavaScript(extractor) {
 		return nil, &ExecutionError{Code: "E_JAVASCRIPT_DISABLED", Message: "extractor contains JavaScript; set AllowJavaScript=true for trusted specs"}
 	}
-	if err := preflightExtractorStructure(extractor); err != nil {
-		return nil, err
-	}
-	if err := preflightSourceStructure(extractor.Source); err != nil {
-		return nil, err
-	}
 	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
-	if err := transforms.preflight(); err != nil {
+	if err := transforms.preflightExternalBindings(); err != nil {
 		return nil, err
 	}
-	if err := preflightOutputStructure(extractor.Output); err != nil {
-		return nil, err
-	}
-	if err := preflightBrowserWorkflow(extractor.Source.Workflow); err != nil {
-		return nil, err
-	}
-	if err := preflightBrowserOutput(extractor.Output); err != nil {
-		return nil, err
-	}
-	if err := preflightCapabilities(extractor); err != nil {
-		return nil, err
+	if prepared.postBindingError != nil {
+		return nil, prepared.postBindingError
 	}
 	resolved, err := resolveInputs(extractor.Inputs, inputs)
 	if err != nil {
@@ -122,7 +119,7 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	if lease, ok := options.Browser.(BrowserAdapterLease); ok {
 		release, err := lease.Acquire(ctx)
 		if err != nil {
-			return nil, &ExecutionError{Code: "E_BROWSER_ACQUIRE", Message: err.Error(), Cause: err}
+			return nil, &ExecutionError{Code: operationErrorCode("E_BROWSER_ACQUIRE", err), Message: err.Error(), Cause: err}
 		}
 		if release == nil {
 			return nil, &ExecutionError{Code: "E_BROWSER_ACQUIRE", Message: "browser adapter returned a nil release function"}
@@ -136,7 +133,8 @@ func ExecuteBrowser(ctx context.Context, extractor *ir.Extractor, inputs map[str
 	if err := e.runWorkflow(); err != nil {
 		return nil, err
 	}
-	value, err := e.executeObject(nil, extractor.Output, "output")
+	walker := newOutputWalker[BrowserElement](ctx, e, transforms, &e.warnings, &e.partial)
+	value, err := walker.executeObject(nil, extractor.Output, "output")
 	if err != nil {
 		return nil, err
 	}
@@ -288,54 +286,14 @@ func (e *browserEngine) runWorkflow() error {
 	return nil
 }
 
-func (e *browserEngine) executeObject(scope BrowserElement, object ir.OutputObject, path string) (map[string]any, error) {
-	out := make(map[string]any, len(object.Members))
-	for _, member := range object.Members {
-		if err := executionContextError(e.ctx, path); err != nil {
-			return nil, err
-		}
-		switch m := member.(type) {
-		case ir.Field:
-			v, err := e.executeField(scope, m, path+"."+m.Name)
-			if err != nil {
-				return nil, err
-			}
-			out[m.Name] = v
-		case ir.Collection:
-			v, err := e.executeCollection(scope, m, path+"."+m.Name)
-			if err != nil {
-				return nil, err
-			}
-			out[m.Name] = v
-		default:
-			return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown output member %T", member), Path: path}
-		}
-	}
-	return out, nil
-}
-
-func (e *browserEngine) executeField(scope BrowserElement, field ir.Field, path string) (any, error) {
-	value, err := e.readField(scope, field, path)
-	if err != nil {
-		if _, ok := err.(missingValue); ok {
-			return e.handleMissing(field, path, err.Error())
-		}
-		return e.recoverField(field, path, err)
-	}
-	value, err = e.transforms.applyCalls(value, field.Transforms, path)
-	if err != nil {
-		return e.recoverField(field, path, err)
-	}
-	if !matchesRuntimeType(value, field.SuccessfulType) {
-		return e.recoverField(field, path, &ExecutionError{Code: "E_OUTPUT_TYPE", Message: fmt.Sprintf("value of type %T is not assignable to %s", value, field.SuccessfulType.String()), Path: path})
-	}
-	return value, nil
-}
-
-func (e *browserEngine) readField(scope BrowserElement, field ir.Field, path string) (any, error) {
+func (e *browserEngine) readOutputField(scope BrowserElement, field ir.Field, path string) (any, error) {
 	selected := scope
 	if field.Selection != nil {
-		matches, err := e.adapter.QueryAll(e.ctx, scope, field.Selection.Selector)
+		limit := 1
+		if field.Selection.Match == "one" {
+			limit = 2
+		}
+		matches, err := queryBrowser(e.ctx, e.adapter, scope, field.Selection.Selector, limit)
 		if err != nil {
 			return nil, &ExecutionError{Code: operationErrorCode("E_BROWSER_QUERY", err), Message: err.Error(), Path: path, Cause: err}
 		}
@@ -398,6 +356,21 @@ func (e *browserEngine) readField(scope BrowserElement, field ir.Field, path str
 	default:
 		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown value source %T", field.ValueSource), Path: path}
 	}
+}
+
+func (e *browserEngine) queryOutputRows(scope BrowserElement, collection ir.Collection, path string) ([]BrowserElement, error) {
+	rows, err := e.adapter.QueryAll(e.ctx, scope, collection.Selector)
+	if err != nil {
+		return nil, &ExecutionError{Code: operationErrorCode("E_BROWSER_QUERY", err), Message: err.Error(), Path: path, Cause: err}
+	}
+	return rows, nil
+}
+
+func queryBrowser(ctx context.Context, adapter BrowserAdapter, scope BrowserElement, selector string, limit int) ([]BrowserElement, error) {
+	if limited, ok := adapter.(BrowserAdapterQueryLimit); ok {
+		return limited.QueryLimit(ctx, scope, selector, limit)
+	}
+	return adapter.QueryAll(ctx, scope, selector)
 }
 
 func normalizeJSONResult(value any, target typesys.Type) (any, bool) {
@@ -662,88 +635,6 @@ func normalizeJSONFloat(value any, target string) (any, bool) {
 		return narrowed, true
 	}
 	return converted, true
-}
-
-func (e *browserEngine) handleMissing(field ir.Field, path, message string) (any, error) {
-	if field.Required {
-		return nil, &ExecutionError{Code: "E_REQUIRED_VALUE_MISSING", Message: message, Path: path}
-	}
-	if field.Default != nil {
-		return decodeFieldDefault(field, path)
-	}
-	return nil, nil
-}
-
-func (e *browserEngine) recoverField(field ir.Field, path string, cause error) (any, error) {
-	policy := field.OnError
-	if policy == "" {
-		if field.Required {
-			policy = "fail"
-		} else {
-			policy = "null"
-		}
-	}
-	switch policy {
-	case "fail":
-		if ex, ok := cause.(*ExecutionError); ok {
-			return nil, ex
-		}
-		return nil, &ExecutionError{Code: "E_FIELD_EXECUTION", Message: cause.Error(), Path: path, Cause: cause}
-	case "null":
-		e.partial = true
-		return nil, nil
-	case "warn":
-		e.partial = true
-		e.warnings = append(e.warnings, Warning{Code: "W_ERROR_RECOVERED", Message: cause.Error(), Path: path})
-		return nil, nil
-	case "default":
-		v, err := decodeFieldDefault(field, path)
-		if err != nil {
-			return nil, err
-		}
-		e.partial = true
-		return v, nil
-	default:
-		return nil, &ExecutionError{Code: "E_IR_INVALID", Message: fmt.Sprintf("unknown on-error policy %q", policy), Path: path}
-	}
-}
-
-func (e *browserEngine) executeCollection(scope BrowserElement, c ir.Collection, path string) ([]any, error) {
-	rows, err := e.adapter.QueryAll(e.ctx, scope, c.Selector)
-	if err != nil {
-		return nil, &ExecutionError{Code: operationErrorCode("E_BROWSER_QUERY", err), Message: err.Error(), Path: path, Cause: err}
-	}
-	out := make([]any, 0, len(rows))
-	for i, row := range rows {
-		if err := executionContextError(e.ctx, fmt.Sprintf("%s[%d]", path, i)); err != nil {
-			return nil, err
-		}
-		v, err := e.executeObject(row, c.Row, fmt.Sprintf("%s[%d]", path, i))
-		if err != nil {
-			if isExecutionCanceled(err) {
-				return nil, err
-			}
-			if c.OnRowError != "skip" {
-				return nil, err
-			}
-			e.partial = true
-			idx := i
-			e.warnings = append(e.warnings, Warning{Code: "W_ROW_SKIPPED", Message: err.Error(), Path: path, Row: &idx})
-			continue
-		}
-		out = append(out, v)
-	}
-	min := c.MinItems
-	if c.Required && min < 1 {
-		min = 1
-	}
-	if len(out) < min {
-		return nil, &ExecutionError{Code: "E_COLLECTION_CARDINALITY", Message: fmt.Sprintf("collection has %d rows after recovery; minimum is %d", len(out), min), Path: path}
-	}
-	if c.MaxItems != nil && len(out) > *c.MaxItems {
-		return nil, &ExecutionError{Code: "E_COLLECTION_CARDINALITY", Message: fmt.Sprintf("collection has %d rows; maximum is %d", len(out), *c.MaxItems), Path: path}
-	}
-	return out, nil
 }
 
 func containsJavaScript(extractor *ir.Extractor) bool {

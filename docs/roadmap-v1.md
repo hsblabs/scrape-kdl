@@ -303,7 +303,7 @@ The sequence is: complete issue #18's pre-publication checklist, obtain explicit
 
 Implementations prefer standard-library or platform APIs and small explicit abstractions.
 Go may use `golang.org/x/*` packages as quasi-standard dependencies where they materially improve correctness.
-The approved v1 runtime dependencies include `golang.org/x/net/html`, `parse5`, and Playwright in the separate TypeScript adapter package.
+The approved v1 runtime dependencies include `golang.org/x/net/html`, `parse5`, `re2js` for linear-time RE2-compatible TypeScript regular expressions, and Playwright in the separate TypeScript adapter package.
 A new third-party runtime dependency outside these approved choices requires project-owner review; minimal build and test dependencies may be selected without review when they follow established ecosystem practice.
 
 The support matrix is:
