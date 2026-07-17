@@ -21,3 +21,4 @@ Include the affected version, execution mode (`http` or `browser`), a minimal KD
 - Session cookies and headers may contain secrets. Diagnostics and logs must not print their values.
 - TypeScript regular-expression built-ins execute through the pinned RE2-compatible engine rather than the JavaScript backtracking engine. Keep the nested-repetition regression test when changing this boundary.
 - The CLI accepts secret session values only through `--session-file PATH` or explicit standard input with `--session-file -`. Direct `--cookie` and `--header` values are rejected because shell history and process inspection can expose them.
+- Release workflows pin actions by full commit SHA, isolate untrusted build work from publication permissions, require protected Environments for public writes, and use npm OIDC trusted publishing without a long-lived registry token.

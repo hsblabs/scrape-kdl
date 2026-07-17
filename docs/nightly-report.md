@@ -293,3 +293,14 @@ Verification passed:
 - existing release output preservation on build failure and refusal to partially overwrite an occupied npm artifact directory.
 
 Remaining gates are external by definition: protected GitHub Environment configuration, private hosted rehearsal after push, repository publicization, schema deployment, public Go/npm/adapter candidate resolution, the 14-day blocker-free candidate period, and separate stable-publication approval.
+
+## 2026-07-17 adversarial release-workflow hardening
+
+- pinned every third-party GitHub Action to a full commit SHA and verified the comments with `pinact`;
+- replaced the npm publication token design with OIDC trusted publishing and isolated `id-token: write` to a protected publish job that receives only inspected archives;
+- passed workflow-dispatch values through environment variables before shell use and rejected npm publication while the repository is private;
+- serialized all npm publication versions under one concurrency group and verified both the published version and selected dist-tag;
+- added the `github-release` Environment boundary and public-visibility guard to core and go-rod release jobs;
+- centralized release output path normalization and added regression coverage for repository-root aliases before any recursive replacement.
+
+The remaining owner-controlled setup is the protected Environment, tag ruleset, and npm trusted-publisher configuration documented in `docs/releasing.md`; no package, tag, release, Pages deployment, or visibility change was performed.

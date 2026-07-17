@@ -7,15 +7,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 "$root/scripts/validate-release-tag.sh" core "$version"
 
-case "$out" in
-  /*) out_abs="$out" ;;
-  *) out_abs="$root/$out" ;;
-esac
-if [[ "$out_abs" == "/" || "$out_abs" == "$root" ]]; then
-  echo "refusing to replace unsafe release output directory: $out_abs" >&2
-  exit 1
-fi
-mkdir -p "$(dirname "$out_abs")"
+out_abs="$("$root/scripts/resolve-release-output.sh" "$root" "$out")"
 build_dir="$(mktemp -d "${out_abs}.tmp.XXXXXX")"
 trap 'rm -rf "$build_dir"' EXIT
 

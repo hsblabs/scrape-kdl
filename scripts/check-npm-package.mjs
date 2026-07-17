@@ -69,6 +69,7 @@ export async function checkNpmPackages({ releaseVersion, outputDirectory } = {})
     assert.equal(packageJSON.type, "module");
     assert.equal(packageJSON.engines.node, ">=26");
     assert.equal(packageJSON.version, releaseVersion ?? developmentVersion);
+    if (releaseVersion !== undefined) assert.equal(packageJSON.scripts, undefined);
     assert.deepEqual(
       packageJSON.dependencies,
       { parse5: "8.0.1", re2js: "2.8.6" },
@@ -95,6 +96,7 @@ export async function checkNpmPackages({ releaseVersion, outputDirectory } = {})
     assert.equal(adapterJSON.private, undefined, "adapter package must be publishable");
     assert.equal(adapterJSON.engines.node, ">=26");
     assert.equal(adapterJSON.version, releaseVersion ?? developmentVersion);
+    if (releaseVersion !== undefined) assert.equal(adapterJSON.scripts, undefined);
     assert.deepEqual(adapterJSON.dependencies, { playwright: "1.61.1" });
     if (releaseVersion === undefined) {
       assert.deepEqual(adapterJSON.devDependencies, {
@@ -275,6 +277,7 @@ async function stagePackage(source, destination, mutateManifest) {
   for (const name of ["README.md", "LICENSE", "NOTICE"]) await copyFile(join(source, name), join(destination, name));
   const manifest = JSON.parse(await readFile(join(source, "package.json"), "utf8"));
   mutateManifest(manifest);
+  delete manifest.scripts;
   await writeFile(join(destination, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 

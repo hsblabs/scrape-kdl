@@ -14,19 +14,31 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
-  group: npm-release-${{ inputs.version }}
+  group: npm-release
   cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     if: inputs.confirmation == 'PUBLISH_NPM'
-    environment: npm-publish
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
     steps:
+      - name: Validate publication request
+        run: |
+          semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          if [[ ! "$RELEASE_VERSION" =~ $semver ]]; then
+            echo "invalid npm release version: $RELEASE_VERSION" >&2
+            exit 1
+          fi
+          if [[ "$REPOSITORY_VISIBILITY" != public ]]; then
+            echo "refusing npm publication while repository visibility is $REPOSITORY_VISIBILITY" >&2
+            exit 1
+          fi
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: v${{ inputs.version }}
@@ -35,42 +47,79 @@ jobs:
         with:
           node-version: "26.x"
           cache: npm
-          registry-url: https://registry.npmjs.org
       - run: npm ci
       - name: Validate source tag
         run: |
-          ./scripts/validate-release-tag.sh core "v${{ inputs.version }}"
-          test "$(git describe --exact-match --tags HEAD)" = "v${{ inputs.version }}"
+          ./scripts/validate-release-tag.sh core "v$RELEASE_VERSION"
+          test "$(git describe --exact-match --tags HEAD)" = "v$RELEASE_VERSION"
       - run: npm run build:typescript
-      - run: node scripts/build-npm-release.mjs --version "${{ inputs.version }}" --output dist
+      - run: node scripts/build-npm-release.mjs --version "$RELEASE_VERSION" --output dist
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-release-packages
+          path: dist/*.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: build
+    environment: npm-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-release-packages
+          path: dist
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.x"
+          registry-url: https://registry.npmjs.org
+      - name: Verify npm trusted publishing support
+        run: |
+          npm_version="$(npm --version)"
+          node -e '
+            const [major, minor, patch] = process.argv[1].split(".").map(Number);
+            if (major < 11 || (major === 11 && minor < 5) || (major === 11 && minor === 5 && patch < 1)) {
+              throw new Error(`npm ${process.argv[1]} does not support trusted publishing; require >=11.5.1`);
+            }
+          ' "$npm_version"
       - name: Select npm dist-tag
         id: dist-tag
         run: |
           tag=latest
-          case "${{ inputs.version }}" in
+          case "$RELEASE_VERSION" in
             *-*) tag=next ;;
           esac
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-      - name: Publish core package
+      - name: Publish core package through OIDC
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
         run: |
-          if npm view "@hsblabs/scrape-kdl@${{ inputs.version }}" version >/dev/null 2>&1; then
-            echo "@hsblabs/scrape-kdl@${{ inputs.version }} is already published"
+          package=@hsblabs/scrape-kdl
+          archive="dist/hsblabs-scrape-kdl-$RELEASE_VERSION.tgz"
+          if npm view "$package@$RELEASE_VERSION" version >/dev/null 2>&1; then
+            echo "$package@$RELEASE_VERSION is already published"
           else
-            npm publish "dist/hsblabs-scrape-kdl-${{ inputs.version }}.tgz" --access public --provenance --tag "${{ steps.dist-tag.outputs.tag }}"
+            npm publish "$archive" --access public --tag "$NPM_DIST_TAG"
           fi
-      - name: Confirm core registry visibility
-        run: npm view "@hsblabs/scrape-kdl@${{ inputs.version }}" version
-      - name: Publish Playwright adapter
+          test "$(npm view "$package@$RELEASE_VERSION" version)" = "$RELEASE_VERSION"
+          test "$(npm view "$package" "dist-tags.$NPM_DIST_TAG")" = "$RELEASE_VERSION"
+      - name: Publish Playwright adapter through OIDC
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
         run: |
-          if npm view "@hsblabs/scrape-kdl-playwright@${{ inputs.version }}" version >/dev/null 2>&1; then
-            echo "@hsblabs/scrape-kdl-playwright@${{ inputs.version }} is already published"
+          package=@hsblabs/scrape-kdl-playwright
+          archive="dist/hsblabs-scrape-kdl-playwright-$RELEASE_VERSION.tgz"
+          if npm view "$package@$RELEASE_VERSION" version >/dev/null 2>&1; then
+            echo "$package@$RELEASE_VERSION is already published"
           else
-            npm publish "dist/hsblabs-scrape-kdl-playwright-${{ inputs.version }}.tgz" --access public --provenance --tag "${{ steps.dist-tag.outputs.tag }}"
+            npm publish "$archive" --access public --tag "$NPM_DIST_TAG"
           fi
-      - name: Confirm adapter registry visibility
-        run: npm view "@hsblabs/scrape-kdl-playwright@${{ inputs.version }}" version
-
+          test "$(npm view "$package@$RELEASE_VERSION" version)" = "$RELEASE_VERSION"
+          test "$(npm view "$package" "dist-tags.$NPM_DIST_TAG")" = "$RELEASE_VERSION"

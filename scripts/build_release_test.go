@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -37,6 +38,45 @@ func TestBuildReleaseCleansStageAfterBuildFailure(t *testing.T) {
 		t.Fatalf("existing release output was not preserved after failure: %q, %v", contents, readErr)
 	}
 	assertDirectoryEmpty(t, filepath.Join(tmp, "stages"))
+}
+
+func TestResolveReleaseOutputRejectsRepositoryAliases(t *testing.T) {
+	root := repositoryRoot(t)
+	resolver := filepath.Join(root, "scripts", "resolve-release-output.sh")
+	for _, output := range []string{
+		root,
+		root + string(os.PathSeparator),
+		root + string(os.PathSeparator) + ".",
+		root + string(os.PathSeparator) + "unused" + string(os.PathSeparator) + "..",
+	} {
+		t.Run(output, func(t *testing.T) {
+			command := exec.Command("bash", resolver, root, output)
+			combined, err := command.CombinedOutput()
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) || !strings.Contains(string(combined), "refusing to replace unsafe release output directory") {
+				t.Fatalf("resolve-release-output.sh error = %v, output = %q", err, combined)
+			}
+		})
+	}
+}
+
+func TestResolveReleaseOutputNormalizesParent(t *testing.T) {
+	root := t.TempDir()
+	resolver := filepath.Join(repositoryRoot(t), "scripts", "resolve-release-output.sh")
+	output := root + string(os.PathSeparator) + "nested" + string(os.PathSeparator) + ".." + string(os.PathSeparator) + "dist"
+	command := exec.Command("bash", resolver, root, output)
+	combined, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("resolve-release-output.sh failed: %v\n%s", err, combined)
+	}
+	physicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(physicalRoot, "dist")
+	if got := strings.TrimSpace(string(combined)); got != want {
+		t.Fatalf("resolved output = %q, want %q", got, want)
+	}
 }
 
 func runBuildRelease(t *testing.T, root string, fail bool) (string, string, error) {
