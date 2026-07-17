@@ -168,7 +168,7 @@ test("redirect policy runs before each request without duplicating or leaking se
   const requests = [];
   const policies = [];
   const fetch = async (input, init) => {
-    requests.push({ url: String(input), authorization: init.headers.get("authorization"), cookie: init.headers.get("cookie") });
+    requests.push({ url: String(input), authorization: init.headers.get("authorization"), cookie: init.headers.get("cookie"), userAgent: init.headers.get("user-agent") });
     if (requests.length === 1) return new Response(null, { status: 302, headers: { location: "/same-origin" } });
     if (requests.length === 2) return new Response(null, { status: 302, headers: { location: "https://redirect.test/final" } });
     return new Response("<h1>done</h1>", { status: 200 });
@@ -181,9 +181,9 @@ test("redirect policy runs before each request without duplicating or leaking se
   assert.equal(result.value.title, "done");
   assert.deepEqual(policies, ["https://example.test/x", "https://example.test/same-origin", "https://redirect.test/final"]);
   assert.deepEqual(requests, [
-    { url: "https://example.test/x", authorization: "Bearer secret", cookie: "sid=secret" },
-    { url: "https://example.test/same-origin", authorization: "Bearer secret", cookie: "sid=secret" },
-    { url: "https://redirect.test/final", authorization: null, cookie: null },
+    { url: "https://example.test/x", authorization: "Bearer secret", cookie: "sid=secret", userAgent: "scrape-kdl/1.0" },
+    { url: "https://example.test/same-origin", authorization: "Bearer secret", cookie: "sid=secret", userAgent: "scrape-kdl/1.0" },
+    { url: "https://redirect.test/final", authorization: null, cookie: null, userAgent: "scrape-kdl/1.0" },
   ]);
   await assert.rejects(program.extract({ id: "x" }, {
     fetch: async () => new Response(null, { status: 302, headers: { location: "file:///secret" } }),

@@ -1,0 +1,44 @@
+name: Private release rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Private release candidate tag-shaped version
+        required: true
+        default: v1.0.0-rc.1
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-release-rehearsal
+  cancel-in-progress: false
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.26.5"
+          cache: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "26.x"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: ./scripts/validate-release-tag.sh core "${{ inputs.version }}"
+      - run: make release-gate
+      - run: make release-dist VERSION="${{ inputs.version }}" OUT=dist
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: private-release-${{ inputs.version }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+

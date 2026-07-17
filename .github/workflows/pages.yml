@@ -1,0 +1,37 @@
+name: Publish specification site
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type PUBLISH_SCHEMA to deploy the public specification site
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: inputs.confirmation == 'PUBLISH_SCHEMA'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - run: test -f docs/ir/2026-07-15/schema.json
+      - uses: actions/configure-pages@v6.0.0
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: docs
+      - name: Deploy specification site
+        id: deployment
+        uses: actions/deploy-pages@v5.0.0
+

@@ -13,4 +13,13 @@ else
   exit 1
 fi
 
-"${checksum[@]}" ./* > checksums.txt
+files=()
+for file in ./*; do
+  [[ -f "$file" && "$file" != "./checksums.txt" ]] || continue
+  files+=("$file")
+done
+if [[ ${#files[@]} -eq 0 ]]; then
+  echo "release directory contains no files to checksum: $directory" >&2
+  exit 1
+fi
+"${checksum[@]}" "${files[@]}" > checksums.txt

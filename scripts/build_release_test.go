@@ -1,7 +1,10 @@
 package scripts
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,6 +23,7 @@ func TestBuildReleaseCleansStageAfterSuccess(t *testing.T) {
 			t.Fatalf("release output %s: %v", name, err)
 		}
 	}
+	assertArchiveContains(t, filepath.Join(tmp, "dist", "scrape-kdl_0.1.0_linux_amd64.tar.gz"), "scrape-kdl", "LICENSE", "NOTICE", "README.md")
 }
 
 func TestBuildReleaseCleansStageAfterBuildFailure(t *testing.T) {
@@ -28,6 +32,9 @@ func TestBuildReleaseCleansStageAfterBuildFailure(t *testing.T) {
 	var exitErr *exec.ExitError
 	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 42 {
 		t.Fatalf("build-release.sh error = %v, want exit status 42\n%s", err, output)
+	}
+	if contents, readErr := os.ReadFile(filepath.Join(tmp, "dist", "sentinel")); readErr != nil || string(contents) != "preserve" {
+		t.Fatalf("existing release output was not preserved after failure: %q, %v", contents, readErr)
 	}
 	assertDirectoryEmpty(t, filepath.Join(tmp, "stages"))
 }
@@ -42,6 +49,15 @@ func runBuildRelease(t *testing.T, root string, fail bool) (string, string, erro
 	}
 	if err := os.MkdirAll(stages, 0o755); err != nil {
 		t.Fatal(err)
+	}
+	dist := filepath.Join(tmp, "dist")
+	if fail {
+		if err := os.MkdirAll(dist, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dist, "sentinel"), []byte("preserve"), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	fakeGo := `#!/bin/sh
 set -eu
@@ -67,7 +83,7 @@ printf 'fake binary' > "$output"
 	if fail {
 		failValue = "1"
 	}
-	command := exec.Command("bash", filepath.Join(root, "scripts", "build-release.sh"), "v0.1.0", filepath.Join(tmp, "dist"))
+	command := exec.Command("bash", filepath.Join(root, "scripts", "build-release.sh"), "v0.1.0", dist)
 	command.Dir = root
 	command.Env = append(os.Environ(),
 		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
@@ -78,6 +94,37 @@ printf 'fake binary' > "$output"
 	)
 	output, err := command.CombinedOutput()
 	return tmp, string(output), err
+}
+
+func assertArchiveContains(t *testing.T, path string, expected ...string) {
+	t.Helper()
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	gzipReader, err := gzip.NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gzipReader.Close()
+	found := map[string]bool{}
+	reader := tar.NewReader(gzipReader)
+	for {
+		header, err := reader.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		found[header.Name] = true
+	}
+	for _, name := range expected {
+		if !found[name] {
+			t.Errorf("archive %s is missing %s", path, name)
+		}
+	}
 }
 
 func assertDirectoryEmpty(t *testing.T, path string) {

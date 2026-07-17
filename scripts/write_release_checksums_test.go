@@ -40,6 +40,28 @@ printf 'macos-digest  %s\n' "$1"
 	}
 }
 
+func TestWriteReleaseChecksumsDoesNotHashItself(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "archive.tar.gz"), []byte("archive"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "checksums.txt"), []byte("stale"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root := repositoryRoot(t)
+	command := exec.Command("/bin/bash", filepath.Join(root, "scripts", "write-release-checksums.sh"), tmp)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("write-release-checksums.sh failed: %v\n%s", err, output)
+	}
+	contents, err := os.ReadFile(filepath.Join(tmp, "checksums.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(contents), "checksums.txt") || !strings.Contains(string(contents), "archive.tar.gz") {
+		t.Fatalf("checksums.txt = %q", contents)
+	}
+}
+
 func TestWriteReleaseChecksumsFailsWithoutUtility(t *testing.T) {
 	runChecksumScript(t, nil, false)
 }

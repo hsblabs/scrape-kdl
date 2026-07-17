@@ -11,8 +11,13 @@ case "$out" in
   /*) out_abs="$out" ;;
   *) out_abs="$root/$out" ;;
 esac
-rm -rf "$out_abs"
-mkdir -p "$out_abs"
+if [[ "$out_abs" == "/" || "$out_abs" == "$root" ]]; then
+  echo "refusing to replace unsafe release output directory: $out_abs" >&2
+  exit 1
+fi
+mkdir -p "$(dirname "$out_abs")"
+build_dir="$(mktemp -d "${out_abs}.tmp.XXXXXX")"
+trap 'rm -rf "$build_dir"' EXIT
 
 commit="${GITHUB_SHA:-$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)}"
 date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -35,8 +40,10 @@ for target in $targets; do
     trap 'rm -rf "$stage"' EXIT
     binary="scrape-kdl"
     CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags "$ldflags" -o "$stage/$binary" ./cmd/scrape-kdl
-    cp LICENSE README.md "$stage/"
-    tar -C "$stage" -czf "$out_abs/$name.tar.gz" "$binary" LICENSE README.md
+    cp LICENSE NOTICE README.md "$stage/"
+    tar -C "$stage" -czf "$build_dir/$name.tar.gz" "$binary" LICENSE NOTICE README.md
   )
 done
-"$root/scripts/write-release-checksums.sh" "$out_abs"
+"$root/scripts/write-release-checksums.sh" "$build_dir"
+rm -rf "$out_abs"
+mv "$build_dir" "$out_abs"

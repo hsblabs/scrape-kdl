@@ -1,0 +1,76 @@
+name: Publish npm packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing core tag version without a leading v
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH_NPM to allow public registry writes
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: inputs.confirmation == 'PUBLISH_NPM'
+    environment: npm-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.0
+        with:
+          ref: v${{ inputs.version }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "26.x"
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - name: Validate source tag
+        run: |
+          ./scripts/validate-release-tag.sh core "v${{ inputs.version }}"
+          test "$(git describe --exact-match --tags HEAD)" = "v${{ inputs.version }}"
+      - run: npm run build:typescript
+      - run: node scripts/build-npm-release.mjs --version "${{ inputs.version }}" --output dist
+      - name: Select npm dist-tag
+        id: dist-tag
+        run: |
+          tag=latest
+          case "${{ inputs.version }}" in
+            *-*) tag=next ;;
+          esac
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Publish core package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if npm view "@hsblabs/scrape-kdl@${{ inputs.version }}" version >/dev/null 2>&1; then
+            echo "@hsblabs/scrape-kdl@${{ inputs.version }} is already published"
+          else
+            npm publish "dist/hsblabs-scrape-kdl-${{ inputs.version }}.tgz" --access public --provenance --tag "${{ steps.dist-tag.outputs.tag }}"
+          fi
+      - name: Confirm core registry visibility
+        run: npm view "@hsblabs/scrape-kdl@${{ inputs.version }}" version
+      - name: Publish Playwright adapter
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if npm view "@hsblabs/scrape-kdl-playwright@${{ inputs.version }}" version >/dev/null 2>&1; then
+            echo "@hsblabs/scrape-kdl-playwright@${{ inputs.version }} is already published"
+          else
+            npm publish "dist/hsblabs-scrape-kdl-playwright-${{ inputs.version }}.tgz" --access public --provenance --tag "${{ steps.dist-tag.outputs.tag }}"
+          fi
+      - name: Confirm adapter registry visibility
+        run: npm view "@hsblabs/scrape-kdl-playwright@${{ inputs.version }}" version
+
