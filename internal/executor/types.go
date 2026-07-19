@@ -75,6 +75,8 @@ func isExecutionCanceled(err error) bool {
 type ExternalTransform func(context.Context, any) (any, error)
 type CharsetDecoder func(body []byte, charset string) (string, error)
 
+const defaultUserAgent = "scrape-kdl/1.0"
+
 type Session struct {
 	Headers http.Header
 	Cookies []*http.Cookie
@@ -104,7 +106,7 @@ func (o Options) withDefaults() Options {
 		o.MaxResponseBytes = 32 << 20
 	}
 	if o.UserAgent == "" {
-		o.UserAgent = "scrape-kdl/0.1"
+		o.UserAgent = defaultUserAgent
 	}
 	if o.ExternalTransforms == nil {
 		o.ExternalTransforms = map[string]ExternalTransform{}

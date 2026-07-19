@@ -32,9 +32,9 @@ The Go and TypeScript libraries publish their exact accepted sets through `Suppo
 
 The former identifiers are not accepted as aliases because doing so would obscure the selected language and IR contracts.
 
-## v0.1 contract decisions
+## Working-draft contract decisions frozen for v1
 
-The project is pre-release, and these M5 changes intentionally close previously ambiguous v0.1 behavior:
+The project remains private and unpublished. These decisions close previously ambiguous working-draft behavior and are frozen for the v1 candidate:
 
 - explicit `-h` and `--help` on every subcommand print help to standard output and exit with status 0; malformed or incomplete arguments still exit with status 2;
 - `--session-file PATH` and `--session-file -` are the supported secret-input paths; direct `--header` and `--cookie` values were removed at the v0.5 CLI boundary with migration guidance in `docs/cli.md`;
@@ -42,10 +42,11 @@ The project is pre-release, and these M5 changes intentionally close previously 
 - external-transform result mismatches and runtime-managed cancellation use the new stable codes `E_EXTERNAL_TRANSFORM_RESULT_TYPE` and `E_EXECUTION_CANCELED`;
 - `session policy="none"` ignores only the explicit runtime session and does not clear ambient client or browser state;
 - millisecond workflow durations are limited to 9,223,372,036,854, the largest whole-millisecond value representable by Go `time.Duration`.
+- the default Go and TypeScript HTTP User-Agent is `scrape-kdl/1.0`.
 
-These changes may affect scripts built against an untagged working draft. After a release, patch versions remain backward compatible within their minor version under `docs/versioning.md`.
+These changes may affect scripts built against an untagged working draft; the complete migration is in `docs/migrating-to-v1.md`. After a release, patch versions remain backward compatible within their minor version under `docs/versioning.md`.
 
-The v0.5 CLI contract candidate defines help, standard streams, one-document `--json` envelopes, explicit `-` streams, exit statuses 0/1/2/130/143, non-interactive behavior, and signal cancellation. Changes before the v0.9 freeze require black-box tests, compatibility notes, and a migration path.
+The frozen v1 CLI contract defines help, standard streams, one-document `--json` envelopes, explicit `-` streams, exit statuses 0/1/2/130/143, non-interactive behavior, and signal cancellation. Before stable publication, only release-blocking corrections are accepted.
 
 The HTTP reference runtime uses pinned `golang.org/x/net/html` WHATWG document tree construction after charset decoding. The portable guarantee and explicit exclusions are recorded in `docs/html-compatibility.md`; browser mode continues to operate on the browser's mutable live DOM.
 

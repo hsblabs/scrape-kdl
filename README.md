@@ -2,7 +2,7 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Status: pre-release working draft, implementation milestone M5.
+Status: private v1 release-candidate preparation. No public artifact has been published.
 The normative specification documents use the v0.1 document series and the initial compatibility identifiers `language-version="2026-07-15"` and `irVersion: "2026-07-15"`.
 
 ```text
@@ -254,6 +254,9 @@ make release-check
 - `docs/roadmap-v1.md`
 - `docs/versioning.md`
 - `docs/releasing.md`
+- `docs/release-readiness.md`
+- `docs/migrating-to-v1.md`
+- `docs/release-notes-v1.md`
 
 ## License
 

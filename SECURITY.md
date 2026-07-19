@@ -2,8 +2,9 @@
 
 ## Supported versions
 
-Before `v1.0.0`, security fixes are applied to the latest released minor version only.
-After `v1.0.0`, the project will document an explicit support window here.
+There is no supported public version before `v1.0.0`. Private release candidates are used only for release verification.
+
+After `v1.0.0`, the latest stable minor in the current major receives security fixes. The immediately preceding minor receives security fixes for 90 days after a new minor is published. Older minors and prereleases are unsupported. See `SUPPORT.md` for the complete maintenance policy.
 
 ## Reporting a vulnerability
 
@@ -20,3 +21,4 @@ Include the affected version, execution mode (`http` or `browser`), a minimal KD
 - Session cookies and headers may contain secrets. Diagnostics and logs must not print their values.
 - TypeScript regular-expression built-ins execute through the pinned RE2-compatible engine rather than the JavaScript backtracking engine. Keep the nested-repetition regression test when changing this boundary.
 - The CLI accepts secret session values only through `--session-file PATH` or explicit standard input with `--session-file -`. Direct `--cookie` and `--header` values are rejected because shell history and process inspection can expose them.
+- Release workflows pin actions by full commit SHA, isolate untrusted build work from publication permissions, require protected Environments for public writes, and use npm OIDC trusted publishing without a long-lived registry token.

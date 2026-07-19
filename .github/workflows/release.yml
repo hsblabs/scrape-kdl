@@ -9,23 +9,26 @@ permissions:
 
 jobs:
   release:
+    if: github.event.repository.visibility == 'public'
+    environment: github-release
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.5"
           cache: false
-      - uses: actions/setup-node@v6.2.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "26.x"
           cache: npm
       - run: npm ci
       - run: ./scripts/validate-release-tag.sh core "${GITHUB_REF_NAME}"
       - run: make release-check
-      - run: ./scripts/build-release.sh "${GITHUB_REF_NAME}" dist
+      - run: make release-dist VERSION="${GITHUB_REF_NAME}" OUT=dist
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -17,7 +17,6 @@ The release-blocking TypeScript conformance suite covers every shared valid and 
 
 Browser-mode programs use the exported browser-library-neutral `BrowserAdapter` and optional extraction-wide `BrowserAdapterLease`. JavaScript is disabled unless `allowJavaScript: true` is supplied for a trusted specification. The official implementation is `@hsblabs/scrape-kdl-playwright`; the core package does not depend on Playwright.
 
-The package is not published by this pull request.
-Local `npm pack` plus a clean-consumer smoke test verifies the future artifact.
+The workspace manifest remains unpublished at `0.0.0-development` until the project-owner release gate. `make release-dist VERSION=vX.Y.Z OUT=dist` creates release-versioned archives in temporary staging and verifies them with a clean-consumer smoke test without publishing anything.
 
 License: Apache-2.0.

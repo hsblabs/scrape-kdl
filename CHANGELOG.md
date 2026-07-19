@@ -2,7 +2,13 @@
 
 All notable implementation changes are recorded here. Formal releases will use Semantic Versioning.
 
-## Unreleased — M5 release hardening
+## 1.0.0 — Unreleased
+
+- Added a failure-safe private release bundle containing four CLI archives, two clean-consumer-tested npm archives, Apache `NOTICE` files, and SHA-256 checksums without publishing or changing workspace development versions.
+- Added guarded private rehearsal, npm publication, and specification-site workflows; public workflows require visibility checks, typed confirmation, owner-configured GitHub Environments, and protected release tags.
+- Pinned every GitHub Action to a full commit SHA and moved npm publication to globally serialized, tokenless OIDC trusted publishing with build/publish permission isolation.
+- Added v1 migration notes, draft release notes, an explicit maintenance window, post-publication verification, and immutable-version recovery procedures.
+- Standardized the Go, TypeScript, and CLI default HTTP User-Agent as `scrape-kdl/1.0`.
 
 - Prepared immutable execution plans once per compiled program, centralized output recovery/cardinality semantics across HTTP and browser modes, bounded first/one selector queries and collection overflow work, and de-duplicated diamond import traversal.
 - Replaced TypeScript native regular-expression execution with the pinned RE2-compatible `re2js` runtime and added a nested-repetition regression test.
