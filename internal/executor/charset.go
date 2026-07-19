@@ -75,9 +75,8 @@ func decodeHTMLWithFallback(body []byte, contentType string, fallback CharsetDec
 }
 
 // decodeWHATWGCharset resolves WHATWG encoding labels (EUC-JP, Shift_JIS, ...)
-// through x/text, mirroring the TypeScript runtime's TextDecoder fallback.
-// Invalid byte sequences decode to U+FFFD as in browsers, unlike the strict
-// built-in UTF-8/UTF-16 paths.
+// through x/text, mirroring the TypeScript runtime's strict TextDecoder
+// fallback.
 func decodeWHATWGCharset(body []byte, charset string) (string, error) {
 	resolved, err := htmlindex.Get(charset)
 	if err != nil || resolved == encoding.Replacement {
@@ -86,6 +85,15 @@ func decodeWHATWGCharset(body []byte, charset string) (string, error) {
 	decoded, err := resolved.NewDecoder().Bytes(body)
 	if err != nil {
 		return "", &ExecutionError{Code: "E_HTML_DECODE", Message: fmt.Sprintf("decode charset %q: %v", charset, err), Cause: err}
+	}
+	if bytes.Contains(decoded, []byte("\uFFFD")) {
+		roundTrip, roundTripErr := resolved.NewEncoder().Bytes(decoded)
+		if roundTripErr != nil || !bytes.Equal(roundTrip, body) {
+			if roundTripErr == nil {
+				roundTripErr = fmt.Errorf("decoded replacement rune did not round-trip to the source bytes")
+			}
+			return "", &ExecutionError{Code: "E_HTML_DECODE", Message: fmt.Sprintf("decode charset %q: %v", charset, roundTripErr), Cause: roundTripErr}
+		}
 	}
 	return string(decoded), nil
 }

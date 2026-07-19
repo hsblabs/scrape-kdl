@@ -1,7 +1,8 @@
 // Package clisupport holds the CLI contract logic shared by the core CLI and
 // adapter CLIs: typed runtime-input parsing, the session-file JSON schema,
-// and rejection of plaintext secret flags. Keeping it in one place keeps the
-// documented parity between the binaries compiler-enforced.
+// machine-readable extraction output, warning formatting, and rejection of
+// plaintext secret flags. Keeping it in one place keeps the documented parity
+// between the binaries compiler-enforced.
 package clisupport
 
 import (
@@ -23,6 +24,17 @@ func (values *RepeatedFlag) Set(value string) error { *values = append(*values, 
 
 // PlaintextSecretFlagMessage explains why --header and --cookie are rejected.
 const PlaintextSecretFlagMessage = "--header and --cookie were removed; put secrets in --session-file FILE or use --session-file -"
+
+// HasJSONFlag reports whether machine-readable output was requested. Callers
+// use it before parsing so usage failures can still honor the output contract.
+func HasJSONFlag(args []string) bool {
+	for _, arg := range args {
+		if arg == "--json" {
+			return true
+		}
+	}
+	return false
+}
 
 // HasPlaintextSecretFlag reports whether args contain a rejected plaintext
 // secret flag spelling.
@@ -145,4 +157,42 @@ func DecodeSessionDocument(data []byte) (http.Header, []*http.Cookie, error) {
 		cookies = append(cookies, &http.Cookie{Name: cookie.Name, Value: cookie.Value})
 	}
 	return headers, cookies, nil
+}
+
+// Warning contains the stable fields shared by extraction warnings from all
+// CLI-facing runtimes.
+type Warning struct {
+	Code    string
+	Path    string
+	Message string
+}
+
+// FormatWarnings renders human warnings for standard error.
+func FormatWarnings(warnings []Warning) string {
+	var output strings.Builder
+	for _, warning := range warnings {
+		path := ""
+		if warning.Path != "" {
+			path = " at " + warning.Path
+		}
+		fmt.Fprintf(&output, "%s%s: %s\n", warning.Code, path, warning.Message)
+	}
+	return output.String()
+}
+
+// MarshalExtractionResult renders a bare result or the shared --json success
+// envelope as one newline-terminated JSON document.
+func MarshalExtractionResult(result any, machineReadable bool) ([]byte, error) {
+	value := result
+	if machineReadable {
+		value = struct {
+			OK     bool `json:"ok"`
+			Result any  `json:"result"`
+		}{OK: true, Result: result}
+	}
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(data, '\n'), nil
 }

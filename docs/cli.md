@@ -42,7 +42,9 @@ The default bare `compile` and `extract` documents remain convenient for direct 
 
 ## Network target policy
 
-`extract` rejects targets on loopback, private, link-local, multicast, and unspecified addresses by default, checking both the declared host and the address actually dialed after DNS resolution. Redirect hops are re-checked. Failures report `E_URL_POLICY`. Pass `--allow-private-hosts` to extract from local or intranet servers; offline `--html` execution performs no network activity and is unaffected.
+`extract` rejects addresses that the IANA special-purpose registries do not mark globally reachable by default. This includes loopback, private, link-local, carrier-grade NAT, documentation, benchmarking, multicast, unspecified, and reserved ranges. The declared host and the address selected at dial time are both checked, and every redirect hop is re-checked. Failures report `E_URL_POLICY`.
+
+The guarded HTTP client makes direct connections and does not honor environment proxy settings, because proxy-side DNS resolution would bypass the target-address re-check. Pass `--allow-private-hosts` to restore the ordinary client behavior for local, intranet, or explicitly proxied extraction. Offline `--html` execution performs no network activity and is unaffected.
 
 ## Exit statuses and signals
 

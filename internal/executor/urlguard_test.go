@@ -3,12 +3,16 @@ package executor
 import (
 	"context"
 	"errors"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
 	"net/url"
 	"strings"
 	"testing"
+
+	"golang.org/x/net/dns/dnsmessage"
 )
 
 func TestRejectNonPublicAddr(t *testing.T) {
@@ -18,6 +22,9 @@ func TestRejectNonPublicAddr(t *testing.T) {
 	}{
 		{addr: "93.184.216.34", public: true},
 		{addr: "2606:2800:220:1:248:1893:25c8:1946", public: true},
+		{addr: "192.0.0.9", public: true},
+		{addr: "64:ff9b::5db8:d822", public: true},
+		{addr: "2001:3::1", public: true},
 		{addr: "127.0.0.1", public: false},
 		{addr: "::1", public: false},
 		{addr: "10.0.0.8", public: false},
@@ -29,6 +36,17 @@ func TestRejectNonPublicAddr(t *testing.T) {
 		{addr: "fd00::1", public: false},
 		{addr: "fe80::1", public: false},
 		{addr: "224.0.0.1", public: false},
+		{addr: "100.64.0.1", public: false},
+		{addr: "192.0.2.1", public: false},
+		{addr: "198.18.0.1", public: false},
+		{addr: "198.51.100.1", public: false},
+		{addr: "203.0.113.1", public: false},
+		{addr: "255.255.255.255", public: false},
+		{addr: "64:ff9b:1::1", public: false},
+		{addr: "100::1", public: false},
+		{addr: "2001:db8::1", public: false},
+		{addr: "2002:7f00:1::", public: false},
+		{addr: "3fff::1", public: false},
 		{addr: "::ffff:127.0.0.1", public: false},
 		{addr: "::ffff:192.168.1.1", public: false},
 	}
@@ -82,6 +100,7 @@ func TestPublicInternetURLPolicyResolvedHosts(t *testing.T) {
 	policy := publicInternetURLPolicy(staticResolver{
 		"public.example":  {netip.MustParseAddr("93.184.216.34")},
 		"rebound.example": {netip.MustParseAddr("93.184.216.34"), netip.MustParseAddr("10.0.0.8")},
+		"empty.example":   {},
 	})
 	tests := []struct {
 		target string
@@ -90,6 +109,7 @@ func TestPublicInternetURLPolicyResolvedHosts(t *testing.T) {
 		{target: "https://public.example/"},
 		{target: "https://rebound.example/", reject: true},
 		{target: "https://unknown.example/", reject: true},
+		{target: "https://empty.example/", reject: true},
 	}
 	for _, tt := range tests {
 		parsed, err := url.Parse(tt.target)
@@ -98,6 +118,127 @@ func TestPublicInternetURLPolicyResolvedHosts(t *testing.T) {
 		}
 		if got := policy(context.Background(), parsed); (got != nil) != tt.reject {
 			t.Errorf("policy(%s) = %v, want reject %v", tt.target, got, tt.reject)
+		}
+	}
+}
+
+func TestPublicInternetHTTPClientDoesNotDelegateTargetResolutionToProxy(t *testing.T) {
+	transport, ok := NewPublicInternetHTTPClient().Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("transport = %T", NewPublicInternetHTTPClient().Transport)
+	}
+	if transport.Proxy != nil {
+		t.Fatal("guarded HTTP client inherited environment proxy resolution")
+	}
+}
+
+type redirectToPrivateTransport struct {
+	calls int
+}
+
+func (transport *redirectToPrivateTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	transport.calls++
+	if transport.calls != 1 {
+		return nil, errors.New("private redirect reached the transport")
+	}
+	return &http.Response{
+		StatusCode: http.StatusFound,
+		Header:     http.Header{"Location": {"http://127.0.0.1/private"}},
+		Body:       io.NopCloser(strings.NewReader("")),
+		Request:    request,
+	}, nil
+}
+
+func TestPublicInternetURLPolicyRejectsRedirectToPrivateBeforeSecondRequest(t *testing.T) {
+	transport := &redirectToPrivateTransport{}
+	policy := publicInternetURLPolicy(staticResolver{"public.example": {netip.MustParseAddr("93.184.216.34")}})
+	extractor := compileHTTPRuntimeSpec(t, "https://public.example/")
+	_, err := Execute(context.Background(), extractor, nil, Options{
+		HTTPClient: &http.Client{Transport: transport},
+		URLPolicy:  policy,
+	})
+	var execution *ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "E_URL_POLICY" {
+		t.Fatalf("redirect error = %v, want E_URL_POLICY", err)
+	}
+	if transport.calls != 1 {
+		t.Fatalf("transport calls = %d, want 1", transport.calls)
+	}
+}
+
+func TestPublicInternetHTTPClientRejectsPrivateAddressFromDialTimeDNS(t *testing.T) {
+	resolver := resolverReturningAddr(t, netip.MustParseAddr("127.0.0.1"))
+	_, err := newPublicInternetHTTPClient(resolver).Get("http://rebind.example.com/")
+	var policyErr *urlPolicyError
+	if !errors.As(err, &policyErr) {
+		t.Fatalf("dial-time DNS error = %v, want urlPolicyError", err)
+	}
+}
+
+func resolverReturningAddr(t *testing.T, answer netip.Addr) *net.Resolver {
+	t.Helper()
+	server, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = server.Close() })
+	go serveDNS(t, server, answer)
+	return &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			var dialer net.Dialer
+			return dialer.DialContext(ctx, "udp4", server.LocalAddr().String())
+		},
+	}
+}
+
+func serveDNS(t *testing.T, server net.PacketConn, answer netip.Addr) {
+	t.Helper()
+	buffer := make([]byte, 512)
+	for {
+		n, peer, err := server.ReadFrom(buffer)
+		if err != nil {
+			return
+		}
+		var parser dnsmessage.Parser
+		header, err := parser.Start(buffer[:n])
+		if err != nil {
+			t.Errorf("parse DNS header: %v", err)
+			return
+		}
+		question, err := parser.Question()
+		if err != nil {
+			t.Errorf("parse DNS question: %v", err)
+			return
+		}
+		header.Response = true
+		header.Authoritative = true
+		builder := dnsmessage.NewBuilder(nil, header)
+		if err := builder.StartQuestions(); err != nil {
+			t.Errorf("start DNS questions: %v", err)
+			return
+		}
+		if err := builder.Question(question); err != nil {
+			t.Errorf("write DNS question: %v", err)
+			return
+		}
+		if err := builder.StartAnswers(); err != nil {
+			t.Errorf("start DNS answers: %v", err)
+			return
+		}
+		if question.Type == dnsmessage.TypeA && answer.Is4() {
+			if err := builder.AResource(dnsmessage.ResourceHeader{Name: question.Name, Type: dnsmessage.TypeA, Class: dnsmessage.ClassINET, TTL: 60}, dnsmessage.AResource{A: answer.As4()}); err != nil {
+				t.Errorf("write DNS answer: %v", err)
+				return
+			}
+		}
+		response, err := builder.Finish()
+		if err != nil {
+			t.Errorf("finish DNS response: %v", err)
+			return
+		}
+		if _, err := server.WriteTo(response, peer); err != nil {
+			return
 		}
 	}
 }

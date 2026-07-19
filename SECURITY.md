@@ -17,6 +17,8 @@ Include the affected version, execution mode (`http` or `browser`), a minimal KD
 - KDL specs are executable configuration. Only run trusted specs, especially when imports, browser workflows, sessions, or external transforms are used.
 - Browser sandboxing, process isolation, network policy, and credential storage are responsibilities of the host application and selected browser adapter.
 - HTTP extraction can access URLs described by a spec. Hosts should apply outbound-network controls when specs are not fully trusted.
+- The core and go-rod CLIs reject non-public initial targets by default. The core CLI also re-checks HTTP redirects and dial-time DNS results through a direct, proxy-disabled guarded client. `--allow-private-hosts` deliberately removes those CLI safeguards.
+- A browser adapter's URL policy check covers only the initial navigation target. Browser redirects, subresources, service workers, and page-initiated traffic require browser-context or host-level network controls.
 - Session cookies and headers may contain secrets. Diagnostics and logs must not print their values.
 - TypeScript regular-expression built-ins execute through the pinned RE2-compatible engine rather than the JavaScript backtracking engine. Keep the nested-repetition regression test when changing this boundary.
-- The CLI accepts secret session values only through `--session-file PATH` or explicit standard input with `--session-file -`. Direct `--cookie` and `--header` values are rejected because shell history and process inspection can expose them.
+- Both CLIs accept secret session values only through `--session-file PATH` or explicit standard input with `--session-file -`. Direct `--cookie` and `--header` values are rejected because shell history and process inspection can expose them.

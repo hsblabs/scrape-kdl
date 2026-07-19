@@ -272,11 +272,11 @@ func TestParseRuntimeInputs(t *testing.T) {
 }
 
 func TestParseCLIInputValueRejectsUnsupportedAndInfiniteFloat(t *testing.T) {
-	if _, err := parseCLIInputValue("object", "{}"); err == nil {
+	if _, err := clisupport.ParseInputValue("object", "{}"); err == nil {
 		t.Fatal("unsupported input type succeeded")
 	}
 	for _, value := range []string{"NaN", "+Inf", "-Inf"} {
-		parsed, err := parseCLIInputValue("float", value)
+		parsed, err := clisupport.ParseInputValue("float", value)
 		if err == nil || (parsed != nil && !math.IsNaN(parsed.(float64)) && !math.IsInf(parsed.(float64), 0)) {
 			t.Fatalf("parseCLIInputValue(float, %q) = %#v, %v", value, parsed, err)
 		}
