@@ -8,6 +8,9 @@ import (
 	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
+
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/htmlindex"
 )
 
 var metaCharsetPattern = regexp.MustCompile(`(?is)<meta\s+[^>]*(?:charset\s*=\s*["']?\s*([^\s"'/>;]+)|content\s*=\s*["'][^"']*charset\s*=\s*([^\s"'/>;]+))`)
@@ -67,8 +70,24 @@ func decodeHTMLWithFallback(body []byte, contentType string, fallback CharsetDec
 			}
 			return decoded, nil
 		}
+		return decodeWHATWGCharset(body, charset)
+	}
+}
+
+// decodeWHATWGCharset resolves WHATWG encoding labels (EUC-JP, Shift_JIS, ...)
+// through x/text, mirroring the TypeScript runtime's TextDecoder fallback.
+// Invalid byte sequences decode to U+FFFD as in browsers, unlike the strict
+// built-in UTF-8/UTF-16 paths.
+func decodeWHATWGCharset(body []byte, charset string) (string, error) {
+	resolved, err := htmlindex.Get(charset)
+	if err != nil || resolved == encoding.Replacement {
 		return "", &ExecutionError{Code: "E_HTML_CHARSET_UNSUPPORTED", Message: fmt.Sprintf("unsupported HTML charset %q; configure Options.CharsetDecoder", charset)}
 	}
+	decoded, err := resolved.NewDecoder().Bytes(body)
+	if err != nil {
+		return "", &ExecutionError{Code: "E_HTML_DECODE", Message: fmt.Sprintf("decode charset %q: %v", charset, err), Cause: err}
+	}
+	return string(decoded), nil
 }
 
 func charsetFromContentType(contentType string) string {

@@ -41,7 +41,12 @@ Built in:
 
 Charset is selected from HTTP `Content-Type`, then an early `<meta charset>` declaration, with UTF-8 as the default. A recognized UTF-8 or UTF-16 byte-order mark overrides the declared charset.
 
-Other encodings are supported through `Options.CharsetDecoder`. This keeps encodings such as Shift_JIS and EUC-JP optional.
+Any other declared label is resolved through the WHATWG encoding index (`golang.org/x/text/encoding/htmlindex`), so legacy encodings such as Shift_JIS and EUC-JP decode without configuration, matching the TypeScript runtime's `TextDecoder` fallback. Two behavioral notes:
+
+- the WHATWG fallback replaces invalid byte sequences with U+FFFD as browsers do, while the built-in UTF-8/UTF-16 paths remain strict (`E_HTML_DECODE`);
+- the replacement encoding and labels outside the WHATWG index fail with `E_HTML_CHARSET_UNSUPPORTED`.
+
+`Options.CharsetDecoder`, when set, takes precedence over the WHATWG fallback for every non-built-in label.
 
 ## HTML parser boundary
 

@@ -4,6 +4,7 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## Unreleased — M5 release hardening
 
+- Decoded WHATWG-labelled charsets (Shift_JIS, EUC-JP, ...) in the Go HTTP runtime by default via `golang.org/x/text/encoding/htmlindex`, aligning with the TypeScript runtime's `TextDecoder` fallback; `Options.CharsetDecoder` still overrides, and `E_HTML_CHARSET_UNSUPPORTED` now indicates labels outside the WHATWG index.
 - Prepared immutable execution plans once per compiled program, centralized output recovery/cardinality semantics across HTTP and browser modes, bounded first/one selector queries and collection overflow work, and de-duplicated diamond import traversal.
 - Replaced TypeScript native regular-expression execution with the pinned RE2-compatible `re2js` runtime and added a nested-repetition regression test.
 - Added machine-checked built-in, diagnostic, TypeScript export, and exact IR declaration contract gates; narrowed the exported IR types to the approved public surface.
