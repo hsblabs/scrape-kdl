@@ -288,7 +288,7 @@ func (cli command) runExtract(ctx context.Context, args []string) int {
 	flags.StringVar(&outPath, "o", "", "write the result to a file, or - for standard output")
 	flags.DurationVar(&requestTimeout, "timeout", 30*time.Second, "HTTP request timeout")
 	flags.Int64Var(&maxBody, "max-body", 32<<20, "maximum HTTP response body size in bytes")
-	flags.StringVar(&userAgent, "user-agent", "scrape-kdl/0.5", "HTTP User-Agent")
+	flags.StringVar(&userAgent, "user-agent", "", "HTTP User-Agent")
 	flags.BoolVar(&sessionProvided, "session", false, "mark an empty runtime session as supplied")
 	flags.BoolVar(&allowPrivateHosts, "allow-private-hosts", false, "allow targets that are not globally reachable")
 	flags.BoolVar(&jsonOutput, "json", false, "emit exactly one JSON document on standard output")

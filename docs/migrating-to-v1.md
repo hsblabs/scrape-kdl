@@ -1,0 +1,41 @@
+# Migrating from the untagged working draft to v1
+
+There was no supported public release before v1. This guide is for applications that tested or vendored an untagged development revision.
+
+## KDL documents and Validated IR
+
+- Replace integer document versions such as `version=1` with a quoted document revision such as `version="2026-07-15"`.
+- Add `language-version="2026-07-15"` to every extractor and transform module.
+- Regenerate Validated IR. The initial supported IR identifier is `2026-07-15`; working-draft `0.1` IR is rejected before acquisition.
+- Do not rely on unspecified KDL 2 syntax. The supported subset is the one documented in `docs/spec/`.
+
+## Go API
+
+- Use the module path `github.com/hsblabs/scrape-kdl`.
+- Pass `context.Context` as the first argument to `Compile`, `Validate`, `CompileFile`, and `ValidateFile`.
+- Treat `Program.Version()` as a string rather than an integer.
+- Use the exported supported-language and supported-IR registries instead of comparing version dates.
+- Keep browser libraries in adapter modules; the core Go module does not depend on go-rod.
+
+## TypeScript API
+
+- Use Node.js 26 or later and ESM imports.
+- Import filesystem-free APIs from `@hsblabs/scrape-kdl` and filesystem helpers from `@hsblabs/scrape-kdl/node`.
+- Install `@hsblabs/scrape-kdl-playwright` separately when Playwright browser execution is required.
+- Treat the exported IR structures as readonly wire-contract declarations.
+
+## CLI automation
+
+- Replace direct `--header` and `--cookie` values with `--session-file FILE` or `--session-file -`.
+- Use `--json` when automation needs a one-document result envelope.
+- Handle exit statuses `0`, `1`, `2`, `130`, and `143` as documented in `docs/cli.md`.
+- Do not assign standard input to more than one of the KDL source, HTML input, or session input.
+
+## Runtime behavior
+
+- The default HTTP User-Agent is `scrape-kdl/1.0` in Go and TypeScript. Set an explicit user agent if a server policy depends on another value.
+- JavaScript remains disabled unless explicitly enabled for a trusted specification.
+- Supply a URL policy and isolated HTTP or browser state when specifications or tenants do not share trust.
+- Expect WHATWG HTML tree construction from `golang.org/x/net/html` and `parse5`; output may differ from the earlier approximation on malformed HTML.
+
+Run the independent consumer examples and the full conformance suite after migrating. Old document, language, and IR identifiers are intentionally not accepted as aliases.

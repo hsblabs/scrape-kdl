@@ -27,3 +27,7 @@ GOTOOLCHAIN=local go run ./cmd/scrape-kdl validate ./fixtures/valid/race-detail.
 GOTOOLCHAIN=local go run ./cmd/scrape-kdl extract ./fixtures/valid/basic-http.kdl --html ./fixtures/html/basic-http.html >/dev/null
 GOTOOLCHAIN=local go run ./cmd/scrape-kdl version
 ./scripts/verify-rod-contract.sh
+
+release_bundle_root="$(mktemp -d)"
+trap 'rm -rf "$release_bundle_root"' EXIT
+make release-dist VERSION=v1.0.0-rc.1 OUT="$release_bundle_root/dist"

@@ -272,3 +272,35 @@ None. Useful transient failures resolved during the run included the E2E fixture
 - Audit collection selector and output member identifier metadata against schema/compiler invariants.
 - Audit declared transform origin metadata against schema constants.
 - Audit source-file path/hash metadata for schema-conformant IR serialization.
+
+## 2026-07-17 private v1 release readiness
+
+Completed without changing repository visibility or publishing any tag, release, package, module, or Pages site:
+
+- added a failure-safe private release bundle with four CLI archives, two release-versioned npm archives, and SHA-256 checksums;
+- required `NOTICE` in every CLI archive and added regression coverage for archive contents, failed-build output preservation, and checksum self-exclusion;
+- staged npm release metadata outside the worktree, removed workspace development versions from release artifacts, selected stable and prerelease-compatible Playwright peer ranges, and exercised both archives in a clean consumer;
+- added guarded private rehearsal, npm publication, and specification Pages workflows, with public writes separated behind typed confirmation and owner-configured GitHub Environments;
+- froze the v1 API and CLI candidate wording, corrected stale TypeScript implementation status, and added migration, release-note, readiness, maintenance, post-publication, and immutable-version recovery documentation;
+- aligned the Go, TypeScript, and CLI default HTTP User-Agent on `scrape-kdl/1.0` with focused Go and TypeScript tests;
+- updated official GitHub setup actions to their current major versions and pinned public release binaries to Go 1.26.5.
+
+Verification passed:
+
+- `mise exec -- make release-gate`, including release checks, private `v1.0.0-rc.1` bundle generation, go-rod E2E, and Playwright Chromium E2E;
+- stable `1.0.0` and prerelease `1.0.0-rc.1` npm archive generation and clean-consumer smoke tests;
+- focused executor, CLI, release-script, checksum, TypeScript runtime, support-matrix, release-matrix, diagnostic, golden, shell-syntax, formatting, and actionlint checks;
+- existing release output preservation on build failure and refusal to partially overwrite an occupied npm artifact directory.
+
+Remaining gates are external by definition: protected GitHub Environment configuration, private hosted rehearsal after push, repository publicization, schema deployment, public Go/npm/adapter candidate resolution, the 14-day blocker-free candidate period, and separate stable-publication approval.
+
+## 2026-07-17 adversarial release-workflow hardening
+
+- pinned every third-party GitHub Action to a full commit SHA and verified the comments with `pinact`;
+- replaced the npm publication token design with OIDC trusted publishing and isolated `id-token: write` to a protected publish job that receives only inspected archives;
+- passed workflow-dispatch values through environment variables before shell use and rejected npm publication while the repository is private;
+- serialized all npm publication versions under one concurrency group and verified both the published version and selected dist-tag;
+- added the `github-release` Environment boundary and public-visibility guard to core and go-rod release jobs;
+- centralized release output path normalization and added regression coverage for repository-root aliases before any recursive replacement.
+
+The remaining owner-controlled setup is the protected Environment, tag ruleset, and npm trusted-publisher configuration documented in `docs/releasing.md`; no package, tag, release, Pages deployment, or visibility change was performed.

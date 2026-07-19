@@ -19,7 +19,7 @@ import type { ExecutionOptions, ExtractionResult, Session, Warning } from "./pub
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 32 << 20;
-const DEFAULT_USER_AGENT = "scrape-kdl/0.1";
+const DEFAULT_USER_AGENT = "scrape-kdl/1.0";
 const MAX_REDIRECTS = 20;
 
 export interface RuntimeState {

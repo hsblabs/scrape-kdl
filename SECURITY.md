@@ -2,8 +2,9 @@
 
 ## Supported versions
 
-Before `v1.0.0`, security fixes are applied to the latest released minor version only.
-After `v1.0.0`, the project will document an explicit support window here.
+There is no supported public version before `v1.0.0`. Private release candidates are used only for release verification.
+
+After `v1.0.0`, the latest stable minor in the current major receives security fixes. The immediately preceding minor receives security fixes for 90 days after a new minor is published. Older minors and prereleases are unsupported. See `SUPPORT.md` for the complete maintenance policy.
 
 ## Reporting a vulnerability
 

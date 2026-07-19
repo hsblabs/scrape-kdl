@@ -121,4 +121,4 @@ release-gate:
 	./scripts/release-gate.sh
 
 release-dist:
-	./scripts/build-release.sh "$${VERSION:?set VERSION=vX.Y.Z}" dist
+	./scripts/build-release-bundle.sh "$${VERSION:?set VERSION=vX.Y.Z}" "$${OUT:-dist}"

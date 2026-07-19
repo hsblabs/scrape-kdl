@@ -23,7 +23,7 @@ Selector parsing, external-transform availability, browser-only value sources, a
 - accepted status: 200 through 299;
 - default timeout: 30 seconds;
 - default body limit: 32 MiB;
-- default User-Agent: `scrape-kdl/0.1`;
+- default User-Agent: `scrape-kdl/1.0`;
 - redirect behavior: delegated to the supplied `http.Client`.
 
 The runtime adds `Session` headers and cookies only to the initial request; it does not manually re-inject them after redirects. Go's `http.Client` redirect rules therefore control propagation. By default, sensitive headers such as `Authorization` and `Cookie` are copied only to the same domain or its subdomains, while a configured cookie jar applies each cookie's own scope. A custom `CheckRedirect` may further restrict or mutate the redirected request.

@@ -1,18 +1,24 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, cp, copyFile, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-const root = process.cwd();
-async function main() {
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const developmentVersion = "0.0.0-development";
+
+export async function checkNpmPackages({ releaseVersion, outputDirectory } = {}) {
+  if (releaseVersion !== undefined) validateReleaseVersion(releaseVersion);
   const temporary = await mkdtemp(join(tmpdir(), "scrape-kdl-npm-"));
   try {
     const packDirectory = join(temporary, "pack");
     await mkdir(packDirectory);
-    const packed = JSON.parse(
-      run("npm", ["pack", "--json", "--workspace", "@hsblabs/scrape-kdl", "--pack-destination", packDirectory]),
-    );
+    const { packed, adapterPacked } =
+      releaseVersion === undefined
+        ? packWorkspacePackages(packDirectory)
+        : await packReleasePackages(temporary, packDirectory, releaseVersion);
     assert.equal(packed.length, 1, "npm pack must produce exactly one core artifact");
     const metadata = packed[0];
     const paths = metadata.files.map((file) => file.path).sort();
@@ -38,16 +44,6 @@ async function main() {
     }
 
     const tarball = join(packDirectory, metadata.filename);
-    const adapterPacked = JSON.parse(
-      run("npm", [
-        "pack",
-        "--json",
-        "--workspace",
-        "@hsblabs/scrape-kdl-playwright",
-        "--pack-destination",
-        packDirectory,
-      ]),
-    );
     assert.equal(adapterPacked.length, 1, "npm pack must produce exactly one adapter artifact");
     const adapterMetadata = adapterPacked[0];
     const adapterPaths = adapterMetadata.files.map((file) => file.path).sort();
@@ -72,6 +68,8 @@ async function main() {
     assert.equal(packageJSON.license, "Apache-2.0");
     assert.equal(packageJSON.type, "module");
     assert.equal(packageJSON.engines.node, ">=26");
+    assert.equal(packageJSON.version, releaseVersion ?? developmentVersion);
+    if (releaseVersion !== undefined) assert.equal(packageJSON.scripts, undefined);
     assert.deepEqual(
       packageJSON.dependencies,
       { parse5: "8.0.1", re2js: "2.8.6" },
@@ -97,8 +95,34 @@ async function main() {
     assert.equal(adapterJSON.name, "@hsblabs/scrape-kdl-playwright");
     assert.equal(adapterJSON.private, undefined, "adapter package must be publishable");
     assert.equal(adapterJSON.engines.node, ">=26");
+    assert.equal(adapterJSON.version, releaseVersion ?? developmentVersion);
+    if (releaseVersion !== undefined) assert.equal(adapterJSON.scripts, undefined);
     assert.deepEqual(adapterJSON.dependencies, { playwright: "1.61.1" });
-    assert.deepEqual(adapterJSON.peerDependencies, { "@hsblabs/scrape-kdl": "0.0.0-development || ^1.0.0" });
+    if (releaseVersion === undefined) {
+      assert.deepEqual(adapterJSON.devDependencies, {
+        "@hsblabs/scrape-kdl": developmentVersion,
+      });
+      assert.deepEqual(adapterJSON.peerDependencies, {
+        "@hsblabs/scrape-kdl": `${developmentVersion} || ^1.0.0`,
+      });
+    } else {
+      assert.deepEqual(adapterJSON.devDependencies, {
+        "@hsblabs/scrape-kdl": releaseVersion,
+      });
+      assert.deepEqual(adapterJSON.peerDependencies, {
+        "@hsblabs/scrape-kdl": releasePeerRange(releaseVersion),
+      });
+      assert.doesNotMatch(
+        JSON.stringify(packageJSON),
+        /0\.0\.0-development/u,
+        "release core metadata must not contain the workspace development version",
+      );
+      assert.doesNotMatch(
+        JSON.stringify(adapterJSON),
+        /0\.0\.0-development/u,
+        "release adapter metadata must not contain the workspace development version",
+      );
+    }
     assert.doesNotMatch(
       JSON.stringify(adapterJSON),
       /(?:file|workspace):/u,
@@ -182,16 +206,99 @@ async function main() {
     );
     run(process.execPath, [join(consumer, "index.mjs")], consumer);
 
+    if (outputDirectory !== undefined) {
+      await mkdir(outputDirectory, { recursive: true });
+      const destinations = [join(outputDirectory, basename(tarball)), join(outputDirectory, basename(adapterTarball))];
+      for (const destination of destinations) await requireAbsent(destination);
+      await copyFile(tarball, destinations[0], constants.COPYFILE_EXCL);
+      await copyFile(adapterTarball, destinations[1], constants.COPYFILE_EXCL);
+    }
     console.log(
       `npm package check: ${basename(tarball)} and ${basename(adapterTarball)} passed clean consumer smoke tests`,
     );
+    return [basename(tarball), basename(adapterTarball)];
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
 }
 
+async function requireAbsent(path) {
+  try {
+    await access(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") return;
+    throw error;
+  }
+  throw new Error(`refusing to overwrite existing release artifact ${path}`);
+}
+
+function packWorkspacePackages(packDirectory) {
+  return {
+    packed: JSON.parse(
+      run("npm", ["pack", "--json", "--workspace", "@hsblabs/scrape-kdl", "--pack-destination", packDirectory]),
+    ),
+    adapterPacked: JSON.parse(
+      run("npm", [
+        "pack",
+        "--json",
+        "--workspace",
+        "@hsblabs/scrape-kdl-playwright",
+        "--pack-destination",
+        packDirectory,
+      ]),
+    ),
+  };
+}
+
+async function packReleasePackages(temporary, packDirectory, releaseVersion) {
+  const coreStage = join(temporary, "core");
+  const adapterStage = join(temporary, "adapter");
+  await stagePackage(join(root, "packages/scrape-kdl"), coreStage, (manifest) => {
+    manifest.version = releaseVersion;
+  });
+  await stagePackage(join(root, "packages/scrape-kdl-playwright"), adapterStage, (manifest) => {
+    manifest.version = releaseVersion;
+    manifest.devDependencies = { "@hsblabs/scrape-kdl": releaseVersion };
+    manifest.peerDependencies = {
+      "@hsblabs/scrape-kdl": releasePeerRange(releaseVersion),
+    };
+  });
+  return {
+    packed: JSON.parse(run("npm", ["pack", "--json", "--pack-destination", packDirectory], coreStage)),
+    adapterPacked: JSON.parse(run("npm", ["pack", "--json", "--pack-destination", packDirectory], adapterStage)),
+  };
+}
+
+async function stagePackage(source, destination, mutateManifest) {
+  await mkdir(destination);
+  await cp(join(source, "dist"), join(destination, "dist"), {
+    recursive: true,
+  });
+  for (const name of ["README.md", "LICENSE", "NOTICE"]) await copyFile(join(source, name), join(destination, name));
+  const manifest = JSON.parse(await readFile(join(source, "package.json"), "utf8"));
+  mutateManifest(manifest);
+  delete manifest.scripts;
+  await writeFile(join(destination, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+function validateReleaseVersion(version) {
+  assert.match(
+    version,
+    /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u,
+    `invalid npm release version ${JSON.stringify(version)}`,
+  );
+}
+
+function releasePeerRange(version) {
+  return version.includes("-") ? version : `^${version}`;
+}
+
 function run(command, arguments_, cwd = root) {
-  return execFileSync(command, arguments_, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  return execFileSync(command, arguments_, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }
 
 async function collect(directory, output) {
@@ -270,4 +377,4 @@ void validateFile;
 void PlaywrightAdapter;
 `;
 
-await main();
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) await checkNpmPackages();
