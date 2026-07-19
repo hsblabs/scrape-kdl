@@ -200,16 +200,17 @@ func readSessionFile(path string, stdin io.Reader) (*scrapekdl.Session, error) {
 	if path == "" {
 		return nil, nil
 	}
-	reader := stdin
-	if path != "-" {
-		file, err := os.Open(path)
-		if err != nil {
-			return nil, fmt.Errorf("read session file: %w", err)
-		}
-		defer file.Close()
-		reader = file
+	var data []byte
+	var err error
+	if path == "-" {
+		data, err = io.ReadAll(stdin)
+	} else {
+		data, err = os.ReadFile(path)
 	}
-	headers, cookies, err := clisupport.DecodeSessionDocument(reader)
+	if err != nil {
+		return nil, fmt.Errorf("read session file: %w", err)
+	}
+	headers, cookies, err := clisupport.DecodeSessionDocument(data)
 	if err != nil {
 		return nil, fmt.Errorf("read session file: %w", err)
 	}

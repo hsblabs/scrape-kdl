@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hsblabs/scrape-kdl/internal/clisupport"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
 
@@ -283,18 +284,18 @@ func TestParseCLIInputValueRejectsUnsupportedAndInfiniteFloat(t *testing.T) {
 }
 
 func TestDecodeSessionDocuments(t *testing.T) {
-	session, err := decodeSessionDocument(strings.NewReader(`{
+	headers, cookies, err := clisupport.DecodeSessionDocument([]byte(`{
   "headers": {"Authorization": ["Bearer secret"], "X-Test": ["one", "two"]},
   "cookies": [{"name": "session", "value": "secret"}]
 }`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(session.Headers, http.Header{"Authorization": {"Bearer secret"}, "X-Test": {"one", "two"}}) {
-		t.Fatalf("headers = %#v", session.Headers)
+	if !reflect.DeepEqual(headers, http.Header{"Authorization": {"Bearer secret"}, "X-Test": {"one", "two"}}) {
+		t.Fatalf("headers = %#v", headers)
 	}
-	if len(session.Cookies) != 1 || session.Cookies[0].Name != "session" || session.Cookies[0].Value != "secret" {
-		t.Fatalf("cookies = %#v", session.Cookies)
+	if len(cookies) != 1 || cookies[0].Name != "session" || cookies[0].Value != "secret" {
+		t.Fatalf("cookies = %#v", cookies)
 	}
 
 	for _, document := range []string{
@@ -304,7 +305,7 @@ func TestDecodeSessionDocuments(t *testing.T) {
 		`{"headers":{"": ["value"]}}`,
 		`{"cookies":[{"name":"", "value":"secret"}]}`,
 	} {
-		if _, err := decodeSessionDocument(strings.NewReader(document)); err == nil {
+		if _, _, err := clisupport.DecodeSessionDocument([]byte(document)); err == nil {
 			t.Fatalf("invalid session document succeeded: %q", document)
 		}
 	}

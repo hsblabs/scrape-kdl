@@ -17,21 +17,20 @@ import (
 // Resolution here is advisory; pair it with NewPublicInternetHTTPClient,
 // which re-checks the address actually dialed, to cover DNS rebinding.
 func PublicInternetURLPolicy() URLPolicy {
+	return publicInternetURLPolicy(net.DefaultResolver)
+}
+
+type hostResolver interface {
+	LookupNetIP(ctx context.Context, network, host string) ([]netip.Addr, error)
+}
+
+func publicInternetURLPolicy(resolver hostResolver) URLPolicy {
 	return func(ctx context.Context, target *url.URL) error {
-		if target.Scheme != "http" && target.Scheme != "https" {
-			return fmt.Errorf("scheme %q is not allowed", target.Scheme)
+		host, err := classifyPublicTarget(target)
+		if err != nil || host == "" {
+			return err
 		}
-		if target.User != nil {
-			return errors.New("userinfo URLs are not allowed")
-		}
-		host := target.Hostname()
-		if host == "" {
-			return errors.New("URL has no host")
-		}
-		if addr, err := netip.ParseAddr(host); err == nil {
-			return rejectNonPublicAddr(addr)
-		}
-		addrs, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+		addrs, err := resolver.LookupNetIP(ctx, "ip", host)
 		if err != nil {
 			return fmt.Errorf("resolve host %q: %w", host, err)
 		}
@@ -42,6 +41,26 @@ func PublicInternetURLPolicy() URLPolicy {
 		}
 		return nil
 	}
+}
+
+// classifyPublicTarget performs every check that needs no resolution. It
+// returns a non-empty hostname when only DNS resolution remains, and an
+// empty hostname when the target is already fully vetted.
+func classifyPublicTarget(target *url.URL) (string, error) {
+	if target.Scheme != "http" && target.Scheme != "https" {
+		return "", fmt.Errorf("scheme %q is not allowed", target.Scheme)
+	}
+	if target.User != nil {
+		return "", errors.New("userinfo URLs are not allowed")
+	}
+	host := target.Hostname()
+	if host == "" {
+		return "", errors.New("URL has no host")
+	}
+	if addr, err := netip.ParseAddr(host); err == nil {
+		return "", rejectNonPublicAddr(addr)
+	}
+	return host, nil
 }
 
 // NewPublicInternetHTTPClient returns an HTTP client whose dialer rejects

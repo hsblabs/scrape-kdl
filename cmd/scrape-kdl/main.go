@@ -610,29 +610,13 @@ func (cli command) readSessionFile(path string) (*executor.Session, error) {
 	if path == "" {
 		return nil, nil
 	}
-	if path == "-" {
-		session, err := decodeSessionDocument(cli.io.stdin)
-		if err != nil {
-			return nil, fmt.Errorf("read session from standard input: %w", err)
-		}
-		return session, nil
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("read session file: %w", err)
-	}
-	defer file.Close()
-	session, err := decodeSessionDocument(file)
-	if err != nil {
-		return nil, fmt.Errorf("read session file: %w", err)
-	}
-	return session, nil
-}
-
-func decodeSessionDocument(reader io.Reader) (*executor.Session, error) {
-	headers, cookies, err := clisupport.DecodeSessionDocument(reader)
+	data, err := cli.readInput(path, "session file")
 	if err != nil {
 		return nil, err
+	}
+	headers, cookies, err := clisupport.DecodeSessionDocument(data)
+	if err != nil {
+		return nil, fmt.Errorf("read session file: %w", err)
 	}
 	return &executor.Session{Headers: headers, Cookies: cookies}, nil
 }

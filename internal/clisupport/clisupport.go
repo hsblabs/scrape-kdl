@@ -5,6 +5,7 @@
 package clisupport
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -109,10 +110,12 @@ type sessionCookie struct {
 	Value string `json:"value"`
 }
 
-// DecodeSessionDocument reads one strict session JSON document
+// DecodeSessionDocument interprets one strict session JSON document
 // ({"headers": {...}, "cookies": [...]}) and returns its request state.
-func DecodeSessionDocument(reader io.Reader) (http.Header, []*http.Cookie, error) {
-	decoder := json.NewDecoder(reader)
+// It is a pure calculation over the given bytes; reading them is the
+// caller's concern.
+func DecodeSessionDocument(data []byte) (http.Header, []*http.Cookie, error) {
+	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var document sessionDocument
 	if err := decoder.Decode(&document); err != nil {
