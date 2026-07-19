@@ -40,6 +40,12 @@ The command-specific envelopes are:
 
 The default bare `compile` and `extract` documents remain convenient for direct piping. Automation that needs an explicit success discriminator should use `--json` and check the process exit status as well.
 
+## Network target policy
+
+`extract` rejects addresses that the IANA special-purpose registries do not mark globally reachable by default. This includes loopback, private, link-local, carrier-grade NAT, documentation, benchmarking, multicast, unspecified, and reserved ranges. The declared host and the address selected at dial time are both checked, and every redirect hop is re-checked. Failures report `E_URL_POLICY`.
+
+The guarded HTTP client makes direct connections and does not honor environment proxy settings, because proxy-side DNS resolution would bypass the target-address re-check. Pass `--allow-private-hosts` to restore the ordinary client behavior for local, intranet, or explicitly proxied extraction. Offline `--html` execution performs no network activity and is unaffected.
+
 ## Exit statuses and signals
 
 | Status | Meaning |

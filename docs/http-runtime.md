@@ -41,7 +41,12 @@ Built in:
 
 Charset is selected from HTTP `Content-Type`, then an early `<meta charset>` declaration, with UTF-8 as the default. A recognized UTF-8 or UTF-16 byte-order mark overrides the declared charset.
 
-Other encodings are supported through `Options.CharsetDecoder`. This keeps encodings such as Shift_JIS and EUC-JP optional.
+Any other declared label is resolved through the WHATWG encoding index (`golang.org/x/text/encoding/htmlindex`), so legacy encodings such as Shift_JIS and EUC-JP decode without configuration, matching the TypeScript runtime's `TextDecoder` fallback. Two behavioral notes:
+
+- both reference runtimes reject invalid byte sequences with `E_HTML_DECODE`, including labels handled through the WHATWG index;
+- the replacement encoding and labels outside the WHATWG index fail with `E_HTML_CHARSET_UNSUPPORTED`.
+
+`Options.CharsetDecoder`, when set, takes precedence over the WHATWG fallback for every non-built-in label.
 
 ## HTML parser boundary
 
@@ -53,6 +58,12 @@ The checked-in compatibility manifest covers malformed table foster parenting, a
 ## URL policy
 
 `Options.URLPolicy` runs before the initial request and before every HTTP redirect. Returning an error stops extraction with `E_URL_POLICY`. This hook is intended for host allowlists and private-network restrictions. It does not replace network-level egress controls.
+
+`PublicInternetURLPolicy` provides a ready-made policy that rejects non-HTTP(S) schemes, userinfo, and literal or resolved addresses that the IANA special-purpose registries do not mark globally reachable. This includes loopback, private, link-local, carrier-grade NAT, documentation, benchmarking, multicast, unspecified, and reserved ranges while preserving the registries' globally reachable exceptions.
+
+Because policy-time resolution can be raced by DNS rebinding, pair the policy with `NewPublicInternetHTTPClient`. Its dialer resolves and re-checks the concrete address at connection time and reports rejections as `E_URL_POLICY`. The guarded client makes direct connections instead of honoring environment proxy settings: proxy-side target resolution would prevent the client from verifying the address actually selected for the target host. The CLI applies the policy and guarded client together by default; `--allow-private-hosts` disables them. Library defaults are unchanged (no policy unless configured).
+
+In browser mode the policy authorizes only the initial navigation target presented to the adapter. Browser redirects, subresources, service workers, and page-initiated traffic remain outside this hook and require browser-context or host-level network controls.
 
 A custom `http.Client.CheckRedirect` still runs after the scrape-kdl policy.
 

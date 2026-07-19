@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf16"
+
+	"golang.org/x/text/encoding/japanese"
 )
 
 func TestDecodeHTMLSniffsMetaCharset(t *testing.T) {
@@ -139,7 +141,11 @@ func TestDecodeHTMLReportsStableFailures(t *testing.T) {
 		assertExecutionErrorCode(t, err, "E_HTML_DECODE")
 	})
 	t.Run("unsupported charset", func(t *testing.T) {
-		_, err := decodeHTML([]byte("text"), "text/html; charset=shift_jis")
+		_, err := decodeHTML([]byte("text"), "text/html; charset=x-nonexistent")
+		assertExecutionErrorCode(t, err, "E_HTML_CHARSET_UNSUPPORTED")
+	})
+	t.Run("replacement encoding label", func(t *testing.T) {
+		_, err := decodeHTML([]byte("text"), "text/html; charset=iso-2022-kr")
 		assertExecutionErrorCode(t, err, "E_HTML_CHARSET_UNSUPPORTED")
 	})
 	t.Run("fallback failure", func(t *testing.T) {
@@ -179,4 +185,39 @@ func assertExecutionErrorCode(t *testing.T, err error, code string) {
 	if !errors.As(err, &executionError) || executionError.Code != code {
 		t.Fatalf("error = %v, want %s", err, code)
 	}
+}
+
+func TestDecodeHTMLWHATWGFallbackEncodings(t *testing.T) {
+	eucJP, err := japanese.EUCJP.NewEncoder().String("<p>日本語</p>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shiftJIS, err := japanese.ShiftJIS.NewEncoder().String("<meta charset=\"shift_jis\"><p>競馬</p>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Run("EUC-JP from Content-Type", func(t *testing.T) {
+		decoded, err := decodeHTML([]byte(eucJP), "text/html; charset=euc-jp")
+		if err != nil || decoded != "<p>日本語</p>" {
+			t.Fatalf("decoded = %q, error = %v", decoded, err)
+		}
+	})
+	t.Run("Shift_JIS from meta sniff", func(t *testing.T) {
+		decoded, err := decodeHTML([]byte(shiftJIS), "text/html")
+		if err != nil || !strings.HasSuffix(decoded, "<p>競馬</p>") {
+			t.Fatalf("decoded = %q, error = %v", decoded, err)
+		}
+	})
+	t.Run("explicit CharsetDecoder still overrides", func(t *testing.T) {
+		decoded, err := decodeHTMLWithFallback([]byte(eucJP), "text/html; charset=euc-jp", func([]byte, string) (string, error) {
+			return "override", nil
+		})
+		if err != nil || decoded != "override" {
+			t.Fatalf("decoded = %q, error = %v", decoded, err)
+		}
+	})
+	t.Run("invalid bytes fail strictly", func(t *testing.T) {
+		_, err := decodeHTML([]byte{0x41, 0xff, 0xff, 0x42}, "text/html; charset=euc-jp")
+		assertExecutionErrorCode(t, err, "E_HTML_DECODE")
+	})
 }

@@ -26,9 +26,10 @@
     },
     {
       "id": "html-compatibility-2026-07-15",
-      "purpose": "Pinned HTML tree-construction, serialization, portable-selector, and WPT observations; the TypeScript inventory also feeds the Chromium differential gate.",
+      "purpose": "Pinned cross-runtime charset, HTML tree-construction, serialization, portable-selector, and WPT observations; the tree inventory also feeds the Chromium differential gate.",
       "consumers": ["go", "typescript"],
       "artifacts": [
+        "fixtures/html-compat/charset-manifest.json",
         "fixtures/html-compat/manifest.json",
         "fixtures/html-compat/raw-text.html",
         "fixtures/html-compat/optional-tags.html",

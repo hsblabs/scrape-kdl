@@ -77,8 +77,9 @@ conformance:
 
 html-differential:
 	GOTOOLCHAIN=local go test ./internal/dom -run TestPinnedHTMLCompatibilityManifest
+	GOTOOLCHAIN=local go test ./internal/executor -run TestCharsetCompatibilityManifest
 	npm run build:typescript
-	node --test packages/scrape-kdl/test/html-compatibility.test.mjs
+	node --test packages/scrape-kdl/test/html-compatibility.test.mjs packages/scrape-kdl/test/charset-compatibility.test.mjs
 
 release-matrix:
 	node ./scripts/check-release-matrix.mjs

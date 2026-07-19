@@ -219,7 +219,7 @@ func assertSignalExit(t *testing.T, binary string, interrupt os.Signal, wantCode
 	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command(binary, "extract", path)
+	command := exec.Command(binary, "extract", path, "--allow-private-hosts")
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	if err := command.Start(); err != nil {
