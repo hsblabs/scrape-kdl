@@ -365,29 +365,23 @@ func (cli command) runExtract(ctx context.Context, args []string) int {
 	if err != nil {
 		return cli.fail(jsonOutput, err)
 	}
-	for _, warning := range result.Warnings {
-		path := ""
-		if warning.Path != "" {
-			path = " at " + warning.Path
-		}
-		fmt.Fprintf(cli.io.stderr, "%s%s: %s\n", warning.Code, path, warning.Message)
+	warnings := make([]clisupport.Warning, len(result.Warnings))
+	for index, warning := range result.Warnings {
+		warnings[index] = clisupport.Warning{Code: warning.Code, Path: warning.Path, Message: warning.Message}
 	}
-	if jsonOutput {
-		if err := cli.writeJSON(struct {
-			OK     bool             `json:"ok"`
-			Result *executor.Result `json:"result"`
-		}{OK: true, Result: result}); err != nil {
-			fmt.Fprintln(cli.io.stderr, "marshal result:", err)
-			return exitProcessing
-		}
-		return exitSuccess
-	}
-	data, err := json.MarshalIndent(result, "", "  ")
+	fmt.Fprint(cli.io.stderr, clisupport.FormatWarnings(warnings))
+	data, err := clisupport.MarshalExtractionResult(result, jsonOutput)
 	if err != nil {
 		fmt.Fprintln(cli.io.stderr, "marshal result:", err)
 		return exitProcessing
 	}
-	return cli.writePrimary(append(data, '\n'), outPath, "result")
+	if jsonOutput {
+		if _, err := cli.io.stdout.Write(data); err != nil {
+			return exitProcessing
+		}
+		return exitSuccess
+	}
+	return cli.writePrimary(data, outPath, "result")
 }
 
 func (cli command) runVersion(args []string) int {
@@ -586,12 +580,7 @@ func hasHelpFlag(args []string) bool {
 }
 
 func hasJSONFlag(args []string) bool {
-	for _, arg := range args {
-		if arg == "--json" {
-			return true
-		}
-	}
-	return false
+	return clisupport.HasJSONFlag(args)
 }
 
 func parseRuntimeInputs(definitions []ir.Input, values []string) (map[string]any, error) {
@@ -600,10 +589,6 @@ func parseRuntimeInputs(definitions []ir.Input, values []string) (map[string]any
 		declarations[index] = clisupport.InputDeclaration{Name: definition.Name, Type: definition.Type, Required: definition.Required}
 	}
 	return clisupport.ParseRuntimeInputs(declarations, values)
-}
-
-func parseCLIInputValue(typeName, value string) (any, error) {
-	return clisupport.ParseInputValue(typeName, value)
 }
 
 func (cli command) readSessionFile(path string) (*executor.Session, error) {
