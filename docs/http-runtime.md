@@ -59,6 +59,8 @@ The checked-in compatibility manifest covers malformed table foster parenting, a
 
 `Options.URLPolicy` runs before the initial request and before every HTTP redirect. Returning an error stops extraction with `E_URL_POLICY`. This hook is intended for host allowlists and private-network restrictions. It does not replace network-level egress controls.
 
+`PublicInternetURLPolicy` provides a ready-made policy that rejects non-HTTP(S) schemes, userinfo, and hosts whose literal or resolved addresses are loopback, private, link-local, multicast, or unspecified. Because policy-time resolution can be raced by DNS rebinding, pair it with `NewPublicInternetHTTPClient`, whose dialer re-checks the concrete address at connection time and reports rejections as `E_URL_POLICY`. The CLI applies both by default; `--allow-private-hosts` disables them. Library defaults are unchanged (no policy unless configured). In browser mode the policy still authorizes navigation targets, but subresource fetches and in-page redirects inside the browser remain outside its scope.
+
 A custom `http.Client.CheckRedirect` still runs after the scrape-kdl policy.
 
 ## Error recovery

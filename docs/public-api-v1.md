@@ -17,6 +17,7 @@ Go and TypeScript expose the same observable capabilities:
 | execute HTTP or saved HTML | `Program.Extract` and `Program.ExtractHTML` | `Program.extract`; the implementation may expose an equivalent saved-HTML test hook |
 | register external transforms | `Options.ExternalTransforms` | `ExecutionOptions.externalTransforms` |
 | enforce URL policy | `Options.URLPolicy` | `ExecutionOptions.urlPolicy` |
+| block non-public targets | `PublicInternetURLPolicy`, `NewPublicInternetHTTPClient` | host-supplied policy; built-in equivalent is a follow-up |
 | inject HTTP behavior and sessions | `http.Client`, `Session`, charset decoder | platform `fetch`, `Session`, decoded UTF-8 runtime contract |
 | execute browser mode | `BrowserAdapter` | `BrowserAdapter` |
 | serialize mutable browser pages | optional `BrowserAdapterLease` | optional `BrowserAdapterLease` |

@@ -229,6 +229,20 @@ type CharsetDecoder func(body []byte, charset string) (string, error)
 // URLPolicy authorizes initial targets, redirects, and browser navigation.
 type URLPolicy func(context.Context, *url.URL) error
 
+// PublicInternetURLPolicy rejects targets that are not plain public-internet
+// HTTP(S) URLs: other schemes, userinfo, and hosts whose literal or resolved
+// addresses are loopback, private, link-local, multicast, or unspecified.
+// Pair it with NewPublicInternetHTTPClient to also cover DNS rebinding.
+func PublicInternetURLPolicy() URLPolicy {
+	return URLPolicy(executor.PublicInternetURLPolicy())
+}
+
+// NewPublicInternetHTTPClient returns an HTTP client whose dialer rejects
+// non-public addresses at connection time, after DNS resolution.
+func NewPublicInternetHTTPClient() *http.Client {
+	return executor.NewPublicInternetHTTPClient()
+}
+
 // NormalizeBrowserResult validates and normalizes a value before an adapter
 // returns it from BrowserAdapter.Evaluate.
 func NormalizeBrowserResult(value any) (any, error) {

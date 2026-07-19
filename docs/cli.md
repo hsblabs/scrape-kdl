@@ -40,6 +40,10 @@ The command-specific envelopes are:
 
 The default bare `compile` and `extract` documents remain convenient for direct piping. Automation that needs an explicit success discriminator should use `--json` and check the process exit status as well.
 
+## Network target policy
+
+`extract` rejects targets on loopback, private, link-local, multicast, and unspecified addresses by default, checking both the declared host and the address actually dialed after DNS resolution. Redirect hops are re-checked. Failures report `E_URL_POLICY`. Pass `--allow-private-hosts` to extract from local or intranet servers; offline `--html` execution performs no network activity and is unaffected.
+
 ## Exit statuses and signals
 
 | Status | Meaning |

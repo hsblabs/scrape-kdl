@@ -283,7 +283,7 @@ func (cli command) runExtract(ctx context.Context, args []string) int {
 	var requestTimeout time.Duration
 	var maxBody int64
 	var userAgent string
-	var sessionProvided, jsonOutput bool
+	var sessionProvided, jsonOutput, allowPrivateHosts bool
 	flags.Var(&inputFlags, "input", "runtime input as name=value (repeatable)")
 	flags.StringVar(&sessionPath, "session-file", "", "read session JSON from a file, or - for standard input")
 	flags.StringVar(&htmlPath, "html", "", "execute against decoded HTML from a file, or - for standard input")
@@ -293,6 +293,7 @@ func (cli command) runExtract(ctx context.Context, args []string) int {
 	flags.Int64Var(&maxBody, "max-body", 32<<20, "maximum HTTP response body size in bytes")
 	flags.StringVar(&userAgent, "user-agent", "scrape-kdl/0.5", "HTTP User-Agent")
 	flags.BoolVar(&sessionProvided, "session", false, "mark an empty runtime session as supplied")
+	flags.BoolVar(&allowPrivateHosts, "allow-private-hosts", false, "allow targets on loopback, private, and link-local addresses")
 	flags.BoolVar(&jsonOutput, "json", false, "emit exactly one JSON document on standard output")
 	if err := flags.Parse(args); err != nil {
 		return cli.usageFailure(hasJSONFlag(args), "extract", err)
@@ -350,6 +351,10 @@ func (cli command) runExtract(ctx context.Context, args []string) int {
 		session = &executor.Session{Headers: make(http.Header)}
 	}
 	options := executor.Options{Session: session, RequestTimeout: requestTimeout, MaxResponseBytes: maxBody, UserAgent: userAgent}
+	if !allowPrivateHosts {
+		options.URLPolicy = executor.PublicInternetURLPolicy()
+		options.HTTPClient = executor.NewPublicInternetHTTPClient()
+	}
 	var result *executor.Result
 	if htmlPath != "" {
 		html, readErr := cli.readInput(htmlPath, "HTML")
@@ -809,6 +814,9 @@ OPTIONS
   --html PATH          Use decoded HTML from PATH; use - for stdin
   --session-file PATH  Read headers and cookies from JSON; use - for stdin
   --session            Supply an explicit empty session
+  --allow-private-hosts
+                       Allow loopback, private, and link-local targets,
+                       which are rejected by default
   --timeout DURATION   HTTP request timeout (default 30s)
   --max-body BYTES     Maximum HTTP response body (default 33554432)
   --user-agent VALUE   HTTP User-Agent

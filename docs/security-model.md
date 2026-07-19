@@ -31,7 +31,7 @@ The reference runtime provides:
 - JavaScript disabled by default;
 - capability validation before network or browser activity;
 - response-size and timeout limits;
-- a host-supplied URL policy for initial targets and HTTP redirects;
+- a host-supplied URL policy for initial targets and HTTP redirects, with a ready-made public-internet policy (`PublicInternetURLPolicy` plus `NewPublicInternetHTTPClient` for dial-time re-checks against DNS rebinding) that the Go CLI applies by default;
 - JSON-compatible JavaScript result validation;
 - RE2-compatible, linear-time regular-expression execution in both reference runtimes;
 - optional adapter-wide extraction leases to prevent page-operation interleaving;
