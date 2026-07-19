@@ -216,10 +216,8 @@ func TestDecodeHTMLWHATWGFallbackEncodings(t *testing.T) {
 			t.Fatalf("decoded = %q, error = %v", decoded, err)
 		}
 	})
-	t.Run("invalid bytes decode to replacement runes", func(t *testing.T) {
-		decoded, err := decodeHTML([]byte{0x41, 0xff, 0xff, 0x42}, "text/html; charset=euc-jp")
-		if err != nil || !strings.Contains(decoded, "�") || !strings.Contains(decoded, "B") {
-			t.Fatalf("decoded = %q, error = %v", decoded, err)
-		}
+	t.Run("invalid bytes fail strictly", func(t *testing.T) {
+		_, err := decodeHTML([]byte{0x41, 0xff, 0xff, 0x42}, "text/html; charset=euc-jp")
+		assertExecutionErrorCode(t, err, "E_HTML_DECODE")
 	})
 }

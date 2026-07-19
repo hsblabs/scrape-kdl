@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2026-07-15",
+  "cases": [
+    {
+      "id": "euc-jp-valid",
+      "bytesBase64": "PGgxPsb8y9y47DwvaDE+",
+      "contentType": "text/html; charset=euc-jp",
+      "expectedHTML": "<h1>日本語</h1>",
+      "expectedText": "日本語"
+    },
+    {
+      "id": "euc-jp-malformed",
+      "bytesBase64": "Qf//Qg==",
+      "contentType": "text/html; charset=euc-jp",
+      "expectedError": "E_HTML_DECODE"
+    }
+  ]
+}
