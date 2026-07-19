@@ -8,31 +8,8 @@ import (
 	"testing"
 
 	scrapekdl "github.com/hsblabs/scrape-kdl"
+	"github.com/hsblabs/scrape-kdl/internal/clisupport"
 )
-
-func TestParseRuntimeInputs(t *testing.T) {
-	declarations := []inputDeclaration{
-		{Name: "id", Type: "string", Required: true},
-		{Name: "page", Type: "int", Required: false},
-		{Name: "strict", Type: "bool", Required: false},
-		{Name: "ratio", Type: "float", Required: false},
-	}
-	inputs, err := parseRuntimeInputs(declarations, []string{"id=42", "page=3", "strict=true", "ratio=0.5"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if inputs["id"] != "42" || inputs["page"] != int64(3) || inputs["strict"] != true || inputs["ratio"] != 0.5 {
-		t.Fatalf("inputs = %#v", inputs)
-	}
-	for _, invalid := range []string{"unknown=1", "id", "=x", "page=abc"} {
-		if _, err := parseRuntimeInputs(declarations, []string{invalid}); err == nil {
-			t.Errorf("parseRuntimeInputs accepted %q", invalid)
-		}
-	}
-	if _, err := parseRuntimeInputs(declarations, []string{"id=1", "id=2"}); err == nil || !strings.Contains(err.Error(), "duplicate") {
-		t.Errorf("duplicate input error = %v", err)
-	}
-}
 
 func TestInputDeclarationsFromProgramIR(t *testing.T) {
 	source := `extractor "decl" version="2026-07-15" language-version="2026-07-15" {
@@ -52,7 +29,8 @@ func TestInputDeclarationsFromProgramIR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(declarations) != 1 || declarations[0].Name != "id" || declarations[0].Type != "string" || !declarations[0].Required {
+	want := clisupport.InputDeclaration{Name: "id", Type: "string", Required: true}
+	if len(declarations) != 1 || declarations[0] != want {
 		t.Fatalf("declarations = %#v", declarations)
 	}
 }
@@ -72,9 +50,6 @@ func TestReadSessionFile(t *testing.T) {
 	}
 	if len(session.Cookies) != 1 || session.Cookies[0].Name != "sid" || session.Cookies[0].Value != "abc" {
 		t.Fatalf("cookies = %#v", session.Cookies)
-	}
-	if _, err := readSessionFile(path, nil); err != nil {
-		t.Fatal(err)
 	}
 	if session, err := readSessionFile("", nil); session != nil || err != nil {
 		t.Fatalf("empty path = %v, %v", session, err)

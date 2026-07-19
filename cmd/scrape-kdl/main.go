@@ -7,15 +7,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/hsblabs/scrape-kdl/internal/clisupport"
 	"github.com/hsblabs/scrape-kdl/internal/compiler"
 	"github.com/hsblabs/scrape-kdl/internal/diagnostic"
 	"github.com/hsblabs/scrape-kdl/internal/executor"
@@ -266,10 +265,8 @@ func (cli command) runExtract(ctx context.Context, args []string) int {
 		cli.helpExtract(cli.io.stdout)
 		return exitSuccess
 	}
-	for _, arg := range args {
-		if arg == "--header" || strings.HasPrefix(arg, "--header=") || arg == "--cookie" || strings.HasPrefix(arg, "--cookie=") {
-			return cli.usageFailure(hasJSONFlag(args), "extract", errors.New("--header and --cookie were removed; put secrets in --session-file FILE or use --session-file -"))
-		}
+	if clisupport.HasPlaintextSecretFlag(args) {
+		return cli.usageFailure(hasJSONFlag(args), "extract", errors.New(clisupport.PlaintextSecretFlagMessage))
 	}
 	path := ""
 	if len(args) > 0 && (args[0] == "-" || !strings.HasPrefix(args[0], "-")) {
@@ -351,7 +348,7 @@ func (cli command) runExtract(ctx context.Context, args []string) int {
 		session = &executor.Session{Headers: make(http.Header)}
 	}
 	options := executor.Options{Session: session, RequestTimeout: requestTimeout, MaxResponseBytes: maxBody, UserAgent: userAgent}
-	if !allowPrivateHosts {
+	if !allowPrivateHosts && htmlPath == "" {
 		options.URLPolicy = executor.PublicInternetURLPolicy()
 		options.HTTPClient = executor.NewPublicInternetHTTPClient()
 	}
@@ -577,10 +574,7 @@ func parseCompileArgs(args []string) (path, outPath string, jsonOutput bool, ok 
 	return path, outPath, jsonOutput, path != ""
 }
 
-type repeatedFlag []string
-
-func (values *repeatedFlag) String() string         { return strings.Join(*values, ",") }
-func (values *repeatedFlag) Set(value string) error { *values = append(*values, value); return nil }
+type repeatedFlag = clisupport.RepeatedFlag
 
 func hasHelpFlag(args []string) bool {
 	for _, arg := range args {
@@ -601,67 +595,15 @@ func hasJSONFlag(args []string) bool {
 }
 
 func parseRuntimeInputs(definitions []ir.Input, values []string) (map[string]any, error) {
-	definitionByName := make(map[string]ir.Input, len(definitions))
-	for _, definition := range definitions {
-		definitionByName[definition.Name] = definition
+	declarations := make([]clisupport.InputDeclaration, len(definitions))
+	for index, definition := range definitions {
+		declarations[index] = clisupport.InputDeclaration{Name: definition.Name, Type: definition.Type, Required: definition.Required}
 	}
-	result := make(map[string]any, len(values))
-	for _, raw := range values {
-		name, value, ok := strings.Cut(raw, "=")
-		if !ok || name == "" {
-			return nil, fmt.Errorf("invalid --input %q; expected name=value", raw)
-		}
-		definition, exists := definitionByName[name]
-		if !exists {
-			return nil, fmt.Errorf("unknown input %q", name)
-		}
-		if _, duplicate := result[name]; duplicate {
-			return nil, fmt.Errorf("duplicate input %q", name)
-		}
-		parsed, err := parseCLIInputValue(definition.Type, value)
-		if err != nil {
-			return nil, fmt.Errorf("input %s: %w", name, err)
-		}
-		result[name] = parsed
-	}
-	return result, nil
+	return clisupport.ParseRuntimeInputs(declarations, values)
 }
 
 func parseCLIInputValue(typeName, value string) (any, error) {
-	switch typeName {
-	case "string":
-		return value, nil
-	case "bool":
-		parsed, err := strconv.ParseBool(value)
-		if err != nil {
-			return nil, fmt.Errorf("expected bool: %w", err)
-		}
-		return parsed, nil
-	case "int":
-		parsed, err := strconv.ParseInt(value, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("expected integer: %w", err)
-		}
-		return parsed, nil
-	case "float":
-		parsed, err := strconv.ParseFloat(value, 64)
-		if err != nil || math.IsNaN(parsed) || math.IsInf(parsed, 0) {
-			return nil, fmt.Errorf("expected finite float")
-		}
-		return parsed, nil
-	default:
-		return nil, fmt.Errorf("unsupported input type %q", typeName)
-	}
-}
-
-type sessionDocument struct {
-	Headers map[string][]string `json:"headers"`
-	Cookies []sessionCookie     `json:"cookies"`
-}
-
-type sessionCookie struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	return clisupport.ParseInputValue(typeName, value)
 }
 
 func (cli command) readSessionFile(path string) (*executor.Session, error) {
@@ -688,35 +630,11 @@ func (cli command) readSessionFile(path string) (*executor.Session, error) {
 }
 
 func decodeSessionDocument(reader io.Reader) (*executor.Session, error) {
-	decoder := json.NewDecoder(reader)
-	decoder.DisallowUnknownFields()
-	var document sessionDocument
-	if err := decoder.Decode(&document); err != nil {
-		return nil, fmt.Errorf("decode JSON: %w", err)
+	headers, cookies, err := clisupport.DecodeSessionDocument(reader)
+	if err != nil {
+		return nil, err
 	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return nil, fmt.Errorf("decode JSON: multiple values")
-		}
-		return nil, fmt.Errorf("decode JSON: %w", err)
-	}
-	session := &executor.Session{Headers: make(http.Header)}
-	for name, values := range document.Headers {
-		if strings.TrimSpace(name) == "" {
-			return nil, fmt.Errorf("header name must be non-empty")
-		}
-		for _, value := range values {
-			session.Headers.Add(name, value)
-		}
-	}
-	for _, cookie := range document.Cookies {
-		if strings.TrimSpace(cookie.Name) == "" {
-			return nil, fmt.Errorf("cookie name must be non-empty")
-		}
-		session.Cookies = append(session.Cookies, &http.Cookie{Name: cookie.Name, Value: cookie.Value})
-	}
-	return session, nil
+	return &executor.Session{Headers: headers, Cookies: cookies}, nil
 }
 
 func (cli command) conciseRoot(writer io.Writer) {

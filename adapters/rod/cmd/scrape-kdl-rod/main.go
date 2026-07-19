@@ -7,17 +7,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"math"
-	"net/http"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	scrapekdl "github.com/hsblabs/scrape-kdl"
 	rodadapter "github.com/hsblabs/scrape-kdl/adapters/rod"
+	"github.com/hsblabs/scrape-kdl/internal/clisupport"
 )
 
 const (
@@ -36,21 +33,14 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 
-type repeatedFlag []string
-
-func (values *repeatedFlag) String() string         { return strings.Join(*values, ",") }
-func (values *repeatedFlag) Set(value string) error { *values = append(*values, value); return nil }
-
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
-	for _, arg := range args {
-		if arg == "--header" || strings.HasPrefix(arg, "--header=") || arg == "--cookie" || strings.HasPrefix(arg, "--cookie=") {
-			fmt.Fprintln(stderr, "--header and --cookie are not accepted; put secrets in --session-file FILE or use --session-file -")
-			return exitUsage
-		}
+	if clisupport.HasPlaintextSecretFlag(args) {
+		fmt.Fprintln(stderr, clisupport.PlaintextSecretFlagMessage)
+		return exitUsage
 	}
 	flags := flag.NewFlagSet("scrape-kdl-rod", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	var inputFlags repeatedFlag
+	var inputFlags clisupport.RepeatedFlag
 	spec := flags.String("spec", "", "path to an extractor KDL file")
 	showVersion := flags.Bool("version", false, "print version and exit")
 	allowJS := flags.Bool("allow-js", false, "allow JavaScript from the trusted spec")
@@ -83,7 +73,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(stderr, stdout, *jsonOutput, err)
 	}
-	inputs, err := parseRuntimeInputs(declarations, inputFlags)
+	inputs, err := clisupport.ParseRuntimeInputs(declarations, inputFlags)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitUsage
@@ -190,90 +180,20 @@ func writeJSON(writer io.Writer, value any) error {
 	return encoder.Encode(value)
 }
 
-type inputDeclaration struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Required bool   `json:"required"`
-}
-
 // inputDeclarations reads input declarations from the stable Validated IR
 // JSON contract; ProgramMetadata does not expose them.
-func inputDeclarations(program *scrapekdl.Program) ([]inputDeclaration, error) {
+func inputDeclarations(program *scrapekdl.Program) ([]clisupport.InputDeclaration, error) {
 	raw, err := program.IRJSON()
 	if err != nil {
 		return nil, fmt.Errorf("read program IR: %w", err)
 	}
 	var document struct {
-		Inputs []inputDeclaration `json:"inputs"`
+		Inputs []clisupport.InputDeclaration `json:"inputs"`
 	}
 	if err := json.Unmarshal(raw, &document); err != nil {
 		return nil, fmt.Errorf("decode program IR: %w", err)
 	}
 	return document.Inputs, nil
-}
-
-func parseRuntimeInputs(declarations []inputDeclaration, values []string) (map[string]any, error) {
-	byName := make(map[string]inputDeclaration, len(declarations))
-	for _, declaration := range declarations {
-		byName[declaration.Name] = declaration
-	}
-	result := make(map[string]any, len(values))
-	for _, raw := range values {
-		name, value, ok := strings.Cut(raw, "=")
-		if !ok || name == "" {
-			return nil, fmt.Errorf("invalid --input %q; expected name=value", raw)
-		}
-		declaration, exists := byName[name]
-		if !exists {
-			return nil, fmt.Errorf("unknown input %q", name)
-		}
-		if _, duplicate := result[name]; duplicate {
-			return nil, fmt.Errorf("duplicate input %q", name)
-		}
-		parsed, err := parseInputValue(declaration.Type, value)
-		if err != nil {
-			return nil, fmt.Errorf("input %s: %w", name, err)
-		}
-		result[name] = parsed
-	}
-	return result, nil
-}
-
-func parseInputValue(typeName, value string) (any, error) {
-	switch typeName {
-	case "string":
-		return value, nil
-	case "bool":
-		parsed, err := strconv.ParseBool(value)
-		if err != nil {
-			return nil, fmt.Errorf("expected bool: %w", err)
-		}
-		return parsed, nil
-	case "int":
-		parsed, err := strconv.ParseInt(value, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("expected integer: %w", err)
-		}
-		return parsed, nil
-	case "float":
-		parsed, err := strconv.ParseFloat(value, 64)
-		if err != nil || math.IsNaN(parsed) || math.IsInf(parsed, 0) {
-			return nil, fmt.Errorf("expected finite float")
-		}
-		return parsed, nil
-	default:
-		return nil, fmt.Errorf("unsupported input type %q", typeName)
-	}
-}
-
-type sessionDocument struct {
-	Headers map[string][]string `json:"headers"`
-	Cookies []sessionCookie     `json:"cookies"`
-}
-
-type sessionCookie struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
 }
 
 func readSessionFile(path string, stdin io.Reader) (*scrapekdl.Session, error) {
@@ -289,41 +209,9 @@ func readSessionFile(path string, stdin io.Reader) (*scrapekdl.Session, error) {
 		defer file.Close()
 		reader = file
 	}
-	session, err := decodeSessionDocument(reader)
+	headers, cookies, err := clisupport.DecodeSessionDocument(reader)
 	if err != nil {
 		return nil, fmt.Errorf("read session file: %w", err)
 	}
-	return session, nil
-}
-
-func decodeSessionDocument(reader io.Reader) (*scrapekdl.Session, error) {
-	decoder := json.NewDecoder(reader)
-	decoder.DisallowUnknownFields()
-	var document sessionDocument
-	if err := decoder.Decode(&document); err != nil {
-		return nil, fmt.Errorf("decode JSON: %w", err)
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return nil, fmt.Errorf("decode JSON: multiple values")
-		}
-		return nil, fmt.Errorf("decode JSON: %w", err)
-	}
-	session := &scrapekdl.Session{Headers: make(http.Header)}
-	for name, values := range document.Headers {
-		if strings.TrimSpace(name) == "" {
-			return nil, fmt.Errorf("header name must be non-empty")
-		}
-		for _, value := range values {
-			session.Headers.Add(name, value)
-		}
-	}
-	for _, cookie := range document.Cookies {
-		if strings.TrimSpace(cookie.Name) == "" {
-			return nil, fmt.Errorf("cookie name must be non-empty")
-		}
-		session.Cookies = append(session.Cookies, &http.Cookie{Name: cookie.Name, Value: cookie.Value})
-	}
-	return session, nil
+	return &scrapekdl.Session{Headers: headers, Cookies: cookies}, nil
 }

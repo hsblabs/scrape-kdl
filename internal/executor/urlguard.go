@@ -71,7 +71,6 @@ func NewPublicInternetHTTPClient() *http.Client {
 func rejectNonPublicAddr(addr netip.Addr) error {
 	unmapped := addr.Unmap()
 	if unmapped.IsLoopback() || unmapped.IsPrivate() || unmapped.IsLinkLocalUnicast() ||
-		unmapped.IsLinkLocalMulticast() || unmapped.IsInterfaceLocalMulticast() ||
 		unmapped.IsMulticast() || unmapped.IsUnspecified() {
 		return fmt.Errorf("address %s is not a public internet address", unmapped)
 	}
