@@ -34,15 +34,19 @@ The adapter implements `BrowserAdapterLease`. Concurrent `Program.Extract` calls
 scrape-kdl-rod -spec extractor.kdl --input race_id=202401010101 --allow-js --json
 ```
 
-Options mirror the core CLI's `extract` command:
+The command shares the core CLI's automation conventions:
 
 - `--input NAME=VALUE` — runtime input, typed by the extractor's declarations; repeatable;
 - `--session-file FILE|-` — headers and cookies as JSON (`{"headers": {...}, "cookies": [...]}`); plaintext `--header`/`--cookie` flags are rejected;
-- `--timeout`, `--user-agent`, `--json`, `--out FILE|-`;
-- `--allow-private-hosts` — allow navigation to loopback, private, and link-local addresses, rejected by default;
+- `--timeout`, `--user-agent`, `--json`, `-o`/`--out FILE|-`;
+- `--allow-private-hosts` — allow an initial navigation target that is not globally reachable, rejected by default;
 - `--allow-js`, `--headless` (default true), `--version`.
 
-Exit statuses follow the core CLI: 0 success, 1 processing failure, 2 usage error.
+`--json` emits exactly one JSON document on standard output for success, processing failure, or usage failure after the flag is recognized. It cannot be combined with `--out FILE`; use `--out -` or omit `--out`. Help is written to standard output and exits 0. Exit statuses follow the core CLI: 0 success, 1 processing failure, 2 usage error, 130 for `SIGINT`, and 143 for `SIGTERM`.
+
+The default URL policy covers the initial navigation target only. Browser redirects, subresources, service workers, and page-initiated traffic require browser-context or host-level network controls. `--allow-private-hosts` disables even the initial-target safeguard.
+
+See [`docs/rod-adapter.md`](../../docs/rod-adapter.md) for the complete lifecycle, CLI, output, cancellation, and security contract.
 
 ## Verification
 

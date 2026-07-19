@@ -166,7 +166,7 @@ go get github.com/hsblabs/scrape-kdl/adapters/rod@latest
 
 An adapter wrapping one mutable page can implement `BrowserAdapterLease`. The runtime acquires it for the complete extraction, preventing navigation, workflow, and reads from interleaving across concurrent calls. The go-rod adapter implements this automatically.
 
-See `docs/browser-runtime.md` and `adapters/rod/README.md`.
+See `docs/browser-runtime.md`, `docs/rod-adapter.md`, and `adapters/rod/README.md`.
 
 ## Security
 
@@ -250,6 +250,7 @@ make release-check
 - `docs/compiler-pipeline.md`
 - `docs/http-runtime.md`
 - `docs/browser-runtime.md`
+- `docs/rod-adapter.md`
 - `docs/public-api-v1.md`
 - `docs/roadmap-v1.md`
 - `docs/versioning.md`

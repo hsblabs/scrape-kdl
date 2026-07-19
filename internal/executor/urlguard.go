@@ -12,8 +12,8 @@ import (
 )
 
 // PublicInternetURLPolicy rejects targets that are not plain public-internet
-// HTTP(S) URLs: other schemes, userinfo, and hosts whose literal or resolved
-// addresses are loopback, private, link-local, multicast, or unspecified.
+// HTTP(S) URLs: other schemes, userinfo, and addresses that IANA does not mark
+// globally reachable in its special-purpose registries.
 // Resolution here is advisory; pair it with NewPublicInternetHTTPClient,
 // which re-checks the address actually dialed, to cover DNS rebinding.
 func PublicInternetURLPolicy() URLPolicy {
@@ -106,8 +106,8 @@ func classifyPublicTarget(target *url.URL) (string, error) {
 	return host, nil
 }
 
-// NewPublicInternetHTTPClient returns an HTTP client whose dialer rejects
-// non-public addresses at connection time, after DNS resolution.
+// NewPublicInternetHTTPClient returns a direct, proxy-disabled HTTP client
+// whose dialer rejects non-public addresses after DNS resolution.
 func NewPublicInternetHTTPClient() *http.Client {
 	return newPublicInternetHTTPClient(net.DefaultResolver)
 }

@@ -290,7 +290,7 @@ func (cli command) runExtract(ctx context.Context, args []string) int {
 	flags.Int64Var(&maxBody, "max-body", 32<<20, "maximum HTTP response body size in bytes")
 	flags.StringVar(&userAgent, "user-agent", "scrape-kdl/0.5", "HTTP User-Agent")
 	flags.BoolVar(&sessionProvided, "session", false, "mark an empty runtime session as supplied")
-	flags.BoolVar(&allowPrivateHosts, "allow-private-hosts", false, "allow targets on loopback, private, and link-local addresses")
+	flags.BoolVar(&allowPrivateHosts, "allow-private-hosts", false, "allow targets that are not globally reachable")
 	flags.BoolVar(&jsonOutput, "json", false, "emit exactly one JSON document on standard output")
 	if err := flags.Parse(args); err != nil {
 		return cli.usageFailure(hasJSONFlag(args), "extract", err)
@@ -702,8 +702,8 @@ OPTIONS
   --session-file PATH  Read headers and cookies from JSON; use - for stdin
   --session            Supply an explicit empty session
   --allow-private-hosts
-                       Allow loopback, private, and link-local targets,
-                       which are rejected by default
+                       Allow targets that are not globally reachable,
+                       and restore ordinary proxy behavior
   --timeout DURATION   HTTP request timeout (default 30s)
   --max-body BYTES     Maximum HTTP response body (default 33554432)
   --user-agent VALUE   HTTP User-Agent

@@ -170,7 +170,7 @@ func parseInvocation(args []string) (invocation, error) {
 	flags.BoolVar(&command.showVersion, "version", false, "print version and exit")
 	flags.BoolVar(&command.allowJavaScript, "allow-js", false, "allow JavaScript from the trusted spec")
 	flags.BoolVar(&command.headless, "headless", true, "run Chromium headlessly")
-	flags.BoolVar(&command.allowPrivateHosts, "allow-private-hosts", false, "allow non-public navigation targets")
+	flags.BoolVar(&command.allowPrivateHosts, "allow-private-hosts", false, "allow a non-public initial navigation target")
 	flags.StringVar(&command.sessionPath, "session-file", "", "read session JSON from a file, or - for standard input")
 	flags.DurationVar(&command.requestTimeout, "timeout", command.requestTimeout, "navigation timeout")
 	flags.StringVar(&command.userAgent, "user-agent", command.userAgent, "browser User-Agent override")
@@ -371,7 +371,7 @@ OPTIONS
   -o, --out FILE|-       Result destination
   --json                 Emit one machine-readable document on stdout
   --allow-js             Enable trusted-spec JavaScript
-  --allow-private-hosts  Allow non-public navigation targets
+  --allow-private-hosts  Allow a non-public initial navigation target
   --headless BOOL        Run Chromium headlessly (default true)
   --version              Print build metadata
   -h, --help             Show this help

@@ -49,7 +49,7 @@ The v0.5 CLI contract candidate defines help, standard streams, one-document `--
 
 The HTTP reference runtime uses pinned `golang.org/x/net/html` WHATWG document tree construction after charset decoding. The portable guarantee and explicit exclusions are recorded in `docs/html-compatibility.md`; browser mode continues to operate on the browser's mutable live DOM.
 
-Both HTTP runtimes decode WHATWG-labelled charsets (including Shift_JIS and EUC-JP) without configuration: TypeScript through `TextDecoder`, Go through `golang.org/x/text/encoding/htmlindex`. Extractions against such pages previously failed in Go with `E_HTML_CHARSET_UNSUPPORTED` unless `Options.CharsetDecoder` was set; that code now indicates a label outside the WHATWG index. See `docs/http-runtime.md` for the strictness difference on invalid byte sequences.
+Both HTTP runtimes decode WHATWG-labelled charsets (including Shift_JIS and EUC-JP) without configuration: TypeScript through `TextDecoder`, Go through `golang.org/x/text/encoding/htmlindex`. Extractions against such pages previously failed in Go with `E_HTML_CHARSET_UNSUPPORTED` unless `Options.CharsetDecoder` was set; that code now indicates a label outside the WHATWG index. Both runtimes reject malformed byte sequences with `E_HTML_DECODE`, checked through the shared charset compatibility manifest.
 
 ## Platform policy
 
