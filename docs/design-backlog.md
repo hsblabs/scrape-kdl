@@ -10,6 +10,21 @@ vocabulary the project uses: actions (I/O, effects), calculations (pure
 functions), data (inert facts). Each entry names the trigger that makes it
 worth doing; none is urgent on its own.
 
+## Consolidate the compiler to a single source (Go → wasm)
+
+Decided context and measurements live in
+`docs/adr/0001-implementation-language-scope.md`: the implementation
+language set is closed at Go + TypeScript, so the remaining duplication
+worth removing is the TypeScript parser/compiler/diagnostics surface.
+The mechanism is a separate, lazily-loaded npm package embedding the Go
+compiler as WebAssembly (measured 4.8 MB raw / 1.3 MB gzipped,
+stdlib-only compile path; `wasm-opt -Oz` and a TinyGo spike are candidate
+reductions). Sequence when triggered: ship the wasm package, run the
+conformance manifest through it as a differential gate, then deprecate
+and remove the TypeScript compiler. Trigger: TypeScript-compiler parity
+work becomes a recurring tax — and in any case a decision is needed
+before the v1 API freeze.
+
 ## Stratify the CLI `run` functions
 
 `runExtract` in `cmd/scrape-kdl/main.go` and `run` in
