@@ -26,6 +26,24 @@ result, err := program.Extract(ctx, inputs, scrapekdl.Options{
 
 The adapter implements `BrowserAdapterLease`. Concurrent `Program.Extract` calls using the same adapter are serialized for the complete navigation/workflow/extraction lifecycle. Separate adapters/pages are recommended for parallel throughput.
 
+## CLI
+
+`cmd/scrape-kdl-rod` executes browser-mode extractors end to end:
+
+```bash
+scrape-kdl-rod -spec extractor.kdl --input race_id=202401010101 --allow-js --json
+```
+
+Options mirror the core CLI's `extract` command:
+
+- `--input NAME=VALUE` — runtime input, typed by the extractor's declarations; repeatable;
+- `--session-file FILE|-` — headers and cookies as JSON (`{"headers": {...}, "cookies": [...]}`); plaintext `--header`/`--cookie` flags are rejected;
+- `--timeout`, `--user-agent`, `--json`, `--out FILE|-`;
+- `--allow-private-hosts` — allow navigation to loopback, private, and link-local addresses, rejected by default;
+- `--allow-js`, `--headless` (default true), `--version`.
+
+Exit statuses follow the core CLI: 0 success, 1 processing failure, 2 usage error.
+
 ## Verification
 
 Contract verification without downloading go-rod:

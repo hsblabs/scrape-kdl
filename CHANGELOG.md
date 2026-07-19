@@ -4,6 +4,7 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## Unreleased — M5 release hardening
 
+- Made `scrape-kdl-rod` a usable browser CLI: typed `--input` (read from the Validated IR contract), `--session-file` with the core CLI's JSON schema and plaintext-flag rejection, `--timeout`, `--user-agent`, `--json`/`--out`, core-aligned exit statuses, and default rejection of non-public navigation targets with `--allow-private-hosts` opt-out.
 - Added `PublicInternetURLPolicy` and `NewPublicInternetHTTPClient` (dial-time re-check against DNS rebinding) to the Go API, and made the CLI reject loopback, private, link-local, multicast, and unspecified targets by default; pass `--allow-private-hosts` to restore local-network extraction. Library `Options` defaults are unchanged.
 - Decoded WHATWG-labelled charsets (Shift_JIS, EUC-JP, ...) in the Go HTTP runtime by default via `golang.org/x/text/encoding/htmlindex`, aligning with the TypeScript runtime's `TextDecoder` fallback; `Options.CharsetDecoder` still overrides, and `E_HTML_CHARSET_UNSUPPORTED` now indicates labels outside the WHATWG index.
 - Prepared immutable execution plans once per compiled program, centralized output recovery/cardinality semantics across HTTP and browser modes, bounded first/one selector queries and collection overflow work, and de-duplicated diamond import traversal.

@@ -56,3 +56,5 @@ func New() *Browser                            { return &Browser{} }
 func (b *Browser) ControlURL(string) *Browser  { return b }
 func (b *Browser) MustConnect() *Browser       { return b }
 func (b *Browser) MustClose()                  {}
+func (b *Browser) Connect() error              { return nil }
+func (b *Browser) Close() error                { return nil }
