@@ -21,6 +21,18 @@ The adapter may release more frequently than the core. Its `go.mod` must depend 
 
 The npm packages are ESM-only and require Node.js 26 or later. Package versions do not select a language or IR contract; the supported opaque identifiers are exposed separately by the package API. Before publication, workspace manifests use `0.0.0-development`, and packed artifacts must contain no `workspace:`, `file:`, or local-path dependency.
 
+Private operational versions use `X.Y.Z-private.N`, where `N` starts at 1 and
+increases for every replacement. npm publishes these versions with restricted
+access and the `private` dist-tag. GitHub marks their CLI Releases as
+prereleases. Never move or reuse a private tag or npm version. The latest private
+version supersedes earlier private versions; no compatibility promise applies
+between private versions.
+
+Workspace package manifests default to restricted access so an accidental
+authenticated publish cannot make them public. Public release staging must
+explicitly set `publishConfig.access=public` and still passes the repository
+visibility and owner-controlled publication gates.
+
 Release candidates and stable releases follow this dependency order:
 
 1. privately build and inspect the complete CLI and npm artifact bundle;

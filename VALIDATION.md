@@ -1,6 +1,7 @@
 # Validation
 
-Validated on 2026-07-15 with Go 1.26.5 and Node.js 26.4.0 on macOS arm64.
+Validated on 2026-07-24 with Go 1.26.5, Node.js 26.4.0, and npm 11.17.0
+on macOS arm64.
 
 ## Integrated release check
 
@@ -28,6 +29,35 @@ This includes:
 - `go test -race ./...`;
 - CLI build, validation, offline extraction, and version output;
 - go-rod adapter compilation and tests against the local API contract stub.
+
+## Private distribution verification
+
+The private-package changes passed:
+
+- `make verify`;
+- `make release-gate`, including the real go-rod dependency, go-rod Chromium
+  E2E, Playwright Chromium E2E, race tests, security/resource hardening, and the
+  Chromium WPT differential;
+- a complete `v0.9.0-private.1` release bundle with four CLI archives, two
+  restricted npm archives, clean npm consumers, license/notice payloads, and
+  verified SHA-256 checksums;
+- a separate public npm staging build proving that guarded public releases
+  override the package metadata to `publishConfig.access=public`;
+- private release workflow contract tests, private tag validation, and a
+  go-rod archive-layout test;
+- Actionlint, `pinact run --check --verify`, shell syntax checks, formatting,
+  `go vet`, and `npm audit --omit=dev` with zero reported vulnerabilities.
+
+No tag, GitHub Release, npm package, Pages deployment, or repository visibility
+change was created. The npm account is not authenticated in this checkout, and
+the package records do not yet exist. Protected GitHub Environments and
+repository rulesets returned `403` for the current private-repository plan.
+Actual private registry/module clean-consumer checks remain post-publication
+gates because they require the owner-created tags, npm records, and read
+credentials. The go-rod archive builder was verified with a fake cross-compiler;
+the same source compiled and passed its real-dependency and Chromium tests in
+`make release-gate`, but the final private-version archive cannot be built
+without first tagging the core and updating the adapter dependency.
 
 ## Architecture and performance hardening
 

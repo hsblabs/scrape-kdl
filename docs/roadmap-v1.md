@@ -227,6 +227,9 @@ The contract freezes at `v0.9.0` and receives Semantic Versioning guarantees at 
 - establish repeatable verification for the core module and go-rod adapter.
 
 Repository publicization and every public pre-v1 release are intentionally outside this roadmap until the project owner gives a separate instruction.
+Operational `-private.N` versions may be used by authorized users under
+`docs/releasing.md`. They do not start the public v0.9 candidate period, freeze
+the API, or satisfy a public release milestone.
 
 ### v0.2.0: contract completion
 
@@ -361,6 +364,7 @@ Project-owner approval is required only for:
 - a new public contract outside the approved Go and TypeScript API principles;
 - a new unapproved third-party runtime dependency;
 - promotion of a best-effort target to supported status;
+- creating a private release tag, GitHub Release, or restricted npm version;
 - making the repository public;
 - publishing any public pre-v1 release or release artifact;
 - publishing stable v1 artifacts after issue #18's pre-publication checklist passes.

@@ -2,7 +2,7 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Status: private v1 release-candidate preparation. No public artifact has been published.
+Status: private v1 prerelease preparation. No public artifact has been published.
 The normative specification documents use the v0.1 document series and the initial compatibility identifiers `language-version="2026-07-15"` and `irVersion: "2026-07-15"`.
 
 ```text
@@ -31,13 +31,27 @@ KDL source
 - host URL policy for initial targets and HTTP redirects;
 - hardened common-HTML parsing for raw-text and truncated documents.
 
-## Install
+## Private install
 
-After the first tagged release:
+Authorized Go consumers configure the module path as private and authenticate
+Git with an account that can read this repository:
 
 ```bash
-go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@latest
+go env -w GOPRIVATE=github.com/hsblabs/scrape-kdl
+go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@vX.Y.Z-private.N
 ```
+
+Restricted npm packages install through an authenticated npm account:
+
+```bash
+npm install \
+  @hsblabs/scrape-kdl@X.Y.Z-private.N \
+  @hsblabs/scrape-kdl-playwright@X.Y.Z-private.N
+```
+
+CLI archives are downloaded from this private repository's GitHub Releases by
+users with read access. Exact release, authentication, checksum, and clean
+consumer procedures are in `docs/releasing.md`.
 
 For source development:
 

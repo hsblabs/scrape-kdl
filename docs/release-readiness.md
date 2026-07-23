@@ -1,8 +1,10 @@
 # v1 release readiness
 
-Updated: 2026-07-17
+Updated: 2026-07-24
 
-This file separates work that can finish while the repository is private from checks that require public registry or module visibility. It does not authorize publication.
+This file separates verified repository preparation, private operation, and
+checks that require public registry or module visibility. It does not authorize
+creating a tag, Release, package version, Pages deployment, or visibility change.
 
 ## Private preparation
 
@@ -19,8 +21,38 @@ This file separates work that can finish while the repository is private from ch
 | Accidental-publication protection | Ready in code | public-visibility checks, typed confirmations, globally serialized npm publishing, and GitHub Environment boundaries |
 | Release credential isolation | Ready in code | tokenless npm OIDC is available only to the protected publish job |
 | Private hosted dress rehearsal | Pending execution | run `Private release rehearsal` from the private branch |
+| Restricted npm artifact metadata | Ready in code | source and private bundles use `publishConfig.access=restricted`; public staging must opt in explicitly |
+| Private core GitHub Release | Ready in code | manual `Release private core` workflow, private visibility guard, annotated `-private.N` tag requirement |
+| Private go-rod GitHub Release | Ready in code | manual adapter workflow builds four CLI archives with checksums |
+| Private npm OIDC publication | Ready after bootstrap | manual restricted bootstrap creates package records; later versions use `release-npm-private.yml` |
+| Private Go/npm consumer checks | Ready in code | authenticated scripts verify both Go modules and both npm packages |
 
-## Owner-controlled setup while still private
+The complete local `make release-gate` passed on 2026-07-24 before these release
+changes. The current repository has no release tags or GitHub Releases.
+
+## Owner-controlled private setup
+
+- Confirm the npm `@hsblabs` organization has paid private-package support and
+  that the publishing owner has 2FA enabled.
+- Run the private rehearsal for the exact first version, proposed as
+  `v0.9.0-private.1`.
+- Bootstrap the two restricted npm package records from the inspected archives
+  with an interactive npm session. Do not create or store an npm publication
+  token in GitHub.
+- Configure both package records to trust `hsblabs/scrape-kdl` workflow
+  `release-npm-private.yml` for `npm publish`. Do not specify a GitHub
+  Environment while the current plan cannot provide one.
+- Grant npm teams read access and give CI consumers separate read-only tokens.
+- Grant intended Go and CLI consumers read access to the private GitHub
+  repository.
+
+GitHub currently returns `403` for protected Environments and repository
+rulesets on this private repository's plan. The private workflows therefore do
+not claim those controls. They use typed confirmations, private-visibility
+checks, annotated existing tags, serialized jobs, and least-privilege
+permissions instead.
+
+## Owner-controlled public setup while still private
 
 - Protect the `npm-publish` GitHub Environment with required reviewers, prevent self-review and administrator bypass, and allow only `main`.
 - Configure both npm package records to trust `hsblabs/scrape-kdl` workflow `release-npm.yml` with Environment `npm-publish` for `npm publish`; do not configure `NPM_TOKEN`.

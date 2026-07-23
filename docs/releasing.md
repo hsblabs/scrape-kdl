@@ -24,6 +24,159 @@ The checked-in workspace manifests remain `0.0.0-development`. npm versions and 
 
 The `Private release rehearsal` workflow performs the same complete gate and stores the bundle as a private GitHub Actions artifact for 14 days. It has no registry or repository write permission.
 
+## Private operational release
+
+Private operation uses versions ending in `-private.N`. The proposed first
+version is `v0.9.0-private.1`; increment `N` instead of moving or reusing a
+failed version.
+
+### Core Go module and CLI
+
+From an exact reviewed `main` commit:
+
+```bash
+version=v0.9.0-private.1
+mise exec -- npm ci
+mise exec -- make release-gate
+mise exec -- make release-dist \
+  VERSION="$version" \
+  OUT=dist \
+  NPM_ACCESS=restricted
+git tag -a "$version" -m "Private release $version"
+git push origin "$version"
+gh workflow run release-private.yml \
+  --repo hsblabs/scrape-kdl \
+  -f version="$version" \
+  -f confirmation=PUBLISH_PRIVATE_GITHUB_RELEASE
+```
+
+Creating and pushing the tag and dispatching the workflow are owner-authorized
+publication actions. The workflow refuses a non-private repository, requires an
+existing annotated `-private.N` tag, reruns the release checks, and creates a
+GitHub prerelease with four CLI archives and checksums.
+
+Private Go consumers need repository read access, `GOPRIVATE`, and
+non-interactive Git authentication. For example, an SSH-authenticated developer
+can configure GitHub URL rewriting:
+
+```bash
+go env -w GOPRIVATE=github.com/hsblabs/scrape-kdl
+git config --global url."ssh://git@github.com/".insteadOf https://github.com/
+go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@"$version"
+```
+
+CI should use a read-only GitHub App installation token or fine-grained token
+through its secret manager. Do not place credentials in `GOPROXY`, command
+arguments, repository files, or logs.
+
+### Restricted npm packages
+
+Private npm packages require a paid `@hsblabs` organization and authenticated
+read access for every consumer. The first package versions must be created
+before npm can attach a trusted publisher. Bootstrap both records once from the
+already inspected restricted archives with an interactive npm session and 2FA:
+
+```bash
+npm login --scope=@hsblabs
+npm publish "dist/hsblabs-scrape-kdl-${version#v}.tgz" \
+  --access restricted \
+  --tag private
+npm publish "dist/hsblabs-scrape-kdl-playwright-${version#v}.tgz" \
+  --access restricted \
+  --tag private
+```
+
+After both records exist, configure each package's trusted publisher with:
+
+- organization: `hsblabs`;
+- repository: `scrape-kdl`;
+- workflow: `release-npm-private.yml`;
+- Environment: none while the current private-repository plan cannot provide
+  protected Environments;
+- allowed action: `npm publish`.
+
+Do not create `NPM_TOKEN` or any other npm write secret in GitHub. Subsequent
+private versions use OIDC:
+
+```bash
+gh workflow run release-npm-private.yml \
+  --repo hsblabs/scrape-kdl \
+  -f version="${version#v}" \
+  -f confirmation=PUBLISH_PRIVATE_NPM
+```
+
+OIDC authenticates `npm publish` only. Private `npm view`, install, and
+post-publication checks still require an interactive session or a separate
+read-only token:
+
+```bash
+./scripts/verify-private-npm-release.sh "${version#v}"
+```
+
+npm provenance is unavailable while the repository is private.
+
+### go-rod module and CLI
+
+The adapter cannot be released before the private core tag exists. Update its
+release-clean dependency to the exact core version, review the resulting
+`go.mod` and `go.sum`, and verify without a local replacement:
+
+```bash
+(
+  cd adapters/rod
+  GOPRIVATE=github.com/hsblabs/scrape-kdl \
+    GONOSUMDB=github.com/hsblabs/scrape-kdl \
+    go get github.com/hsblabs/scrape-kdl@"$version"
+  go mod tidy
+  GOWORK=off GOPRIVATE=github.com/hsblabs/scrape-kdl \
+    GONOSUMDB=github.com/hsblabs/scrape-kdl \
+    go test ./...
+)
+git add adapters/rod/go.mod adapters/rod/go.sum
+git commit -m "Prepare go-rod for $version"
+```
+
+After that commit reaches `main`, create the adapter tag and dispatch its
+private release:
+
+```bash
+adapter_tag="adapters/rod/$version"
+git tag -a "$adapter_tag" -m "Private go-rod release $adapter_tag"
+git push origin "$adapter_tag"
+gh workflow run release-private-rod.yml \
+  --repo hsblabs/scrape-kdl \
+  -f version="$adapter_tag" \
+  -f confirmation=PUBLISH_PRIVATE_ROD_RELEASE
+```
+
+The workflow verifies the real private core dependency and builds
+`scrape-kdl-rod` archives for Linux and macOS on amd64 and arm64. After both Go
+tags exist, run the authenticated clean-consumer check:
+
+```bash
+./scripts/verify-private-go-release.sh "$version" "$adapter_tag"
+```
+
+### CLI download
+
+Users with repository read access can download and verify private Release
+assets:
+
+```bash
+gh release download "$version" \
+  --repo hsblabs/scrape-kdl \
+  --dir scrape-kdl-release
+(
+  cd scrape-kdl-release
+  shasum -a 256 -c checksums.txt
+)
+```
+
+Before making the repository public, review all private tags and GitHub Releases:
+the visibility change would expose their source references, notes, and attached
+assets. Restricted npm packages remain private until their package access is
+changed explicitly.
+
 ## One-time public release setup
 
 Complete these owner-controlled settings before the first public candidate:
@@ -34,7 +187,15 @@ Complete these owner-controlled settings before the first public candidate:
 4. Add active tag rulesets for `v*.*.*` and `adapters/rod/v*.*.*` that restrict tag creation, update, deletion, and bypass rights to the release owners.
 5. Configure the `github-pages` Environment with required reviewers and GitHub Pages using GitHub Actions as its source.
 6. Confirm ownership of both npm package names.
-7. Decide when to make the repository public. The npm, Pages, core release, and adapter release jobs refuse to run publicly while repository visibility is private.
+7. Decide when to make the repository public. The public npm, Pages, core
+   release, and adapter release jobs refuse to run while repository visibility
+   is private; the private workflows remain separate.
+
+If the private npm channel has been used, replace each package's single trusted
+publisher configuration from `release-npm-private.yml` to `release-npm.yml`.
+The public workflow's explicit `--access public` changes the package access
+level, making the package and its existing versions downloadable by everyone.
+Review all private versions before approving that change.
 
 The npm and Pages workflows also require typed confirmations. Environment approval remains the primary protection against accidental publication. Required-reviewer availability for private repositories depends on the GitHub plan; if it is unavailable while private, configure and verify it immediately after publicization and before creating or publishing any release tag.
 
@@ -75,6 +236,9 @@ For the first 24 hours, monitor GitHub Actions, GitHub security advisories, npm 
 
 Go module tags and versions observed by a module proxy are immutable. npm consumers may also cache published artifacts. Never move or reuse a published tag or version.
 
+- Failed private release: retain the failed version for auditability and publish
+  the next `-private.N` version. Stop dependent npm or adapter publication if the
+  core fails.
 - Failed prerelease: mark it as superseded or deprecated and publish the next `-rc.N` version.
 - Failed stable npm release: deprecate the affected npm version with a useful message and publish a patch.
 - Failed stable Go, adapter, or CLI release: publish a patch from a reviewed revert or fix; do not replace tag assets with different bytes.
