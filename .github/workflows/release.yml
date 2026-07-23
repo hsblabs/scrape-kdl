@@ -28,7 +28,7 @@ jobs:
       - run: npm ci
       - run: ./scripts/validate-release-tag.sh core "${GITHUB_REF_NAME}"
       - run: make release-check
-      - run: make release-dist VERSION="${GITHUB_REF_NAME}" OUT=dist
+      - run: make release-dist VERSION="${GITHUB_REF_NAME}" OUT=dist NPM_ACCESS=public
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

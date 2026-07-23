@@ -3,8 +3,13 @@ set -euo pipefail
 
 version="${1:?version tag is required}"
 directory="${2:?release directory is required}"
+npm_access="${3:-restricted}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 "$root/scripts/validate-release-tag.sh" core "$version"
+case "$npm_access" in
+  public|restricted) ;;
+  *) echo "invalid npm publish access: $npm_access" >&2; exit 1 ;;
+esac
 plain="${version#v}"
 
 for target in linux_amd64 linux_arm64 darwin_amd64 darwin_arm64; do
@@ -20,6 +25,17 @@ for archive in \
   "$directory/hsblabs-scrape-kdl-${plain}.tgz" \
   "$directory/hsblabs-scrape-kdl-playwright-${plain}.tgz"; do
   [[ -f "$archive" ]] || { echo "missing npm release archive: $archive" >&2; exit 1; }
+  tar -xOzf "$archive" package/package.json | node -e '
+    let input = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { input += chunk; });
+    process.stdin.on("end", () => {
+      const manifest = JSON.parse(input);
+      if (manifest.publishConfig?.access !== process.argv[1]) {
+        throw new Error(`${manifest.name} publishConfig.access is ${manifest.publishConfig?.access}, expected ${process.argv[1]}`);
+      }
+    });
+  ' "$npm_access"
 done
 [[ -f "$directory/checksums.txt" ]] || { echo "missing release checksums: $directory/checksums.txt" >&2; exit 1; }
 

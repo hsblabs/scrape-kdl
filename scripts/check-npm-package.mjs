@@ -8,9 +8,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const developmentVersion = "0.0.0-development";
+const defaultPublishAccess = "restricted";
 
-export async function checkNpmPackages({ releaseVersion, outputDirectory } = {}) {
+export async function checkNpmPackages({ releaseVersion, outputDirectory, publishAccess = defaultPublishAccess } = {}) {
   if (releaseVersion !== undefined) validateReleaseVersion(releaseVersion);
+  validatePublishAccess(publishAccess);
   const temporary = await mkdtemp(join(tmpdir(), "scrape-kdl-npm-"));
   try {
     const packDirectory = join(temporary, "pack");
@@ -18,7 +20,7 @@ export async function checkNpmPackages({ releaseVersion, outputDirectory } = {})
     const { packed, adapterPacked } =
       releaseVersion === undefined
         ? packWorkspacePackages(packDirectory)
-        : await packReleasePackages(temporary, packDirectory, releaseVersion);
+        : await packReleasePackages(temporary, packDirectory, releaseVersion, publishAccess);
     assert.equal(packed.length, 1, "npm pack must produce exactly one core artifact");
     const metadata = packed[0];
     const paths = metadata.files.map((file) => file.path).sort();
@@ -69,6 +71,7 @@ export async function checkNpmPackages({ releaseVersion, outputDirectory } = {})
     assert.equal(packageJSON.type, "module");
     assert.equal(packageJSON.engines.node, ">=26");
     assert.equal(packageJSON.version, releaseVersion ?? developmentVersion);
+    assert.equal(packageJSON.publishConfig?.access, publishAccess);
     if (releaseVersion !== undefined) assert.equal(packageJSON.scripts, undefined);
     assert.deepEqual(
       packageJSON.dependencies,
@@ -96,6 +99,7 @@ export async function checkNpmPackages({ releaseVersion, outputDirectory } = {})
     assert.equal(adapterJSON.private, undefined, "adapter package must be publishable");
     assert.equal(adapterJSON.engines.node, ">=26");
     assert.equal(adapterJSON.version, releaseVersion ?? developmentVersion);
+    assert.equal(adapterJSON.publishConfig?.access, publishAccess);
     if (releaseVersion !== undefined) assert.equal(adapterJSON.scripts, undefined);
     assert.deepEqual(adapterJSON.dependencies, { playwright: "1.61.1" });
     if (releaseVersion === undefined) {
@@ -250,14 +254,16 @@ function packWorkspacePackages(packDirectory) {
   };
 }
 
-async function packReleasePackages(temporary, packDirectory, releaseVersion) {
+async function packReleasePackages(temporary, packDirectory, releaseVersion, publishAccess) {
   const coreStage = join(temporary, "core");
   const adapterStage = join(temporary, "adapter");
   await stagePackage(join(root, "packages/scrape-kdl"), coreStage, (manifest) => {
     manifest.version = releaseVersion;
+    manifest.publishConfig = { ...manifest.publishConfig, access: publishAccess };
   });
   await stagePackage(join(root, "packages/scrape-kdl-playwright"), adapterStage, (manifest) => {
     manifest.version = releaseVersion;
+    manifest.publishConfig = { ...manifest.publishConfig, access: publishAccess };
     manifest.devDependencies = { "@hsblabs/scrape-kdl": releaseVersion };
     manifest.peerDependencies = {
       "@hsblabs/scrape-kdl": releasePeerRange(releaseVersion),
@@ -287,6 +293,10 @@ function validateReleaseVersion(version) {
     /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u,
     `invalid npm release version ${JSON.stringify(version)}`,
   );
+}
+
+function validatePublishAccess(access) {
+  assert.match(access, /^(?:public|restricted)$/u, `invalid npm publish access ${JSON.stringify(access)}`);
 }
 
 function releasePeerRange(version) {
