@@ -367,7 +367,7 @@ func firstDifference(path string, expected, actual any) string {
 	switch expectedValue := expected.(type) {
 	case map[string]any:
 		actualValue := actual.(map[string]any)
-		keys := make([]string, 0, len(expectedValue)+len(actualValue))
+		keys := make([]string, 0, len(expectedValue))
 		seen := map[string]bool{}
 		for key := range expectedValue {
 			keys = append(keys, key)
