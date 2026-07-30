@@ -5,10 +5,11 @@ import { checkNpmPackages } from "./check-npm-package.mjs";
 const help = `Build inspected npm release archives without publishing them.
 
 Usage:
-  node scripts/build-npm-release.mjs --version VERSION [--output DIRECTORY]
+  node scripts/build-npm-release.mjs --version VERSION [--access ACCESS] [--output DIRECTORY]
 
 Options:
   --version VERSION   Semantic Versioning package version, without a leading v
+  --access ACCESS     npm access: restricted or public (default: restricted)
   --output DIRECTORY  Artifact directory (default: dist)
   -h, --help          Show this help
 `;
@@ -17,6 +18,7 @@ try {
   const { values } = parseArgs({
     options: {
       version: { type: "string" },
+      access: { type: "string", default: "restricted" },
       output: { type: "string", default: "dist" },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -29,6 +31,7 @@ try {
     await checkNpmPackages({
       releaseVersion: values.version,
       outputDirectory: resolve(values.output),
+      publishAccess: values.access,
     });
   }
 } catch (error) {

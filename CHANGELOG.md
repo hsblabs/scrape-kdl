@@ -4,6 +4,14 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## 1.0.0 — Unreleased
 
+- Fixed the public release boundary so private-channel versions cannot reach
+  public workflows and public release candidates are marked as GitHub
+  prereleases rather than the latest stable release.
+- Prevented completed Playwright E2E tests from hanging on a residual macOS
+  `fsevents` handle under Node.js 26.
+- Added a private operational channel: restricted npm artifacts and OIDC
+  publishing, authenticated private Go consumer checks, guarded private GitHub
+  prereleases, and Linux/macOS go-rod CLI archives with checksums.
 - Added a failure-safe private release bundle containing four CLI archives, two clean-consumer-tested npm archives, Apache `NOTICE` files, and SHA-256 checksums without publishing or changing workspace development versions.
 - Added guarded private rehearsal, npm publication, and specification-site workflows; public workflows require visibility checks, typed confirmation, owner-configured GitHub Environments, and protected release tags.
 - Pinned every GitHub Action to a full commit SHA and moved npm publication to globally serialized, tokenless OIDC trusted publishing with build/publish permission isolation.

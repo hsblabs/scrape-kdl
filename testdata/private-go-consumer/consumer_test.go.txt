@@ -1,0 +1,15 @@
+package privateconsumer
+
+import (
+	"testing"
+
+	scrapekdl "github.com/hsblabs/scrape-kdl"
+	rodadapter "github.com/hsblabs/scrape-kdl/adapters/rod"
+)
+
+func TestPrivateModuleContractsCompile(t *testing.T) {
+	var _ scrapekdl.BrowserAdapter = (*rodadapter.Adapter)(nil)
+	if scrapekdl.NewPublicInternetHTTPClient() == nil {
+		t.Fatal("NewPublicInternetHTTPClient returned nil")
+	}
+}

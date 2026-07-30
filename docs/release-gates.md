@@ -20,4 +20,18 @@ Before any public tag, build the exact private candidate bundle:
 make release-dist VERSION=v1.0.0-rc.1 OUT=dist
 ```
 
-The bundle gate checks release-only npm metadata and peer ranges, clean npm installation, all four CLI archives, required license and notice files, and SHA-256 checksums. It does not publish the artifacts. `.github/workflows/release-rehearsal.yml` runs the same process and stores only a private Actions artifact.
+The bundle gate defaults both npm archives to restricted access. Set
+`NPM_ACCESS=public` only inside the guarded public release workflow. The gate
+checks release-only npm metadata and peer ranges, clean npm installation, all
+four CLI archives, required license and notice files, and SHA-256 checksums. It
+does not publish the artifacts. `.github/workflows/release-rehearsal.yml` runs
+the same restricted process and stores only a private Actions artifact.
+
+The go-rod binary bundle is independently available with:
+
+```bash
+make release-rod-dist VERSION=adapters/rod/v0.9.0-private.1 OUT=dist
+```
+
+It produces Linux and macOS archives for amd64 and arm64 with `LICENSE`,
+`NOTICE`, the adapter README, and checksums.

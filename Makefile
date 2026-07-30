@@ -1,5 +1,5 @@
 .PHONY: test race vet build format-check module-check golden diagnostics examples examples-go examples-typescript html-differential ir-contract builtin-contract api-contract typescript-contract typescript-package conformance-coverage conformance release-matrix hardening validate-example extract-example verify
-.PHONY: package-go performance support-matrix support-matrix-target test-rod-contract test-rod test-rod-e2e test-playwright-e2e release-check release-gate release-dist
+.PHONY: package-go performance support-matrix support-matrix-target test-rod-contract test-rod test-rod-e2e test-playwright-e2e release-check release-gate release-dist release-rod-dist
 
 test:
 	GOTOOLCHAIN=local go test ./...
@@ -122,3 +122,6 @@ release-gate:
 
 release-dist:
 	./scripts/build-release-bundle.sh "$${VERSION:?set VERSION=vX.Y.Z}" "$${OUT:-dist}"
+
+release-rod-dist:
+	./scripts/build-rod-release.sh "$${VERSION:?set VERSION=adapters/rod/vX.Y.Z}" "$${OUT:-dist}"

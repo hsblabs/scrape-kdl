@@ -10,6 +10,11 @@ const root = new URL("../../../", import.meta.url);
 const browserName = process.env.PLAYWRIGHT_BROWSER ?? "chromium";
 const browserType = { chromium, firefox, webkit }[browserName];
 assert.ok(browserType, `unsupported PLAYWRIGHT_BROWSER ${JSON.stringify(browserName)}`);
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+const launchOptions = {
+  headless: true,
+  ...(browserName === "chromium" && chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : {}),
+};
 const [fixtureSource, fixtureHTML, expected] = await Promise.all([
   readFile(new URL("fixtures/valid/rod-browser-e2e.kdl", root), "utf8"),
   readFile(new URL("fixtures/html/rod-browser-e2e.html", root), "utf8"),
@@ -20,7 +25,7 @@ test(`Chromium matches every portable HTML and pinned WPT observation`, { timeou
   const manifest = JSON.parse(await readFile(new URL("fixtures/html-compat/manifest.json", root), "utf8"));
   assert.deepEqual(manifest.approvedDivergences, []);
   assert.ok(manifest.upstream.selectedTests.length >= 3);
-  const browser = await browserType.launch({ headless: true });
+  const browser = await browserType.launch(launchOptions);
   const page = await browser.newPage();
   try {
     for (const fixture of manifest.cases) {
@@ -72,7 +77,7 @@ async function fixtureServer() {
 
 test(`packed Playwright boundary executes the shared browser fixture in ${browserName}`, { timeout: 60_000 }, async () => {
   const fixture = await fixtureServer();
-  const browser = await browserType.launch({ headless: true });
+  const browser = await browserType.launch(launchOptions);
   const adapter = new PlaywrightAdapter(browser);
   try {
     const source = fixtureSource.replace("http://127.0.0.1:18080", fixture.url);
@@ -110,7 +115,7 @@ test("lease waiters honor cancellation and releases are idempotent", async () =>
 
 test("the official adapter lease serializes concurrent extractions", { timeout: 60_000 }, async () => {
   const fixture = await fixtureServer();
-  const browser = await browserType.launch({ headless: true });
+  const browser = await browserType.launch(launchOptions);
   const adapter = new PlaywrightAdapter(browser);
   try {
     const source = `extractor "concurrency" version="2026-07-15" language-version="2026-07-15" {
@@ -135,7 +140,7 @@ test("the official adapter lease serializes concurrent extractions", { timeout: 
 
 test("timeout, cancellation, and navigation failure clean up before recovery", { timeout: 60_000 }, async () => {
   const fixture = await fixtureServer();
-  const browser = await browserType.launch({ headless: true });
+  const browser = await browserType.launch(launchOptions);
   const adapter = new PlaywrightAdapter(browser);
   try {
     const timeoutSource = `extractor "timeout" version="2026-07-15" language-version="2026-07-15" {

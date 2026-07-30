@@ -2,7 +2,11 @@
 
 ## Version support
 
-There is no supported public version before the first public release. Private release candidates are verification artifacts and are superseded by the next candidate.
+There is no supported public version before the first public release. Authorized
+private users may operate the latest `-private.N` version. It receives
+release-blocking correctness and security fixes, but compatibility may change in
+the next private version. Every earlier private version is superseded and
+unsupported.
 
 Starting with `v1.0.0`:
 

@@ -2,7 +2,7 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Status: private v1 release-candidate preparation. No public artifact has been published.
+Status: public `v1.0.0-rc.1` preparation. No public artifact has been published.
 The normative specification documents use the v0.1 document series and the initial compatibility identifiers `language-version="2026-07-15"` and `irVersion: "2026-07-15"`.
 
 ```text
@@ -31,13 +31,44 @@ KDL source
 - host URL policy for initial targets and HTTP redirects;
 - hardened common-HTML parsing for raw-text and truncated documents.
 
-## Install
+## Private install
 
-After the first tagged release:
+Authorized Go consumers configure the module path as private and authenticate
+Git with an account that can read this repository:
 
 ```bash
-go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@latest
+go env -w GOPRIVATE=github.com/hsblabs/scrape-kdl
+go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@vX.Y.Z-private.N
 ```
+
+Restricted npm packages install through an authenticated npm account:
+
+```bash
+npm install \
+  @hsblabs/scrape-kdl@X.Y.Z-private.N \
+  @hsblabs/scrape-kdl-playwright@X.Y.Z-private.N
+```
+
+CLI archives are downloaded from this private repository's GitHub Releases by
+users with read access. Exact release, authentication, checksum, and clean
+consumer procedures are in `docs/releasing.md`.
+
+## Public release candidate install
+
+These commands become available only after `v1.0.0-rc.1` is published and its
+post-publication checks pass:
+
+```bash
+go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.0-rc.1
+go install github.com/hsblabs/scrape-kdl/adapters/rod/cmd/scrape-kdl-rod@v1.0.0-rc.1
+npm install \
+  @hsblabs/scrape-kdl@1.0.0-rc.1 \
+  @hsblabs/scrape-kdl-playwright@1.0.0-rc.1
+```
+
+The same version is available as Linux and macOS CLI archives for amd64 and
+arm64 from the core and go-rod GitHub prereleases. Verify every downloaded
+archive against its accompanying `checksums.txt`.
 
 For source development:
 

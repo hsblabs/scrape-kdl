@@ -24,7 +24,19 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --project tsconfig.json --noEmit",
-    "test:e2e": "node --test test/e2e.test.mjs"
+    "test:e2e": "node --test --test-force-exit test/e2e.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hsblabs/scrape-kdl.git",
+    "directory": "packages/scrape-kdl-playwright"
+  },
+  "bugs": {
+    "url": "https://github.com/hsblabs/scrape-kdl/issues"
+  },
+  "homepage": "https://github.com/hsblabs/scrape-kdl#readme",
+  "publishConfig": {
+    "access": "restricted"
   },
   "devDependencies": {
     "@hsblabs/scrape-kdl": "0.0.0-development"

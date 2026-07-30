@@ -40,6 +40,128 @@ func TestBuildReleaseCleansStageAfterBuildFailure(t *testing.T) {
 	assertDirectoryEmpty(t, filepath.Join(tmp, "stages"))
 }
 
+func TestBuildRodReleaseArchive(t *testing.T) {
+	root := repositoryRoot(t)
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fakeGo := `#!/bin/sh
+set -eu
+output=
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = -o ]; then
+    output=$2
+    shift 2
+  else
+    shift
+  fi
+done
+test -n "$output"
+printf 'fake rod binary' > "$output"
+`
+	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(fakeGo), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dist := filepath.Join(tmp, "dist")
+	command := exec.Command(
+		"bash",
+		filepath.Join(root, "scripts", "build-rod-release.sh"),
+		"adapters/rod/v0.9.0-private.1",
+		dist,
+	)
+	command.Dir = root
+	command.Env = append(os.Environ(),
+		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"GITHUB_SHA=test-commit",
+		"SCRAPE_KDL_RELEASE_TARGETS=linux/amd64",
+	)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build-rod-release.sh failed: %v\n%s", err, output)
+	}
+	archive := filepath.Join(tmp, "dist", "scrape-kdl-rod_0.9.0-private.1_linux_amd64.tar.gz")
+	assertArchiveContains(t, archive, "scrape-kdl-rod", "LICENSE", "NOTICE", "README.md")
+	if _, err := os.Stat(filepath.Join(tmp, "dist", "checksums.txt")); err != nil {
+		t.Fatalf("rod release checksums: %v", err)
+	}
+}
+
+func TestValidatePrivateReleaseTag(t *testing.T) {
+	root := repositoryRoot(t)
+	script := filepath.Join(root, "scripts", "validate-private-release-tag.sh")
+	tests := []struct {
+		name string
+		kind string
+		tag  string
+		ok   bool
+	}{
+		{name: "core", kind: "core", tag: "v0.9.0-private.1", ok: true},
+		{name: "rod", kind: "rod", tag: "adapters/rod/v0.9.0-private.12", ok: true},
+		{name: "public core", kind: "core", tag: "v0.9.0", ok: false},
+		{name: "release candidate", kind: "core", tag: "v1.0.0-rc.1", ok: false},
+		{name: "zero sequence", kind: "rod", tag: "adapters/rod/v0.9.0-private.0", ok: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			command := exec.Command("bash", script, test.kind, test.tag)
+			output, err := command.CombinedOutput()
+			if test.ok && err != nil {
+				t.Fatalf("validate-private-release-tag.sh failed: %v\n%s", err, output)
+			}
+			if !test.ok && err == nil {
+				t.Fatalf("validate-private-release-tag.sh accepted %q", test.tag)
+			}
+		})
+	}
+}
+
+func TestValidatePublicReleaseTag(t *testing.T) {
+	root := repositoryRoot(t)
+	script := filepath.Join(root, "scripts", "validate-public-release-tag.sh")
+	tests := []struct {
+		name string
+		kind string
+		tag  string
+		ok   bool
+	}{
+		{name: "stable core", kind: "core", tag: "v1.0.0", ok: true},
+		{name: "core release candidate", kind: "core", tag: "v1.0.0-rc.1", ok: true},
+		{name: "rod release candidate", kind: "rod", tag: "adapters/rod/v1.0.0-rc.1", ok: true},
+		{name: "private core", kind: "core", tag: "v0.9.0-private.1", ok: false},
+		{name: "private rod", kind: "rod", tag: "adapters/rod/v0.9.0-private.1", ok: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			command := exec.Command("bash", script, test.kind, test.tag)
+			output, err := command.CombinedOutput()
+			if test.ok && err != nil {
+				t.Fatalf("validate-public-release-tag.sh failed: %v\n%s", err, output)
+			}
+			if !test.ok && err == nil {
+				t.Fatalf("validate-public-release-tag.sh accepted %q", test.tag)
+			}
+		})
+	}
+}
+
+func TestBuildReleaseBundleRejectsInvalidNPMAccess(t *testing.T) {
+	root := repositoryRoot(t)
+	command := exec.Command(
+		"bash",
+		filepath.Join(root, "scripts", "build-release-bundle.sh"),
+		"v0.9.0-private.1",
+		filepath.Join(t.TempDir(), "dist"),
+	)
+	command.Dir = root
+	command.Env = append(os.Environ(), "NPM_ACCESS=internal")
+	output, err := command.CombinedOutput()
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || !strings.Contains(string(output), "invalid npm publish access: internal") {
+		t.Fatalf("build-release-bundle.sh error = %v, output = %q", err, output)
+	}
+}
+
 func TestResolveReleaseOutputRejectsRepositoryAliases(t *testing.T) {
 	root := repositoryRoot(t)
 	resolver := filepath.Join(root, "scripts", "resolve-release-output.sh")

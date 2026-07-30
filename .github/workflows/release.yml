@@ -26,10 +26,19 @@ jobs:
           node-version: "26.x"
           cache: npm
       - run: npm ci
-      - run: ./scripts/validate-release-tag.sh core "${GITHUB_REF_NAME}"
+      - run: ./scripts/validate-public-release-tag.sh core "${GITHUB_REF_NAME}"
       - run: make release-check
-      - run: make release-dist VERSION="${GITHUB_REF_NAME}" OUT=dist
+      - run: make release-dist VERSION="${GITHUB_REF_NAME}" OUT=dist NPM_ACCESS=public
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/* --verify-tag --generate-notes --title "${GITHUB_REF_NAME}"
+        run: |
+          release_flags=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            release_flags+=(--prerelease --latest=false)
+          fi
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --verify-tag \
+            --generate-notes \
+            --title "${GITHUB_REF_NAME}" \
+            "${release_flags[@]}"

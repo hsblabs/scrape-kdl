@@ -36,16 +36,24 @@ extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
 	if metadata.Name != "consumer" || metadata.LanguageVersion != "2026-07-15" || len(metadata.Files) != 2 {
 		t.Fatalf("metadata = %#v", metadata)
 	}
+	publicTarget, err := url.Parse("https://8.8.8.8/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	publicInternetPolicy := scrapekdl.PublicInternetURLPolicy()
+	if err := publicInternetPolicy(ctx, publicTarget); err != nil {
+		t.Fatalf("PublicInternetURLPolicy(public target) = %v", err)
+	}
+	httpClient := scrapekdl.NewPublicInternetHTTPClient()
+	if httpClient == nil || httpClient.Transport == nil {
+		t.Fatal("NewPublicInternetHTTPClient returned an unusable client")
+	}
 	options := scrapekdl.Options{
 		ExternalTransforms: map[string]scrapekdl.ExternalTransform{
 			"decorate": func(_ context.Context, input any) (any, error) { return input, nil },
 		},
-		URLPolicy: func(_ context.Context, target *url.URL) error {
-			if target.Scheme != "https" {
-				return fmt.Errorf("HTTPS required")
-			}
-			return nil
-		},
+		URLPolicy:  publicInternetPolicy,
+		HTTPClient: httpClient,
 	}
 	result, err := program.ExtractHTML(ctx, "<h1>Example</h1>", options)
 	if err != nil || result.Value["title"] != "Example" {

@@ -1,0 +1,97 @@
+name: Release private go-rod adapter
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing annotated adapter tag ending in -private.N
+        required: true
+        default: adapters/rod/v0.9.0-private.1
+        type: string
+      confirmation:
+        description: Type PUBLISH_PRIVATE_ROD_RELEASE
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-rod-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: inputs.confirmation == 'PUBLISH_PRIVATE_ROD_RELEASE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+      GOPRIVATE: github.com/hsblabs/scrape-kdl
+      GONOSUMDB: github.com/hsblabs/scrape-kdl
+    steps:
+      - name: Validate private release request
+        run: |
+          if [[ "$REPOSITORY_VISIBILITY" != private ]]; then
+            echo "refusing private release while repository visibility is $REPOSITORY_VISIBILITY" >&2
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.5"
+          cache-dependency-path: adapters/rod/go.sum
+      - name: Configure private module authentication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+      - name: Validate source tag and module metadata
+        run: |
+          ./scripts/validate-private-release-tag.sh rod "$RELEASE_VERSION"
+          test "$(git cat-file -t "refs/tags/$RELEASE_VERSION")" = tag
+          test "$(git describe --exact-match --tags HEAD)" = "$RELEASE_VERSION"
+          ! grep -Eq '^[[:space:]]*replace[[:space:]]' adapters/rod/go.mod
+      - working-directory: adapters/rod
+        run: go mod verify
+      - working-directory: adapters/rod
+        run: go test ./...
+      - working-directory: adapters/rod
+        run: go vet ./...
+      - working-directory: adapters/rod
+        run: go test -tags=e2e -timeout=15m ./...
+      - run: ./scripts/build-rod-release.sh "$RELEASE_VERSION" dist
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: private-rod-${{ inputs.version }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: private-rod-${{ inputs.version }}
+          path: dist
+      - name: Create private GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          gh release create "$RELEASE_VERSION" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --generate-notes \
+            --prerelease \
+            --latest=false \
+            --title "$RELEASE_VERSION"
