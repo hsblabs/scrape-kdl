@@ -1,7 +1,18 @@
 # Validation
 
-Validated on 2026-07-24 with Go 1.26.5, Node.js 26.4.0, and npm 11.17.0
+Validated on 2026-07-31 with Go 1.26.5, Node.js 26.4.0, and npm 11.17.0
 on macOS arm64.
+
+Local Playwright verification may use an installed Chromium-family executable
+without downloading another browser:
+
+```bash
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  make test-playwright-e2e
+```
+
+CI continues to install the matrix-selected Playwright browser and does not set
+this override.
 
 ## Integrated release check
 
@@ -58,6 +69,28 @@ credentials. The go-rod archive builder was verified with a fake cross-compiler;
 the same source compiled and passed its real-dependency and Chromium tests in
 `make release-gate`, but the final private-version archive cannot be built
 without first tagging the core and updating the adapter dependency.
+
+## Public release-candidate preparation
+
+The `v1.0.0-rc.1` preparation passed:
+
+- `make verify`;
+- `make release-gate` with the installed Google Chrome executable selected
+  through `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`;
+- Playwright Chromium E2E with five passing tests and forced test-runner exit
+  after completion so a residual macOS `fsevents` handle cannot stall the gate;
+- public-access staging of both npm packages, clean consumer smoke tests, four
+  core CLI cross-builds, archive payload checks, and SHA-256 verification;
+- public/private workflow separation tests, including rejection of
+  `-private.N` versions by public workflows and GitHub prerelease flags for
+  release-candidate tags;
+- `npm audit --omit=dev`, with zero reported vulnerabilities;
+- `actionlint` and `pinact run --check --verify`.
+
+The go-rod browser contract and E2E tests passed. Its final release archive is
+intentionally deferred until the public core candidate exists and
+`adapters/rod/go.mod` can be updated from the published `v0.1.0` dependency to
+`v1.0.0-rc.1` without a local `replace`.
 
 ## Architecture and performance hardening
 

@@ -1,6 +1,6 @@
 # scrape-kdl v1.0.0 release notes
 
-Status: private draft. No public v1 artifact has been published.
+Status: `v1.0.0-rc.1` draft. No public v1 artifact has been published.
 
 ## Highlights
 

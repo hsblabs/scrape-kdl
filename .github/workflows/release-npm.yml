@@ -35,6 +35,10 @@ jobs:
             echo "invalid npm release version: $RELEASE_VERSION" >&2
             exit 1
           fi
+          if [[ "$RELEASE_VERSION" == *-private.* ]]; then
+            echo "refusing to publish private release version publicly: $RELEASE_VERSION" >&2
+            exit 1
+          fi
           if [[ "$REPOSITORY_VISIBILITY" != public ]]; then
             echo "refusing npm publication while repository visibility is $REPOSITORY_VISIBILITY" >&2
             exit 1
@@ -50,7 +54,7 @@ jobs:
       - run: npm ci
       - name: Validate source tag
         run: |
-          ./scripts/validate-release-tag.sh core "v$RELEASE_VERSION"
+          ./scripts/validate-public-release-tag.sh core "v$RELEASE_VERSION"
           test "$(git describe --exact-match --tags HEAD)" = "v$RELEASE_VERSION"
       - run: npm run build:typescript
       - run: node scripts/build-npm-release.mjs --version "$RELEASE_VERSION" --access public --output dist

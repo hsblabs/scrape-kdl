@@ -1,6 +1,6 @@
 # v1 release readiness
 
-Updated: 2026-07-24
+Updated: 2026-07-31
 
 This file separates verified repository preparation, private operation, and
 checks that require public registry or module visibility. It does not authorize
@@ -74,3 +74,30 @@ These settings change external repository or registry configuration and therefor
 - Obtain separate owner approval for stable `v1.0.0` publication.
 
 The exact sequence, post-publication checks, and recovery actions are defined in `docs/releasing.md`.
+
+## Public `v1.0.0-rc.1` tracker
+
+The first public candidate is `v1.0.0-rc.1`. It includes the public repository,
+specification site, Go core, both npm packages, four-platform core CLI archives,
+the go-rod module, and four-platform go-rod CLI archives.
+
+Repository changes, verification, a pull request, and owner-setting instructions
+may proceed without another publication decision. Changing repository
+visibility, deploying Pages, creating or pushing release tags, creating GitHub
+Releases, and publishing Go, npm, or CLI artifacts remain stopped until the
+project owner gives a separate approval immediately before publication.
+
+| ID | Work | Blocked by | Status |
+|---|---|---|---|
+| RC-01 | Review the private-release preparation against current `main` and issue #18 | none | Complete |
+| RC-02 | Align the public candidate contract and documentation on `v1.0.0-rc.1` | RC-01 | Complete |
+| RC-03 | Run local release, security, conformance, browser, packaging, and adapter gates | RC-02 | Complete |
+| RC-04 | Merge the preparation pull request after required CI and review pass | RC-03 | Pending |
+| RC-05 | Review private tags, Releases, package versions, and repository history before publicization | RC-04 | Pending |
+| RC-06 | Obtain publication approval; make the repository public; configure Environments, rulesets, npm trusted publishers, and Pages | RC-05 | Owner gate |
+| RC-07 | Deploy and verify the specification site | RC-06 | Pending |
+| RC-08 | Publish and verify the core Go module and CLI candidate | RC-07 | Pending |
+| RC-09 | Publish and verify both npm candidates | RC-08 and Go proxy visibility | Pending |
+| RC-10 | Update go-rod to the published core, pass its gates, then publish and verify its module and CLI candidate | RC-08 | Pending |
+| RC-11 | Run clean public-consumer and archive checks on every supported target | RC-09 and RC-10 | Pending |
+| RC-12 | Complete 14 consecutive blocker-free days and request separate stable-release approval | RC-11 | Pending |

@@ -116,6 +116,35 @@ func TestValidatePrivateReleaseTag(t *testing.T) {
 	}
 }
 
+func TestValidatePublicReleaseTag(t *testing.T) {
+	root := repositoryRoot(t)
+	script := filepath.Join(root, "scripts", "validate-public-release-tag.sh")
+	tests := []struct {
+		name string
+		kind string
+		tag  string
+		ok   bool
+	}{
+		{name: "stable core", kind: "core", tag: "v1.0.0", ok: true},
+		{name: "core release candidate", kind: "core", tag: "v1.0.0-rc.1", ok: true},
+		{name: "rod release candidate", kind: "rod", tag: "adapters/rod/v1.0.0-rc.1", ok: true},
+		{name: "private core", kind: "core", tag: "v0.9.0-private.1", ok: false},
+		{name: "private rod", kind: "rod", tag: "adapters/rod/v0.9.0-private.1", ok: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			command := exec.Command("bash", script, test.kind, test.tag)
+			output, err := command.CombinedOutput()
+			if test.ok && err != nil {
+				t.Fatalf("validate-public-release-tag.sh failed: %v\n%s", err, output)
+			}
+			if !test.ok && err == nil {
+				t.Fatalf("validate-public-release-tag.sh accepted %q", test.tag)
+			}
+		})
+	}
+}
+
 func TestBuildReleaseBundleRejectsInvalidNPMAccess(t *testing.T) {
 	root := repositoryRoot(t)
 	command := exec.Command(

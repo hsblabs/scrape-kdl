@@ -14,14 +14,10 @@ cp "$root/testdata/private-go-consumer/consumer_test.go.txt" "$consumer/consumer
 
 (
   cd "$consumer"
+  export GOPRIVATE=github.com/hsblabs/scrape-kdl
+  export GONOSUMDB=github.com/hsblabs/scrape-kdl
   go mod init example.com/scrape-kdl-private-consumer
-  GOPRIVATE=github.com/hsblabs/scrape-kdl \
-    GONOSUMDB=github.com/hsblabs/scrape-kdl \
-    go get "github.com/hsblabs/scrape-kdl@$core_version"
-  GOPRIVATE=github.com/hsblabs/scrape-kdl \
-    GONOSUMDB=github.com/hsblabs/scrape-kdl \
-    go get "github.com/hsblabs/scrape-kdl/adapters/rod@${rod_version#adapters/rod/}"
-  GOPRIVATE=github.com/hsblabs/scrape-kdl \
-    GONOSUMDB=github.com/hsblabs/scrape-kdl \
-    go test ./...
+  go get "github.com/hsblabs/scrape-kdl@$core_version"
+  go get "github.com/hsblabs/scrape-kdl/adapters/rod@${rod_version#adapters/rod/}"
+  go test ./...
 )

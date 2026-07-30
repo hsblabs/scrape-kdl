@@ -4,6 +4,11 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## 1.0.0 — Unreleased
 
+- Fixed the public release boundary so private-channel versions cannot reach
+  public workflows and public release candidates are marked as GitHub
+  prereleases rather than the latest stable release.
+- Prevented completed Playwright E2E tests from hanging on a residual macOS
+  `fsevents` handle under Node.js 26.
 - Added a private operational channel: restricted npm artifacts and OIDC
   publishing, authenticated private Go consumer checks, guarded private GitHub
   prereleases, and Linux/macOS go-rod CLI archives with checksums.

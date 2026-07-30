@@ -24,7 +24,7 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --project tsconfig.json --noEmit",
-    "test:e2e": "node --test test/e2e.test.mjs"
+    "test:e2e": "node --test --test-force-exit test/e2e.test.mjs"
   },
   "repository": {
     "type": "git",

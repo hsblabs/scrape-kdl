@@ -214,8 +214,10 @@ When output is not attached to a TTY, the CLI disables color, progress rendering
 
 New CLI dependencies are optional.
 The public behavior matters more than the argument-parsing implementation.
-Between `v0.5.0` and `v0.9.0`, a contract candidate may change only with tests, compatibility notes, and a migration path.
-The contract freezes at `v0.9.0` and receives Semantic Versioning guarantees at `v1.0.0`.
+Between `v0.5.0` and the first public `v1.0.0-rc.N`, a contract candidate may
+change only with tests, compatibility notes, and a migration path.
+The contract freezes when `v1.0.0-rc.1` is published and receives Semantic
+Versioning guarantees at `v1.0.0`.
 
 ## Release milestones
 
@@ -228,8 +230,8 @@ The contract freezes at `v0.9.0` and receives Semantic Versioning guarantees at 
 
 Repository publicization and every public pre-v1 release are intentionally outside this roadmap until the project owner gives a separate instruction.
 Operational `-private.N` versions may be used by authorized users under
-`docs/releasing.md`. They do not start the public v0.9 candidate period, freeze
-the API, or satisfy a public release milestone.
+`docs/releasing.md`. They do not start the public `v1.0.0-rc.N` candidate
+period, freeze the API, or satisfy a public release milestone.
 
 ### v0.2.0: contract completion
 
@@ -280,7 +282,7 @@ An ambiguity discovered by later parity work requires a new dated version when r
 - publish the draft Go, Node.js 26+, operating-system, architecture, browser, and adapter support matrix used by release-candidate CI;
 - establish evidence-based performance regression gates against measured baselines without introducing an absolute speed SLA.
 
-### v0.9.0: release candidate
+### v1.0.0-rc.N: release candidate
 
 - freeze the Go and TypeScript public APIs;
 - freeze CLI output and exit status contracts;

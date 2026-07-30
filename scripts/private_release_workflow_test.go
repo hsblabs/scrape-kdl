@@ -57,10 +57,30 @@ func TestPrivateReleaseWorkflowsKeepPrivateAndPublicChannelsSeparate(t *testing.
 			path: ".github/workflows/release-npm.yml",
 			required: []string{
 				`REPOSITORY_VISIBILITY" != public`,
+				"refusing to publish private release version publicly",
+				"./scripts/validate-public-release-tag.sh core",
 				"--access public",
 				"id-token: write",
 			},
 			forbid: []string{"--access restricted", "NPM_TOKEN"},
+		},
+		{
+			path: ".github/workflows/release.yml",
+			required: []string{
+				"./scripts/validate-public-release-tag.sh core",
+				"--prerelease",
+				"--latest=false",
+			},
+			forbid: []string{"./scripts/validate-private-release-tag.sh"},
+		},
+		{
+			path: ".github/workflows/release-rod.yml",
+			required: []string{
+				"./scripts/validate-public-release-tag.sh rod",
+				"--prerelease",
+				"--latest=false",
+			},
+			forbid: []string{"./scripts/validate-private-release-tag.sh"},
 		},
 	}
 
