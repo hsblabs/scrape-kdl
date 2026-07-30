@@ -97,7 +97,7 @@ project owner gives a separate approval immediately before publication.
 | RC-02 | Align the public candidate contract and documentation on `v1.0.0-rc.1` | RC-01 | Complete |
 | RC-03 | Run local release, security, conformance, browser, packaging, and adapter gates | RC-02 | Complete |
 | RC-04 | Merge the preparation pull request after required CI and review pass | RC-03 | Complete |
-| RC-05 | Review private tags, Releases, package versions, repository history, responsible-use guidance, and public examples before publicization | RC-04 | In progress: audit complete; remediation pull request and stale remote branch cleanup remain |
+| RC-05 | Review private tags, Releases, package versions, repository history, responsible-use guidance, and public examples before publicization | RC-04 | Complete |
 | RC-06 | Obtain publication approval; make the repository public; configure Environments, rulesets, npm trusted publishers, and Pages | RC-05 | Owner gate |
 | RC-07 | Deploy and verify the specification site | RC-06 | Pending |
 | RC-08 | Publish and verify the core Go module and CLI candidate | RC-07 | Pending |
@@ -113,10 +113,12 @@ deployment, large repository blobs over 5 MiB, sensitive filenames, or
 high-confidence secret patterns in the current tree, Git history, issue and pull
 request text, or completed GitHub Actions logs.
 
+The responsible-use and neutral-example remediation was merged in pull request
+#50. The stale remote branch `codex/v1-17-hardening` was deleted after owner
+approval.
+
 Before publicization:
 
-- merge the responsible-use and neutral-example remediation for issue #44;
-- delete the stale remote branch `codex/v1-17-hardening` after owner approval;
 - confirm both npm package names while authenticated as a publishing owner;
 - complete the owner-controlled metadata, Environment, ruleset, trusted
   publisher, Pages, and security-feature setup above.
