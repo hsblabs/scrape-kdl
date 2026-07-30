@@ -56,7 +56,7 @@ async function fixtureServer() {
     if (request.url === "/failure") { request.socket.destroy(); return; }
     const send = () => {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      const body = request.url !== "/" && request.url !== "/slow" ? fixtureHTML.replace(">pending<", `>${request.url}<`) : fixtureHTML;
+      const body = request.url === "/first" ? fixtureHTML.replace(">pending<", ">/first<") : request.url === "/second" ? fixtureHTML.replace(">pending<", ">/second<") : fixtureHTML;
       response.end(body);
     };
     if (request.url === "/slow") setTimeout(send, 250);
