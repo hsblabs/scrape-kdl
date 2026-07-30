@@ -2,7 +2,8 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Status: public `v1.0.0-rc.1` preparation. No public artifact has been published.
+Current release target: `v1.0.0-rc.1`. Check GitHub Releases and the package
+registries for publication status.
 The normative specification documents use the v0.1 document series and the initial compatibility identifiers `language-version="2026-07-15"` and `irVersion: "2026-07-15"`.
 
 ```text
@@ -31,32 +32,19 @@ KDL source
 - host URL policy for initial targets and HTTP redirects;
 - hardened common-HTML parsing for raw-text and truncated documents.
 
-## Private install
+## Responsible use
 
-Authorized Go consumers configure the module path as private and authenticate
-Git with an account that can read this repository:
+Use `scrape-kdl` only where you are authorized to automate access. Check the
+target's terms and `robots.txt`, limit request rate and concurrency, identify
+the client honestly, and handle personal or copyrighted material appropriately.
+The project does not support anti-bot or access-control circumvention.
 
-```bash
-go env -w GOPRIVATE=github.com/hsblabs/scrape-kdl
-go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@vX.Y.Z-private.N
-```
-
-Restricted npm packages install through an authenticated npm account:
-
-```bash
-npm install \
-  @hsblabs/scrape-kdl@X.Y.Z-private.N \
-  @hsblabs/scrape-kdl-playwright@X.Y.Z-private.N
-```
-
-CLI archives are downloaded from this private repository's GitHub Releases by
-users with read access. Exact release, authentication, checksum, and clean
-consumer procedures are in `docs/releasing.md`.
+See [`docs/responsible-use.md`](docs/responsible-use.md) before targeting a live
+service.
 
 ## Public release candidate install
 
-These commands become available only after `v1.0.0-rc.1` is published and its
-post-publication checks pass:
+After `v1.0.0-rc.1` is published and its post-publication checks pass:
 
 ```bash
 go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.0-rc.1
@@ -165,8 +153,8 @@ The public API includes:
 - external transform registry;
 - custom charset decoding;
 - initial-target and HTTP-redirect URL policy hooks;
-- browser adapter injection.
-- adapter-facing `NormalizeBrowserResult` validation and normalization.
+- browser adapter injection;
+- adapter-facing `NormalizeBrowserResult` validation and normalization;
 - explicit `SupportedLanguageVersions` and `SupportedIRVersions` registries.
 
 See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and intentional idiomatic differences.
@@ -192,7 +180,7 @@ result, err := program.Extract(ctx, inputs, scrapekdl.Options{
 The go-rod implementation is a separate module:
 
 ```bash
-go get github.com/hsblabs/scrape-kdl/adapters/rod@latest
+go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0-rc.1
 ```
 
 An adapter wrapping one mutable page can implement `BrowserAdapterLease`. The runtime acquires it for the complete extraction, preventing navigation, workflow, and reads from interleaving across concurrent calls. The go-rod adapter implements this automatically.

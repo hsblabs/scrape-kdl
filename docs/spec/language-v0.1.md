@@ -66,7 +66,7 @@ It MUST contain exactly one top-level `extractor` node and MUST NOT contain a to
 ### Transform module document
 
 ```kdl
-module "netkeiba-common" version="2026-07-15" language-version="2026-07-15" {
+module "racing-common" version="2026-07-15" language-version="2026-07-15" {
   transform "extract_horse_id" input="string" output="string?" {
     pipeline {
       apply "regex-capture" pattern=#"/horse/([^/?#]+)"# group=1

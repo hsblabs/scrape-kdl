@@ -2,11 +2,11 @@
 
 ## Version support
 
-There is no supported public version before the first public release. Authorized
-private users may operate the latest `-private.N` version. It receives
-release-blocking correctness and security fixes, but compatibility may change in
-the next private version. Every earlier private version is superseded and
-unsupported.
+Before `v1.0.0`, only the latest public release candidate receives
+release-blocking correctness and security fixes. Authorized private users may
+operate the latest `-private.N` version. Compatibility may change in the next
+candidate or private version; every earlier candidate and private version is
+superseded and unsupported.
 
 Starting with `v1.0.0`:
 

@@ -7,9 +7,9 @@
   "files": [
     {
       "path": "../modules/common.kdl",
-      "moduleName": "netkeiba-common",
+      "moduleName": "racing-common",
       "moduleVersion": "2026-07-15",
-      "sha256": "271398be713b45aab941b05075ee1bb58ee14087db5e37b2366d9e6d94d40b50"
+      "sha256": "5330f206207dc1cebcdbd532f53b8c9d0025530bcd7eb542f56389068e8fc3b6"
     },
     {
       "path": "race-detail.kdl",
@@ -141,12 +141,12 @@
       "span": {
         "file": "../modules/common.kdl",
         "start": {
-          "offset": 80,
+          "offset": 78,
           "line": 2,
           "column": 3
         },
         "end": {
-          "offset": 232,
+          "offset": 230,
           "line": 6,
           "column": 4
         }
@@ -182,12 +182,12 @@
           "span": {
             "file": "../modules/common.kdl",
             "start": {
-              "offset": 164,
+              "offset": 162,
               "line": 4,
               "column": 7
             },
             "end": {
-              "offset": 185,
+              "offset": 183,
               "line": 4,
               "column": 28
             }
@@ -211,12 +211,12 @@
       "span": {
         "file": "../modules/common.kdl",
         "start": {
-          "offset": 236,
+          "offset": 234,
           "line": 8,
           "column": 3
         },
         "end": {
-          "offset": 417,
+          "offset": 415,
           "line": 15,
           "column": 4
         }
@@ -228,12 +228,12 @@
           "span": {
             "file": "../modules/common.kdl",
             "start": {
-              "offset": 313,
+              "offset": 311,
               "line": 10,
               "column": 7
             },
             "end": {
-              "offset": 330,
+              "offset": 328,
               "line": 10,
               "column": 22
             }
@@ -245,12 +245,12 @@
           "span": {
             "file": "../modules/common.kdl",
             "start": {
-              "offset": 337,
+              "offset": 335,
               "line": 11,
               "column": 7
             },
             "end": {
-              "offset": 356,
+              "offset": 354,
               "line": 11,
               "column": 24
             }
@@ -262,12 +262,12 @@
           "span": {
             "file": "../modules/common.kdl",
             "start": {
-              "offset": 363,
+              "offset": 361,
               "line": 12,
               "column": 7
             },
             "end": {
-              "offset": 383,
+              "offset": 381,
               "line": 12,
               "column": 25
             }

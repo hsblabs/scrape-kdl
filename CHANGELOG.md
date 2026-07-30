@@ -4,6 +4,8 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## 1.0.0 — Unreleased
 
+- Added responsible-use guidance and neutralized the remaining real-brand
+  references in specifications and fixtures before public release.
 - Fixed the public release boundary so private-channel versions cannot reach
   public workflows and public release candidates are marked as GitHub
   prereleases rather than the latest stable release.
