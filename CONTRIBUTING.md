@@ -43,6 +43,12 @@ Language changes must include:
 
 Public Go or TypeScript API changes must explain compatibility impact and update both independent consumer contract checks. Generated or golden files must be updated by the same pull request.
 
+Examples and fixtures must use documentation-safe domains or local test
+servers. Do not contribute examples that target a real service without
+documented authorization, or whose terms prohibit the demonstrated automation.
+Features intended to bypass anti-bot controls, access controls, rate limits, or
+account restrictions are not accepted. See `docs/responsible-use.md`.
+
 ## Commit and pull request scope
 
 Keep changes focused. Describe why the change is needed, the compatibility effect, and the commands used for verification. No contributor license agreement is required; submitted contributions are accepted under the repository's Apache-2.0 license.

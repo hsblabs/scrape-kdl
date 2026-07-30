@@ -27,8 +27,8 @@ creating a tag, Release, package version, Pages deployment, or visibility change
 | Private npm OIDC publication | Ready after bootstrap | manual restricted bootstrap creates package records; later versions use `release-npm-private.yml` |
 | Private Go/npm consumer checks | Ready in code | authenticated scripts verify both Go modules and both npm packages |
 
-The complete local `make release-gate` passed on 2026-07-24 before these release
-changes. The current repository has no release tags or GitHub Releases.
+The complete local `make release-gate` passed on 2026-07-31 for the current
+public-readiness changes. The repository has no release tags or GitHub Releases.
 
 ## Owner-controlled private setup
 
@@ -54,10 +54,14 @@ permissions instead.
 
 ## Owner-controlled public setup while still private
 
+- Set a concise repository description. Set the homepage to the verified Pages
+  URL after the specification site is deployed.
 - Protect the `npm-publish` GitHub Environment with required reviewers, prevent self-review and administrator bypass, and allow only `main`.
 - Configure both npm package records to trust `hsblabs/scrape-kdl` workflow `release-npm.yml` with Environment `npm-publish` for `npm publish`; do not configure `NPM_TOKEN`.
 - Protect the `github-release` GitHub Environment and add restrictive rulesets for core and go-rod release tags.
 - Protect the `github-pages` Environment with required reviewers and select GitHub Actions as the Pages source.
+- Enable vulnerability alerts, Dependabot security updates, secret scanning, and
+  code scanning when the repository plan exposes them.
 - Confirm the authenticated npm account can create both packages in the `@hsblabs` scope.
 - Review and approve the draft v1 release notes and 90-day previous-minor security window.
 
@@ -92,8 +96,8 @@ project owner gives a separate approval immediately before publication.
 | RC-01 | Review the private-release preparation against current `main` and issue #18 | none | Complete |
 | RC-02 | Align the public candidate contract and documentation on `v1.0.0-rc.1` | RC-01 | Complete |
 | RC-03 | Run local release, security, conformance, browser, packaging, and adapter gates | RC-02 | Complete |
-| RC-04 | Merge the preparation pull request after required CI and review pass | RC-03 | Pending |
-| RC-05 | Review private tags, Releases, package versions, and repository history before publicization | RC-04 | Pending |
+| RC-04 | Merge the preparation pull request after required CI and review pass | RC-03 | Complete |
+| RC-05 | Review private tags, Releases, package versions, repository history, responsible-use guidance, and public examples before publicization | RC-04 | In progress: audit complete; remediation pull request and stale remote branch cleanup remain |
 | RC-06 | Obtain publication approval; make the repository public; configure Environments, rulesets, npm trusted publishers, and Pages | RC-05 | Owner gate |
 | RC-07 | Deploy and verify the specification site | RC-06 | Pending |
 | RC-08 | Publish and verify the core Go module and CLI candidate | RC-07 | Pending |
@@ -101,3 +105,18 @@ project owner gives a separate approval immediately before publication.
 | RC-10 | Update go-rod to the published core, pass its gates, then publish and verify its module and CLI candidate | RC-08 | Pending |
 | RC-11 | Run clean public-consumer and archive checks on every supported target | RC-09 and RC-10 | Pending |
 | RC-12 | Complete 14 consecutive blocker-free days and request separate stable-release approval | RC-11 | Pending |
+
+### RC-05 audit findings
+
+The 2026-07-31 pre-publication audit found no Git tags, GitHub Releases, Pages
+deployment, large repository blobs over 5 MiB, sensitive filenames, or
+high-confidence secret patterns in the current tree, Git history, issue and pull
+request text, or completed GitHub Actions logs.
+
+Before publicization:
+
+- merge the responsible-use and neutral-example remediation for issue #44;
+- delete the stale remote branch `codex/v1-17-hardening` after owner approval;
+- confirm both npm package names while authenticated as a publishing owner;
+- complete the owner-controlled metadata, Environment, ruleset, trusted
+  publisher, Pages, and security-feature setup above.

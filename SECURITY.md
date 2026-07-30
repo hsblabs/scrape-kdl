@@ -2,9 +2,10 @@
 
 ## Supported versions
 
-There is no supported public version before `v1.0.0`. For authorized private
-users, only the latest `-private.N` version receives release-blocking fixes;
-earlier private versions are superseded and unsupported.
+Before `v1.0.0`, only the latest public release candidate receives
+release-blocking correctness and security fixes. Authorized private users may
+operate the latest `-private.N` version; earlier public candidates and private
+versions are superseded and unsupported.
 
 After `v1.0.0`, the latest stable minor in the current major receives security fixes. The immediately preceding minor receives security fixes for 90 days after a new minor is published. Older minors and prereleases are unsupported. See `SUPPORT.md` for the complete maintenance policy.
 

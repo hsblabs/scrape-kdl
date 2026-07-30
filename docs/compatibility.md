@@ -34,7 +34,7 @@ The former identifiers are not accepted as aliases because doing so would obscur
 
 ## Working-draft contract decisions frozen for v1
 
-The project remains private and unpublished. These decisions close previously ambiguous working-draft behavior and are frozen for the v1 candidate:
+These decisions close previously ambiguous working-draft behavior and are frozen for the v1 candidate:
 
 - explicit `-h` and `--help` on every subcommand print help to standard output and exit with status 0; malformed or incomplete arguments still exit with status 2;
 - `--session-file PATH` and `--session-file -` are the supported secret-input paths; direct `--header` and `--cookie` values were removed at the v0.5 CLI boundary with migration guidance in `docs/cli.md`;

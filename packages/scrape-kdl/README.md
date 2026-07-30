@@ -17,6 +17,10 @@ The release-blocking TypeScript conformance suite covers every shared valid and 
 
 Browser-mode programs use the exported browser-library-neutral `BrowserAdapter` and optional extraction-wide `BrowserAdapterLease`. JavaScript is disabled unless `allowJavaScript: true` is supplied for a trusted specification. The official implementation is `@hsblabs/scrape-kdl-playwright`; the core package does not depend on Playwright.
 
-The workspace manifest remains unpublished at `0.0.0-development` until the project-owner release gate. `make release-dist VERSION=vX.Y.Z OUT=dist` creates release-versioned archives in temporary staging and verifies them with a clean-consumer smoke test without publishing anything.
+Release artifacts are versioned in isolated staging, checked for local
+workspace dependencies, and installed into a clean consumer before publication.
+Use the repository's
+[responsible-use guidance](https://github.com/hsblabs/scrape-kdl/blob/main/docs/responsible-use.md)
+before targeting a live service.
 
 License: Apache-2.0.
