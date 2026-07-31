@@ -65,7 +65,10 @@ func TestBrowserExtractionE2E(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	program, diagnostics := scrapekdl.CompileFile(context.Background(), spec)
+	program, diagnostics, err := scrapekdl.CompileFile(context.Background(), spec)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics: %+v", diagnostics)
 	}
@@ -116,7 +119,10 @@ func TestBrowserExtractionE2E(t *testing.T) {
 	if err := os.WriteFile(spec, []byte(failureContent), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	failureProgram, failureDiagnostics := scrapekdl.CompileFile(context.Background(), spec)
+	failureProgram, failureDiagnostics, err := scrapekdl.CompileFile(context.Background(), spec)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if failureDiagnostics.HasErrors() {
 		t.Fatalf("failure compile diagnostics: %+v", failureDiagnostics)
 	}

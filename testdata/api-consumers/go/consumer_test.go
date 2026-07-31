@@ -14,7 +14,7 @@ func TestIndependentGoConsumer(t *testing.T) {
 	files := map[string][]byte{
 		"spec/common.kdl": []byte(`module "common" version="2026-07-15" language-version="2026-07-15" {}`),
 	}
-	program, diagnostics := scrapekdl.Compile(ctx, scrapekdl.Source{
+	program, diagnostics, err := scrapekdl.Compile(ctx, scrapekdl.Source{
 		Path: "spec/main.kdl",
 		Data: []byte(`import "common.kdl" as="common"
 extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
@@ -28,6 +28,9 @@ extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
 		}
 		return data, nil
 	}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if diagnostics.HasErrors() || program == nil {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}

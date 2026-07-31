@@ -10,10 +10,21 @@ import (
 
 	"github.com/hsblabs/scrape-kdl/internal/canonicaljson"
 	compilerpkg "github.com/hsblabs/scrape-kdl/internal/compiler"
+	"github.com/hsblabs/scrape-kdl/internal/diagnostic"
+	"github.com/hsblabs/scrape-kdl/internal/ir"
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 const schemaURL = "https://hsblabs.github.io/scrape-kdl/ir/2026-07-15/schema.json"
+
+func compileFile(t testing.TB, path string) (*ir.Extractor, diagnostic.List) {
+	t.Helper()
+	extractor, diagnostics, err := compilerpkg.CompileFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return extractor, diagnostics
+}
 
 func TestIRArtifactsValidateAgainstDatedSchema(t *testing.T) {
 	root := filepath.Join("..", "..")
@@ -79,7 +90,7 @@ func TestIRArtifactsValidateAgainstDatedSchema(t *testing.T) {
 			}
 			if filepath.Dir(path) == filepath.Join(root, "fixtures", "expected-ir") && strings.HasSuffix(path, ".ir.json") {
 				fixtureName := strings.TrimSuffix(filepath.Base(path), ".ir.json") + ".kdl"
-				extractor, diagnostics := compilerpkg.CompileFile(filepath.Join(root, "fixtures", "valid", fixtureName))
+				extractor, diagnostics := compileFile(t, filepath.Join(root, "fixtures", "valid", fixtureName))
 				if diagnostics.HasErrors() || extractor == nil {
 					t.Fatalf("compile %s: %#v", fixtureName, diagnostics)
 				}

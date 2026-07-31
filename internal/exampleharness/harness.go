@@ -88,7 +88,10 @@ func checkExample(ctx context.Context, directory, directoryName string, update b
 	if err := validateManifest(directory, directoryName, manifest); err != nil {
 		return nil, err
 	}
-	program, diagnostics := scrapekdl.CompileFile(ctx, filepath.Join(directory, manifest.Source))
+	program, diagnostics, err := scrapekdl.CompileFile(ctx, filepath.Join(directory, manifest.Source))
+	if err != nil {
+		return nil, fmt.Errorf("compile source: %w", err)
+	}
 	if diagnostics.HasErrors() || program == nil {
 		data, _ := json.Marshal(diagnostics)
 		return nil, fmt.Errorf("compile failed: %s", data)

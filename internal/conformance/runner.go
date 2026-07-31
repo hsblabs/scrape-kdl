@@ -75,7 +75,11 @@ func runGoCase(ctx context.Context, manifest *Manifest, testCase Case, job strin
 	}
 
 	sourcePath := filepath.Join(manifest.Root, filepath.FromSlash(testCase.SourcePath()))
-	program, diagnostics := scrapekdl.CompileFile(ctx, sourcePath)
+	program, diagnostics, err := scrapekdl.CompileFile(ctx, sourcePath)
+	if err != nil {
+		caseResult.Differences = append(caseResult.Differences, Difference{Kind: "compile", Message: err.Error()})
+		return caseResult
+	}
 	if slices.Contains(execution.Stages, "validate") {
 		caseResult.Observations = append(caseResult.Observations, Observation{Kind: "diagnostics", Value: diagnostics})
 	}

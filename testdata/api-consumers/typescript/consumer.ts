@@ -1,5 +1,6 @@
 import {
   compile,
+  SourceLoadError,
   type BrowserAdapter,
   type BrowserElement,
   type ExecutionOptions,
@@ -58,6 +59,18 @@ if (compiled.program !== undefined) {
   void compiled.program.metadata.capabilities;
   void compiled.program.ir;
   void compiled.program.extract({}, options);
+}
+
+try {
+  await compile(source, { loader });
+} catch (error) {
+  if (error instanceof SourceLoadError) {
+    void error.path;
+    void error.fromPath;
+    void error.cause;
+  } else {
+    throw error;
+  }
 }
 
 void compileFile("extractor.kdl");

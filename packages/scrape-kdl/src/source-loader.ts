@@ -1,5 +1,6 @@
 import type { CompileOptions, Source } from "./public-api.js";
 import { parse, type Document, type Node, type Property, type Span, type Value } from "./parser.js";
+import { SourceLoadError } from "./source-load-error.js";
 
 export interface LoadedDocument {
   readonly path: string;
@@ -84,8 +85,11 @@ export async function loadSourceGraph(source: Source, options: CompileOptions = 
       let bytes: Uint8Array<ArrayBuffer>;
       if (path === entryPath) bytes = initialBytes;
       else if (options.loader === undefined) {
-        diagnostics.push(readDiagnostic(displayPath(path), "no source loader configured"));
-        return undefined;
+        throw new SourceLoadError(
+          displayPath(path),
+          displayPath(fromPath ?? entryPath),
+          new Error("no source loader configured"),
+        );
       } else {
         try {
           const context =
@@ -97,8 +101,7 @@ export async function loadSourceGraph(source: Source, options: CompileOptions = 
           bytes = copyBytes(loaded);
         } catch (error) {
           options.signal?.throwIfAborted();
-          diagnostics.push(readDiagnostic(displayPath(path), errorMessage(error)));
-          return undefined;
+          throw new SourceLoadError(displayPath(path), displayPath(fromPath ?? entryPath), error);
         }
       }
 
@@ -318,14 +321,6 @@ function relativePath(from: string, target: string): string {
 function zeroSpan(path: string): Span {
   const position = { offset: 0, line: 1, column: 1 };
   return { file: path, start: position, end: position };
-}
-
-function readDiagnostic(path: string, message: string): LoadDiagnostic {
-  return diagnostic("E_KDL_SYNTAX", `read ${JSON.stringify(path)}: ${message}`, zeroSpan(path), "");
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function diagnostic(code: string, message: string, span: Span, path: string): LoadDiagnostic {

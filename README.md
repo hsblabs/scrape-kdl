@@ -123,7 +123,10 @@ scrape-kdl version
 ## Go API
 
 ```go
-program, diagnostics := scrapekdl.CompileFile(ctx, "extractor.kdl")
+program, diagnostics, err := scrapekdl.CompileFile(ctx, "extractor.kdl")
+if err != nil {
+    // Cancellation, filesystem, and other operational failures retain their cause.
+}
 if diagnostics.HasErrors() {
     // Render diagnostics and stop before network or browser activity.
 }

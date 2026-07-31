@@ -23,7 +23,10 @@ func TestInputDeclarationsFromProgramIR(t *testing.T) {
 	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	program, diagnostics := scrapekdl.CompileFile(context.Background(), path)
+	program, diagnostics, err := scrapekdl.CompileFile(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if diagnostics.HasErrors() {
 		t.Fatalf("diagnostics = %v", diagnostics)
 	}

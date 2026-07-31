@@ -26,6 +26,12 @@ export interface CompileResult {
   readonly diagnostics: readonly DiagnosticIR[];
 }
 
+export declare class SourceLoadError extends Error {
+  readonly path: string;
+  readonly fromPath: string;
+  constructor(path: string, fromPath: string, cause: unknown);
+}
+
 export interface SourceFile {
   readonly path: string;
   readonly moduleName?: string;

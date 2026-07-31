@@ -8,6 +8,7 @@ import type { DiagnosticIR, ExtractorIR, JsonValue } from "./ir.js";
 
 export type { DiagnosticIR, ExtractorIR, JsonValue } from "./ir.js";
 export { ExecutionError } from "./execution-error.js";
+export { SourceLoadError } from "./source-load-error.js";
 
 export interface Source {
   readonly path: string;

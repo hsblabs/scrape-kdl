@@ -8,8 +8,8 @@ Go and TypeScript expose the same observable capabilities:
 
 | Capability | Go candidate | TypeScript candidate |
 | --- | --- | --- |
-| compile an in-memory source | `Compile(ctx, Source, CompileOptions)` | `compile(source, options)` |
-| validate an in-memory source | `Validate(ctx, Source, CompileOptions)` | `validate(source, options)` |
+| compile an in-memory source | `Compile(ctx, Source, CompileOptions) (*Program, Diagnostics, error)` | `compile(source, options)` |
+| validate an in-memory source | `Validate(ctx, Source, CompileOptions) (Diagnostics, error)` | `validate(source, options)` |
 | compile or validate a file | context-first `CompileFile` and `ValidateFile` | asynchronous Node.js entry-point functions |
 | resolve imports without filesystem access | `CompileOptions.Loader` | `CompileOptions.loader` |
 | inspect validated metadata | `Program.Metadata()` | `Program.metadata` |
@@ -35,15 +35,15 @@ The core declarations map to `@hsblabs/scrape-kdl`; Node.js file conveniences ma
 
 The Go loader receives the compile context and the resolved path. The TypeScript loader receives the resolved path, importing path, and optional abort signal. A source compile with imports and no loader fails before IR is returned. Loaders are responsible only for returning bytes or text; parsing, validation, cycle detection, hashing, and deterministic ordering remain compiler responsibilities.
 
-Loader errors become structured diagnostics. Loader implementations must not place credentials, source contents, or other secrets in returned error messages.
+Cancellation, filesystem failures, and injected-loader failures are operational errors rather than document diagnostics. Go returns them as `error` while preserving the cause for `errors.Is` and `errors.As`. TypeScript rejects with the abort reason or `SourceLoadError`; `SourceLoadError.cause` retains the loader failure. Loader implementations must not place credentials, source contents, or other secrets in returned error messages.
 
 The file conveniences are separate from injected loading. Go uses the host filesystem in `CompileFile` and `ValidateFile`. TypeScript keeps filesystem functions in the Node.js entry point so the core package does not acquire ambient filesystem authority.
 
 ## Validated program and diagnostics
 
-A successful compile returns an opaque program plus ordered structured diagnostics. A program exposes document name and version, language and IR versions, source identities, and the exact derived capability set. Metadata collections are snapshots and cannot mutate compiler state.
+A successful compile returns an opaque program plus ordered structured diagnostics and no operational error. A program exposes document name and version, language and IR versions, source identities, and the exact derived capability set. Metadata collections are snapshots and cannot mutate compiler state.
 
-Compilation or validation never performs HTTP or browser activity. A program is not returned when error diagnostics exist. Diagnostic codes, severities, paths, spans, and ordering are shared compatibility surfaces; language-specific error classes do not replace structured diagnostics.
+Compilation or validation never performs HTTP or browser activity. A program is not returned when error diagnostics exist or an operational error occurs. Syntax, semantic, and type findings remain deterministic diagnostics; cancellation, deadlines, filesystem failures, and loader failures never masquerade as KDL findings. Diagnostic codes, severities, paths, spans, and ordering are shared compatibility surfaces; language-specific operational error surfaces do not replace structured diagnostics.
 
 ## Execution and extension boundaries
 
@@ -55,7 +55,7 @@ External transforms receive cancellation and JSON-compatible values. Implementat
 
 ## Intentional language differences
 
-- Go uses `context.Context`, `(value, diagnostics)` results, `error`, `net/http`, and `time.Duration`. TypeScript uses promises, optional `AbortSignal`, readonly data, platform `fetch`, `URL`, and millisecond numbers.
+- Go uses `context.Context`, `(value, diagnostics, error)` compilation results, `error`, `net/http`, and `time.Duration`. TypeScript uses promise rejection for operational compilation failures, optional `AbortSignal`, readonly data, platform `fetch`, `URL`, and millisecond numbers.
 - Go file functions belong to the primary package because filesystem APIs are standard Go library conventions. TypeScript file functions belong only to the Node.js entry point.
 - Go keeps Validated IR opaque and exposes JSON plus metadata so internal compiler representations do not become public. TypeScript exposes the published readonly IR declaration because it is already the package's cross-language wire contract.
 - Go browser methods accept context as the first argument. TypeScript carries abort signals in operation options.

@@ -417,20 +417,18 @@ func (cli command) compileInput(ctx context.Context, path string) (*ir.Extractor
 		return nil, nil, err
 	}
 	if path != "-" {
-		program, diagnostics := compiler.CompileFileContext(ctx, path)
-		return program, diagnostics, nil
+		return compiler.CompileFileContext(ctx, path)
 	}
 	data, err := io.ReadAll(cli.io.stdin)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read KDL from standard input: %w", err)
 	}
-	program, diagnostics := compiler.CompileSource(ctx, "<stdin>", data, func(ctx context.Context, path string) ([]byte, error) {
+	return compiler.CompileSource(ctx, "<stdin>", data, func(ctx context.Context, path string) ([]byte, error) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		return os.ReadFile(path)
 	})
-	return program, diagnostics, nil
 }
 
 func (cli command) readInput(path, label string) ([]byte, error) {
