@@ -54,10 +54,16 @@ These changes alter the intended stable public surface and are not present in
 for stable release. After review and integration, the next candidate must use a
 new version such as `v1.0.0-rc.2`; it must not move or reuse the rc.1 tags.
 
-On 2026-08-01, commit `755d40a` and its ancestors passed `make verify` and
+On 2026-08-01, commit `e6cb2d1` and its ancestors passed `make verify` and
 `make release-check`, including conformance, race, clean Go and npm consumers,
 package contents, performance, release-matrix, and archive gates.
-Remote CI and supported-target checks remain required after integration.
+
+Draft PR [#60](https://github.com/hsblabs/scrape-kdl/pull/60) targets `main`
+from `codex/resolve-open-issues`. On 2026-08-01, all 14 checks passed for commit
+`e6cb2d1`: Linux and macOS core tests, the race suite, four package targets,
+go-rod contract and real-dependency tests, Playwright Chromium, and CodeQL for
+Go, TypeScript, and Actions. Integration and verification of the resulting
+`main` commit remain required.
 
 ## Remaining dependency order for issue #18
 
