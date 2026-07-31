@@ -47,14 +47,14 @@ the `v1.0.0-rc.1` commit:
 | #55 | Define offline snapshot execution | `cbb5bb4` |
 | #43 | Document pagination and list-to-detail patterns | `7ed06f6` |
 | #45 | Add the strict transform cookbook | `3ecf8c4` |
-| #59 | Add bounded authoring APIs and the versioned built-in catalog | `bbe0587` |
+| #59 | Add bounded authoring APIs and the versioned built-in catalog | `bbe0587`, `24a7038` |
 
 These changes alter the intended stable public surface and are not present in
 `v1.0.0-rc.1`. The immutable candidate therefore cannot qualify the new surface
 for stable release. After review and integration, the next candidate must use a
 new version such as `v1.0.0-rc.2`; it must not move or reuse the rc.1 tags.
 
-On 2026-08-01, commit `bbe0587` and its ancestors passed `make verify` and
+On 2026-08-01, commit `755d40a` and its ancestors passed `make verify` and
 `make release-check`, including conformance, race, clean Go and npm consumers,
 package contents, performance, release-matrix, and archive gates.
 Remote CI and supported-target checks remain required after integration.
