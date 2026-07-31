@@ -11,6 +11,7 @@ Go and TypeScript expose the same observable capabilities:
 | compile an in-memory source | `Compile(ctx, Source, CompileOptions) (*Program, Diagnostics, error)` | `compile(source, options)` |
 | validate an in-memory source | `Validate(ctx, Source, CompileOptions) (Diagnostics, error)` | `validate(source, options)` |
 | compile or validate a file | context-first `CompileFile` and `ValidateFile` | asynchronous Node.js entry-point functions |
+| compile or validate an application filesystem | `CompileFS` and `ValidateFS` over `fs.FS` | Node.js entry-point or injected loader |
 | resolve imports without filesystem access | `CompileOptions.Loader` | `CompileOptions.loader` |
 | inspect validated metadata | `Program.Metadata()` | `Program.metadata` |
 | inspect Validated IR | `Program.IRJSON()` | `Program.ir` |
@@ -37,7 +38,9 @@ The Go loader receives the compile context and the resolved path. The TypeScript
 
 Cancellation, filesystem failures, and injected-loader failures are operational errors rather than document diagnostics. Go returns them as `error` while preserving the cause for `errors.Is` and `errors.As`. TypeScript rejects with the abort reason or `SourceLoadError`; `SourceLoadError.cause` retains the loader failure. Loader implementations must not place credentials, source contents, or other secrets in returned error messages.
 
-The file conveniences are separate from injected loading. Go uses the host filesystem in `CompileFile` and `ValidateFile`. TypeScript keeps filesystem functions in the Node.js entry point so the core package does not acquire ambient filesystem authority.
+The file conveniences are separate from injected loading. Go uses the host filesystem in `CompileFile` and `ValidateFile`. `CompileFS` and `ValidateFS` accept an application-provided `fs.FS`, require a non-directory `fs.ValidPath` root, resolve every nested import within that same filesystem, and reject lexical parent escapes before calling the filesystem. They preserve import-cycle, duplicate-import, and source-metadata behavior from ordinary compilation. Reads are checked for cancellation before and after each `fs.ReadFile`; the `fs.FS` interface cannot interrupt a read already in progress.
+
+`CompileFS` provides lexical containment, not stronger capabilities than its supplied filesystem. In particular, `os.DirFS` can follow a symlink outside its directory. Use `os.Root.FS` when symlink escape prevention is a security requirement. TypeScript keeps filesystem functions in the Node.js entry point so the core package does not acquire ambient filesystem authority.
 
 ## Validated program and diagnostics
 
@@ -56,7 +59,7 @@ External transforms receive cancellation and JSON-compatible values. Implementat
 ## Intentional language differences
 
 - Go uses `context.Context`, `(value, diagnostics, error)` compilation results, `error`, `net/http`, and `time.Duration`. TypeScript uses promise rejection for operational compilation failures, optional `AbortSignal`, readonly data, platform `fetch`, `URL`, and millisecond numbers.
-- Go file functions belong to the primary package because filesystem APIs are standard Go library conventions. TypeScript file functions belong only to the Node.js entry point.
+- Go file and `fs.FS` functions belong to the primary package because filesystem interfaces are standard Go library conventions. TypeScript file functions belong only to the Node.js entry point.
 - Go keeps Validated IR opaque and exposes JSON plus metadata so internal compiler representations do not become public. TypeScript exposes the published readonly IR declaration because it is already the package's cross-language wire contract.
 - Go browser methods accept context as the first argument. TypeScript carries abort signals in operation options.
 - Go external transforms are named functions over `any` with runtime validation. TypeScript narrows the proposal to `JsonValue` at the type boundary and still performs runtime validation.

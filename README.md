@@ -147,8 +147,9 @@ if err != nil {
 
 The public API includes:
 
-- context-first `Compile`, `Validate`, `CompileFile`, and `ValidateFile` entry points;
+- context-first `Compile`, `Validate`, `CompileFile`, `ValidateFile`, `CompileFS`, and `ValidateFS` entry points;
 - injected source loading for deterministic import resolution without filesystem access;
+- `fs.FS` compilation for embedded and application-owned specification trees;
 - immutable `Program.Metadata` snapshots;
 - `Program.IRJSON`;
 - `Program.Extract` and `Program.ExtractHTML`;

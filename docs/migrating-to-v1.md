@@ -14,6 +14,7 @@ There was no supported public release before v1. This guide is for applications 
 - Use the module path `github.com/hsblabs/scrape-kdl`.
 - Pass `context.Context` as the first argument to `Compile`, `Validate`, `CompileFile`, and `ValidateFile`.
 - Handle the operational `error` returned by all compile and validate entry points separately from document `Diagnostics`. Use `errors.Is` or `errors.As` for cancellation, deadlines, filesystem failures, and injected-loader causes.
+- Use `CompileFS` or `ValidateFS` for specifications stored in `embed.FS` or another application-owned `fs.FS`; import names remain slash-separated `io/fs` paths.
 - Treat `Program.Version()` as a string rather than an integer.
 - Use the exported supported-language and supported-IR registries instead of comparing version dates.
 - Keep browser libraries in adapter modules; the core Go module does not depend on go-rod.

@@ -4,6 +4,7 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## 1.0.0 — Unreleased
 
+- Added `CompileFS` and `ValidateFS` for nested, relative compilation from `fs.FS`, including `embed.FS`, lexical escape rejection, cancellation checks, and documented symlink-containment limits.
 - Separated operational compilation failures from document diagnostics. Go compile and validate entry points now return an `error` that preserves cancellation and loader/filesystem causes, while TypeScript rejects loader failures with `SourceLoadError` and retains the original `cause`.
 - Added responsible-use guidance and neutralized the remaining real-brand
   references in specifications and fixtures before public release.

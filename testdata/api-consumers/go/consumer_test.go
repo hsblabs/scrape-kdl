@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"testing"
+	"testing/fstest"
 
 	scrapekdl "github.com/hsblabs/scrape-kdl"
 )
@@ -14,14 +15,15 @@ func TestIndependentGoConsumer(t *testing.T) {
 	files := map[string][]byte{
 		"spec/common.kdl": []byte(`module "common" version="2026-07-15" language-version="2026-07-15" {}`),
 	}
-	program, diagnostics, err := scrapekdl.Compile(ctx, scrapekdl.Source{
+	source := scrapekdl.Source{
 		Path: "spec/main.kdl",
 		Data: []byte(`import "common.kdl" as="common"
 extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`),
-	}, scrapekdl.CompileOptions{Loader: func(_ context.Context, path string) ([]byte, error) {
+	}
+	program, diagnostics, err := scrapekdl.Compile(ctx, source, scrapekdl.CompileOptions{Loader: func(_ context.Context, path string) ([]byte, error) {
 		data, ok := files[path]
 		if !ok {
 			return nil, fmt.Errorf("missing source %q", path)
@@ -38,6 +40,13 @@ extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
 	metadata := program.Metadata()
 	if metadata.Name != "consumer" || metadata.LanguageVersion != "2026-07-15" || len(metadata.Files) != 2 {
 		t.Fatalf("metadata = %#v", metadata)
+	}
+	embeddedProgram, embeddedDiagnostics, err := scrapekdl.CompileFS(ctx, fstest.MapFS{
+		"spec/main.kdl":   {Data: source.Data},
+		"spec/common.kdl": {Data: files["spec/common.kdl"]},
+	}, "spec/main.kdl")
+	if err != nil || embeddedDiagnostics.HasErrors() || embeddedProgram == nil {
+		t.Fatalf("CompileFS result = %#v, diagnostics = %#v, error = %v", embeddedProgram, embeddedDiagnostics, err)
 	}
 	publicTarget, err := url.Parse("https://8.8.8.8/")
 	if err != nil {
