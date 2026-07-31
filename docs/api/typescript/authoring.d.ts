@@ -1,6 +1,11 @@
 import type { FetchMode, SessionPolicy } from "./index.js";
 
-export type AuthoringScalar = string | boolean | number | null;
+export interface AuthoringFloat {
+  readonly kind: "float";
+  readonly value: number;
+}
+
+export type AuthoringScalar = string | boolean | number | null | AuthoringFloat;
 export type InputConstraint = "string" | "string-array" | "non-null-scalar" | "nullable" | "scalar" | "number";
 export type OutputConstraint =
   | "string"
@@ -19,6 +24,9 @@ export interface NamedArgument {
   readonly constraint: ArgumentConstraint;
   readonly required: boolean;
   readonly default?: AuthoringScalar;
+  readonly allowedValues?: readonly AuthoringScalar[];
+  readonly minimum?: number;
+  readonly maximum?: number;
 }
 
 export interface PositionalArguments {
@@ -92,9 +100,7 @@ export interface AuthoringCollection {
 }
 
 export type AuthoringValueSource =
-  | { readonly kind: "text" }
-  | { readonly kind: "html" }
-  | { readonly kind: "attribute"; readonly name: string };
+  { readonly kind: "text" } | { readonly kind: "html" } | { readonly kind: "attribute"; readonly name: string };
 
 export interface BuiltinCall {
   readonly name: string;
@@ -109,4 +115,5 @@ export declare function callBuiltin(
   positional?: readonly AuthoringScalar[],
   named?: Readonly<Record<string, AuthoringScalar>>,
 ): BuiltinCall;
+export declare function float(value: number): AuthoringFloat;
 export declare function write(document: AuthoringDocument): string;

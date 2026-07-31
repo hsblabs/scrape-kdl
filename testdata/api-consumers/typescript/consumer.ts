@@ -8,7 +8,7 @@ import {
   type SourceLoader,
 } from "@hsblabs/scrape-kdl";
 import { compileFile } from "@hsblabs/scrape-kdl/node";
-import { builtinCatalog, callBuiltin, write, type AuthoringDocument } from "@hsblabs/scrape-kdl/authoring";
+import { builtinCatalog, callBuiltin, float, write, type AuthoringDocument } from "@hsblabs/scrape-kdl/authoring";
 
 const files = new Map<string, string>([
   ["spec/common.kdl", `module "common" version="2026-07-15" language-version="2026-07-15" {}`],
@@ -118,3 +118,4 @@ const authoredDocument: AuthoringDocument = {
   },
 };
 void compile({ path: "authored-consumer.kdl", data: write(authoredDocument) });
+void float(1);

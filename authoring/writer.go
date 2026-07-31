@@ -30,32 +30,32 @@ type documentWriter struct {
 
 func (writer *documentWriter) writeDocument(document Document) error {
 	extractor := document.Extractor
-	if err := writer.line(0, "extractor ", quoted(extractor.Name), " version=", quoted(extractor.Version), " language-version=", quoted(document.LanguageVersion), " {"); err != nil {
+	if err := writer.line(0, literal("extractor "), quoted(extractor.Name), literal(" version="), quoted(extractor.Version), literal(" language-version="), quoted(document.LanguageVersion), literal(" {")); err != nil {
 		return err
 	}
-	if err := writer.line(1, "source \"html\" {"); err != nil {
+	if err := writer.line(1, literal("source \"html\" {")); err != nil {
 		return err
 	}
 	if extractor.Source.FetchMode != scrapekdl.FetchModeHTTP && extractor.Source.FetchMode != scrapekdl.FetchModeBrowser {
 		return fmt.Errorf("authoring: unsupported fetch mode %q", extractor.Source.FetchMode)
 	}
-	if err := writer.line(2, "fetch mode=", quoted(string(extractor.Source.FetchMode)), " url=", quoted(extractor.Source.URLTemplate)); err != nil {
+	if err := writer.line(2, literal("fetch mode="), quoted(string(extractor.Source.FetchMode)), literal(" url="), quoted(extractor.Source.URLTemplate)); err != nil {
 		return err
 	}
 	if extractor.Source.SessionPolicy != scrapekdl.SessionPolicyNone && extractor.Source.SessionPolicy != scrapekdl.SessionPolicyOptional && extractor.Source.SessionPolicy != scrapekdl.SessionPolicyRequired {
 		return fmt.Errorf("authoring: unsupported session policy %q", extractor.Source.SessionPolicy)
 	}
-	if err := writer.line(2, "session policy=", quoted(string(extractor.Source.SessionPolicy))); err != nil {
+	if err := writer.line(2, literal("session policy="), quoted(string(extractor.Source.SessionPolicy))); err != nil {
 		return err
 	}
-	if err := writer.line(1, "}"); err != nil {
+	if err := writer.line(1, literal("}")); err != nil {
 		return err
 	}
 	for _, input := range extractor.Inputs {
 		if input.Type != PrimitiveString && input.Type != PrimitiveBool && input.Type != PrimitiveInt && input.Type != PrimitiveFloat {
 			return fmt.Errorf("authoring: input %q has unsupported primitive type %q", input.Name, input.Type)
 		}
-		if err := writer.line(1, "input ", quoted(input.Name), " type=", quoted(string(input.Type)), " required=", boolLiteral(input.Required)); err != nil {
+		if err := writer.line(1, literal("input "), quoted(input.Name), literal(" type="), quoted(string(input.Type)), literal(" required="+boolLiteral(input.Required))); err != nil {
 			return err
 		}
 	}
@@ -64,7 +64,7 @@ func (writer *documentWriter) writeDocument(document Document) error {
 			return err
 		}
 	}
-	return writer.line(0, "}")
+	return writer.line(0, literal("}"))
 }
 
 func (writer *documentWriter) writeMember(depth int, member Member) error {
@@ -95,44 +95,44 @@ func (writer *documentWriter) writeField(depth int, field Field) error {
 	if field.OnError != ErrorFail && field.OnError != ErrorNull && field.OnError != ErrorWarn {
 		return fmt.Errorf("authoring: field %q has unsupported error policy %q", field.Name, field.OnError)
 	}
-	if err := writer.line(depth, "field ", quoted(field.Name), " type=", quoted(field.Type), " required=", boolLiteral(field.Required), " {"); err != nil {
+	if err := writer.line(depth, literal("field "), quoted(field.Name), literal(" type="), quoted(field.Type), literal(" required="+boolLiteral(field.Required)+" {")); err != nil {
 		return err
 	}
-	if err := writer.line(depth+1, "select ", quoted(field.Selector), " match=", quoted(string(field.Match))); err != nil {
+	if err := writer.line(depth+1, literal("select "), quoted(field.Selector), literal(" match="), quoted(string(field.Match))); err != nil {
 		return err
 	}
 	switch value := field.Value.(type) {
 	case TextValue:
-		if err := writer.line(depth+1, "value \"text\""); err != nil {
+		if err := writer.line(depth+1, literal("value \"text\"")); err != nil {
 			return err
 		}
 	case HTMLValue:
-		if err := writer.line(depth+1, "value \"html\""); err != nil {
+		if err := writer.line(depth+1, literal("value \"html\"")); err != nil {
 			return err
 		}
 	case AttributeValue:
-		if err := writer.line(depth+1, "value \"attr\" name=", quoted(value.Name)); err != nil {
+		if err := writer.line(depth+1, literal("value \"attr\" name="), quoted(value.Name)); err != nil {
 			return err
 		}
 	case *TextValue:
 		if value == nil {
 			return fmt.Errorf("authoring: field %q has nil text value source", field.Name)
 		}
-		if err := writer.line(depth+1, "value \"text\""); err != nil {
+		if err := writer.line(depth+1, literal("value \"text\"")); err != nil {
 			return err
 		}
 	case *HTMLValue:
 		if value == nil {
 			return fmt.Errorf("authoring: field %q has nil HTML value source", field.Name)
 		}
-		if err := writer.line(depth+1, "value \"html\""); err != nil {
+		if err := writer.line(depth+1, literal("value \"html\"")); err != nil {
 			return err
 		}
 	case *AttributeValue:
 		if value == nil {
 			return fmt.Errorf("authoring: field %q has nil attribute value source", field.Name)
 		}
-		if err := writer.line(depth+1, "value \"attr\" name=", quoted(value.Name)); err != nil {
+		if err := writer.line(depth+1, literal("value \"attr\" name="), quoted(value.Name)); err != nil {
 			return err
 		}
 	default:
@@ -144,11 +144,11 @@ func (writer *documentWriter) writeField(depth int, field Field) error {
 		}
 	}
 	if field.OnError != ErrorFail {
-		if err := writer.line(depth+1, "on-error ", quoted(string(field.OnError))); err != nil {
+		if err := writer.line(depth+1, literal("on-error "), quoted(string(field.OnError))); err != nil {
 			return err
 		}
 	}
-	return writer.line(depth, "}")
+	return writer.line(depth, literal("}"))
 }
 
 func (writer *documentWriter) writeCollection(depth int, collection Collection) error {
@@ -169,10 +169,10 @@ func (writer *documentWriter) writeCollection(depth int, collection Collection) 
 		parts = append(parts, literal(" max-items="), literal(strconv.Itoa(*collection.MaxItems)))
 	}
 	parts = append(parts, literal(" on-row-error="), quoted(string(collection.OnRowError)), literal(" {"))
-	if err := writer.lineParts(depth, parts...); err != nil {
+	if err := writer.line(depth, parts...); err != nil {
 		return err
 	}
-	if err := writer.line(depth+1, "select ", quoted(collection.Selector)); err != nil {
+	if err := writer.line(depth+1, literal("select "), quoted(collection.Selector)); err != nil {
 		return err
 	}
 	for _, member := range collection.Members {
@@ -180,7 +180,7 @@ func (writer *documentWriter) writeCollection(depth int, collection Collection) 
 			return err
 		}
 	}
-	return writer.line(depth, "}")
+	return writer.line(depth, literal("}"))
 }
 
 func (writer *documentWriter) writeBuiltinCall(depth int, call BuiltinCall) error {
@@ -206,7 +206,7 @@ func (writer *documentWriter) writeBuiltinCall(depth int, call BuiltinCall) erro
 		if !exists {
 			continue
 		}
-		if err := validateScalarConstraint(value, argument.Constraint); err != nil {
+		if err := validateNamedArgument(value, argument); err != nil {
 			return fmt.Errorf("built-in %q argument %q: %w", call.Name, argument.Name, err)
 		}
 		parts = append(parts, literal(" "+argument.Name+"="), scalarPart(value))
@@ -216,7 +216,7 @@ func (writer *documentWriter) writeBuiltinCall(depth int, call BuiltinCall) erro
 			return fmt.Errorf("built-in %q does not accept named argument %q", call.Name, name)
 		}
 	}
-	return writer.lineParts(depth, parts...)
+	return writer.line(depth, parts...)
 }
 
 func validateScalarConstraint(value Scalar, constraint string) error {
@@ -247,6 +247,31 @@ func validateScalarConstraint(value Scalar, constraint string) error {
 		}
 	default:
 		return fmt.Errorf("unknown catalog constraint %q", constraint)
+	}
+	return nil
+}
+
+func validateNamedArgument(value Scalar, argument NamedArgument) error {
+	if err := validateScalarConstraint(value, argument.Constraint); err != nil {
+		return err
+	}
+	if len(argument.AllowedValues) > 0 {
+		allowed := false
+		for _, candidate := range argument.AllowedValues {
+			if value == candidate {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return errors.New("value is not in the catalog's allowed values")
+		}
+	}
+	if argument.Minimum != nil && value.intValue < *argument.Minimum {
+		return fmt.Errorf("value must be at least %d", *argument.Minimum)
+	}
+	if argument.Maximum != nil && value.intValue > *argument.Maximum {
+		return fmt.Errorf("value must be at most %d", *argument.Maximum)
 	}
 	return nil
 }
@@ -284,7 +309,7 @@ func scalarPart(value Scalar) kdlPart {
 			if math.IsNaN(value.floatValue) || math.IsInf(value.floatValue, 0) {
 				return errors.New("authoring: float scalar must be finite")
 			}
-			output.WriteString(strconv.FormatFloat(value.floatValue, 'g', -1, 64))
+			output.WriteString(formatFloatScalar(value.floatValue))
 		case ScalarNull:
 			output.WriteString("#null")
 		default:
@@ -294,25 +319,15 @@ func scalarPart(value Scalar) kdlPart {
 	}
 }
 
-func (writer *documentWriter) line(depth int, rawParts ...any) error {
-	writer.output.WriteString(strings.Repeat("  ", depth))
-	for _, raw := range rawParts {
-		switch part := raw.(type) {
-		case string:
-			writer.output.WriteString(part)
-		case kdlPart:
-			if err := part(&writer.output); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("authoring: invalid writer part %T", raw)
-		}
+func formatFloatScalar(value float64) string {
+	formatted := strconv.FormatFloat(value, 'g', -1, 64)
+	if !strings.ContainsAny(formatted, ".eE") {
+		return formatted + ".0"
 	}
-	writer.output.WriteByte('\n')
-	return nil
+	return formatted
 }
 
-func (writer *documentWriter) lineParts(depth int, parts ...kdlPart) error {
+func (writer *documentWriter) line(depth int, parts ...kdlPart) error {
 	writer.output.WriteString(strings.Repeat("  ", depth))
 	for _, part := range parts {
 		if err := part(&writer.output); err != nil {

@@ -104,10 +104,13 @@ const (
 )
 
 type NamedArgument struct {
-	Name       string  `json:"name"`
-	Constraint string  `json:"constraint"`
-	Required   bool    `json:"required"`
-	Default    *Scalar `json:"default,omitempty"`
+	Name          string   `json:"name"`
+	Constraint    string   `json:"constraint"`
+	Required      bool     `json:"required"`
+	Default       *Scalar  `json:"default,omitempty"`
+	AllowedValues []Scalar `json:"allowedValues,omitempty"`
+	Minimum       *int64   `json:"minimum,omitempty"`
+	Maximum       *int64   `json:"maximum,omitempty"`
 }
 
 type PositionalArguments struct {
@@ -167,7 +170,14 @@ type transformMetadata struct {
 	output               OutputConstraint
 	nullability          NullabilityEffect
 	defaults             map[string]Scalar
+	argumentRules        map[string]argumentRules
 	positionalConstraint string
+}
+
+type argumentRules struct {
+	allowedValues []Scalar
+	minimum       *int64
+	maximum       *int64
 }
 
 var transformMetadataByName = map[string]transformMetadata{
@@ -183,20 +193,30 @@ var transformMetadataByName = map[string]transformMetadata{
 	"join":                 {input: InputStringArray, output: OutputString, nullability: NullabilityPreserved},
 	"prepend":              stringToString(),
 	"append":               stringToString(),
-	"parse-int":            {input: InputString, output: OutputTargetInteger, nullability: NullabilityPreserved, defaults: map[string]Scalar{"radix": Int(10)}},
-	"parse-float":          {input: InputString, output: OutputTargetFloat, nullability: NullabilityPreserved},
-	"parse-bool":           {input: InputString, output: OutputBool, nullability: NullabilityPreserved, defaults: map[string]Scalar{"case-sensitive": Bool(false), "true": String("true"), "false": String("false")}},
-	"to-string":            {input: InputNonNullScalar, output: OutputString, nullability: NullabilityPreserved},
-	"empty-to-null":        nullableString(nil),
-	"coalesce":             {input: InputNullable, output: OutputInnerInput, nullability: NullabilityRemoved},
-	"url-resolve":          stringToString(),
-	"url-query":            nullableString(map[string]Scalar{"index": Int(0)}),
-	"url-path":             stringToString(),
-	"path-segment":         nullableString(nil),
-	"assert-matches":       withDefaults(stringToString(), map[string]Scalar{"flags": String("")}),
-	"assert-enum":          {input: InputScalar, output: OutputSameAsInput, nullability: NullabilityPreserved, positionalConstraint: "same-as-input"},
-	"assert-min":           {input: InputNumber, output: OutputSameAsInput, nullability: NullabilityPreserved},
-	"assert-max":           {input: InputNumber, output: OutputSameAsInput, nullability: NullabilityPreserved},
+	"parse-int": {
+		input: InputString, output: OutputTargetInteger, nullability: NullabilityPreserved,
+		defaults: map[string]Scalar{"radix": Int(10)},
+		argumentRules: map[string]argumentRules{
+			"as":    {allowedValues: stringScalars("int", "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64")},
+			"radix": integerRange(2, 36),
+		},
+	},
+	"parse-float": {
+		input: InputString, output: OutputTargetFloat, nullability: NullabilityPreserved,
+		argumentRules: map[string]argumentRules{"as": {allowedValues: stringScalars("float", "f32", "f64")}},
+	},
+	"parse-bool":     {input: InputString, output: OutputBool, nullability: NullabilityPreserved, defaults: map[string]Scalar{"case-sensitive": Bool(false), "true": String("true"), "false": String("false")}},
+	"to-string":      {input: InputNonNullScalar, output: OutputString, nullability: NullabilityPreserved},
+	"empty-to-null":  nullableString(nil),
+	"coalesce":       {input: InputNullable, output: OutputInnerInput, nullability: NullabilityRemoved},
+	"url-resolve":    stringToString(),
+	"url-query":      nullableString(map[string]Scalar{"index": Int(0)}),
+	"url-path":       stringToString(),
+	"path-segment":   nullableString(nil),
+	"assert-matches": withDefaults(stringToString(), map[string]Scalar{"flags": String("")}),
+	"assert-enum":    {input: InputScalar, output: OutputSameAsInput, nullability: NullabilityPreserved, positionalConstraint: "same-as-input"},
+	"assert-min":     {input: InputNumber, output: OutputSameAsInput, nullability: NullabilityPreserved},
+	"assert-max":     {input: InputNumber, output: OutputSameAsInput, nullability: NullabilityPreserved},
 }
 
 func stringToString() transformMetadata {
@@ -210,6 +230,18 @@ func nullableString(defaults map[string]Scalar) transformMetadata {
 func withDefaults(metadata transformMetadata, defaults map[string]Scalar) transformMetadata {
 	metadata.defaults = defaults
 	return metadata
+}
+
+func stringScalars(values ...string) []Scalar {
+	result := make([]Scalar, len(values))
+	for index, value := range values {
+		result[index] = String(value)
+	}
+	return result
+}
+
+func integerRange(minimum, maximum int64) argumentRules {
+	return argumentRules{minimum: &minimum, maximum: &maximum}
 }
 
 func buildCatalog(languageVersion string) (Catalog, error) {
@@ -251,11 +283,21 @@ func buildCatalog(languageVersion string) (Catalog, error) {
 				valueCopy := value
 				definition.Default = &valueCopy
 			}
+			if rules, ok := metadata.argumentRules[argument]; ok {
+				definition.AllowedValues = append([]Scalar(nil), rules.allowedValues...)
+				definition.Minimum = cloneInt64(rules.minimum)
+				definition.Maximum = cloneInt64(rules.maximum)
+			}
 			named = append(named, definition)
 		}
 		for argument := range metadata.defaults {
 			if _, ok := contract.Properties[argument]; !ok {
 				return Catalog{}, fmt.Errorf("authoring: built-in %q default references unknown argument %q", name, argument)
+			}
+		}
+		for argument := range metadata.argumentRules {
+			if _, ok := contract.Properties[argument]; !ok {
+				return Catalog{}, fmt.Errorf("authoring: built-in %q rules reference unknown argument %q", name, argument)
 			}
 		}
 		builtins = append(builtins, BuiltinDefinition{
@@ -282,10 +324,21 @@ func cloneBuiltin(definition BuiltinDefinition) BuiltinDefinition {
 	clone.NamedArguments = make([]NamedArgument, len(definition.NamedArguments))
 	for index, argument := range definition.NamedArguments {
 		clone.NamedArguments[index] = argument
+		clone.NamedArguments[index].AllowedValues = append([]Scalar(nil), argument.AllowedValues...)
 		if argument.Default != nil {
 			value := *argument.Default
 			clone.NamedArguments[index].Default = &value
 		}
+		clone.NamedArguments[index].Minimum = cloneInt64(argument.Minimum)
+		clone.NamedArguments[index].Maximum = cloneInt64(argument.Maximum)
 	}
 	return clone
+}
+
+func cloneInt64(value *int64) *int64 {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
 }

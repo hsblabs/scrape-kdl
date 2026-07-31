@@ -324,7 +324,7 @@ async function collect(directory, output) {
 const runtimeConsumerSource = `
 import assert from "node:assert/strict";
 import { ExecutionError, compile, supportedIRVersions, supportedLanguageVersions, validate } from "@hsblabs/scrape-kdl";
-import { builtinCatalog, callBuiltin, supportedBuiltinCatalogVersions, write } from "@hsblabs/scrape-kdl/authoring";
+import { builtinCatalog, callBuiltin, float, supportedBuiltinCatalogVersions, write } from "@hsblabs/scrape-kdl/authoring";
 import { compileFile, validateFile } from "@hsblabs/scrape-kdl/node";
 import { PlaywrightAdapter } from "@hsblabs/scrape-kdl-playwright";
 
@@ -335,6 +335,7 @@ assert.equal(typeof validate, "function");
 assert.deepEqual(supportedLanguageVersions(), ["2026-07-15"]);
 assert.deepEqual(supportedIRVersions(), ["2026-07-15"]);
 assert.deepEqual(supportedBuiltinCatalogVersions(), ["2026-07-15"]);
+assert.deepEqual(float(1), { kind: "float", value: 1 });
 const source = await import("node:fs/promises").then(({ readFile }) => readFile(new URL("./extractor.kdl", import.meta.url)));
 const memory = await compile({ path: "extractor.kdl", data: source });
 assert.equal(memory.program.metadata.name, "basic-http");
@@ -380,7 +381,7 @@ assert.equal((await compile({ path: "package-authored.kdl", data: authored })).p
 
 const typeConsumerSource = `
 import { ExecutionError, compile, supportedIRVersions, supportedLanguageVersions, validate } from "@hsblabs/scrape-kdl";
-import { builtinCatalog, callBuiltin, supportedBuiltinCatalogVersions, write } from "@hsblabs/scrape-kdl/authoring";
+import { builtinCatalog, callBuiltin, float, supportedBuiltinCatalogVersions, write } from "@hsblabs/scrape-kdl/authoring";
 import { compileFile, validateFile } from "@hsblabs/scrape-kdl/node";
 import { PlaywrightAdapter } from "@hsblabs/scrape-kdl-playwright";
 import type {
@@ -390,7 +391,7 @@ import type {
   SessionCookie, Source, SourceFile, SourceLoadContext, SourceLoader, URLPolicyContext, Warning,
 } from "@hsblabs/scrape-kdl";
 import type {
-  ArgumentConstraint, AuthoringCollection, AuthoringDocument, AuthoringExtractor, AuthoringField, AuthoringInput,
+  ArgumentConstraint, AuthoringCollection, AuthoringDocument, AuthoringExtractor, AuthoringField, AuthoringFloat, AuthoringInput,
   AuthoringMember, AuthoringScalar, AuthoringSource, AuthoringValueSource, BuiltinCall, BuiltinCatalog,
   BuiltinDefinition, InputConstraint, NamedArgument, NullabilityEffect, OutputConstraint, PositionalArguments,
 } from "@hsblabs/scrape-kdl/authoring";
@@ -404,7 +405,7 @@ type PublicTypes = [
 declare const publicTypes: PublicTypes;
 void publicTypes;
 type AuthoringTypes = [
-  ArgumentConstraint, AuthoringCollection, AuthoringDocument, AuthoringExtractor, AuthoringField, AuthoringInput,
+  ArgumentConstraint, AuthoringCollection, AuthoringDocument, AuthoringExtractor, AuthoringField, AuthoringFloat, AuthoringInput,
   AuthoringMember, AuthoringScalar, AuthoringSource, AuthoringValueSource, BuiltinCall, BuiltinCatalog,
   BuiltinDefinition, InputConstraint, NamedArgument, NullabilityEffect, OutputConstraint, PositionalArguments,
 ];
@@ -417,6 +418,7 @@ void supportedLanguageVersions;
 void supportedIRVersions;
 void builtinCatalog;
 void callBuiltin;
+void float;
 void supportedBuiltinCatalogVersions;
 void write;
 void compileFile;

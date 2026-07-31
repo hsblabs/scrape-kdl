@@ -3,7 +3,12 @@ import type { FetchMode, SessionPolicy } from "./public-api.js";
 
 const LANGUAGE_VERSION = "2026-07-15";
 
-export type AuthoringScalar = string | boolean | number | null;
+export interface AuthoringFloat {
+  readonly kind: "float";
+  readonly value: number;
+}
+
+export type AuthoringScalar = string | boolean | number | null | AuthoringFloat;
 export type InputConstraint = "string" | "string-array" | "non-null-scalar" | "nullable" | "scalar" | "number";
 export type OutputConstraint =
   | "string"
@@ -22,6 +27,9 @@ export interface NamedArgument {
   readonly constraint: ArgumentConstraint;
   readonly required: boolean;
   readonly default?: AuthoringScalar;
+  readonly allowedValues?: readonly AuthoringScalar[];
+  readonly minimum?: number;
+  readonly maximum?: number;
 }
 
 export interface PositionalArguments {
@@ -124,6 +132,11 @@ export function callBuiltin(
   return deepFreeze({ name: definition.name, positional: [...positional], named: { ...named } });
 }
 
+export function float(value: number): AuthoringFloat {
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new TypeError("float value must be finite");
+  return deepFreeze({ kind: "float", value });
+}
+
 export function write(document: AuthoringDocument): string {
   assertRecord("authoring document", document);
   const catalog = builtinCatalog(document.languageVersion);
@@ -155,7 +168,7 @@ export function write(document: AuthoringDocument): string {
         );
       if (!exists) continue;
       const value = call.named[argument.name];
-      validateScalarConstraint(value, argument.constraint);
+      validateNamedArgument(value, argument);
       parts.push(`${argument.name}=${scalarKDL(value)}`);
     }
     for (const name of Object.keys(call.named))
@@ -232,7 +245,14 @@ interface TransformMetadata {
   readonly output: OutputConstraint;
   readonly nullabilityEffect: NullabilityEffect;
   readonly defaults?: Readonly<Record<string, AuthoringScalar>>;
+  readonly argumentRules?: Readonly<Record<string, ArgumentRules>>;
   readonly positionalConstraint?: "same-as-input";
+}
+
+interface ArgumentRules {
+  readonly allowedValues?: readonly AuthoringScalar[];
+  readonly minimum?: number;
+  readonly maximum?: number;
 }
 
 const stringToString = (): TransformMetadata => ({
@@ -263,8 +283,17 @@ const METADATA: Readonly<Record<string, TransformMetadata>> = {
     output: "target-integer",
     nullabilityEffect: "preserved",
     defaults: { radix: 10 },
+    argumentRules: {
+      as: { allowedValues: ["int", "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64"] },
+      radix: { minimum: 2, maximum: 36 },
+    },
   },
-  "parse-float": { input: "string", output: "target-float", nullabilityEffect: "preserved" },
+  "parse-float": {
+    input: "string",
+    output: "target-float",
+    nullabilityEffect: "preserved",
+    argumentRules: { as: { allowedValues: ["float", "f32", "f64"] } },
+  },
   "parse-bool": {
     input: "string",
     output: "bool",
@@ -304,9 +333,11 @@ function buildCatalog(): BuiltinCatalog {
         const constraint = contract.properties[argument];
         if (constraint === undefined) throw new Error(`missing argument constraint for ${name}.${argument}`);
         const base = { name: argument, constraint, required: contract.required.includes(argument) };
-        return Object.hasOwn(metadata.defaults ?? {}, argument)
+        const withDefault = Object.hasOwn(metadata.defaults ?? {}, argument)
           ? { ...base, default: metadata.defaults?.[argument] as AuthoringScalar }
           : base;
+        const rules = metadata.argumentRules?.[argument];
+        return rules === undefined ? withDefault : { ...withDefault, ...rules };
       });
     return {
       name,
@@ -330,13 +361,34 @@ function lookupBuiltin(catalog: BuiltinCatalog, name: string): BuiltinDefinition
 
 function validateScalarConstraint(value: AuthoringScalar, constraint: ArgumentConstraint): void {
   assertScalar("value", value);
-  if (typeof value === "number" && !Number.isFinite(value)) throw new TypeError("numeric value must be finite");
+  const numeric = authoringFloatValue(value);
+  if (numeric !== undefined && !Number.isFinite(numeric)) throw new TypeError("numeric value must be finite");
   if (constraint === "string" && typeof value !== "string") throw new TypeError("value must be string");
   if (constraint === "bool" && typeof value !== "boolean") throw new TypeError("value must be bool");
   if (constraint === "int" && !Number.isSafeInteger(value)) throw new TypeError("value must be int");
   if (constraint === "non-negative-int" && (!Number.isSafeInteger(value) || Number(value) < 0))
     throw new TypeError("value must be a non-negative int");
-  if (constraint === "number" && typeof value !== "number") throw new TypeError("value must be a number");
+  if (constraint === "number" && numeric === undefined) throw new TypeError("value must be a number");
+}
+
+function validateNamedArgument(value: AuthoringScalar, argument: NamedArgument): void {
+  validateScalarConstraint(value, argument.constraint);
+  if (
+    argument.allowedValues !== undefined &&
+    !argument.allowedValues.some((candidate) => scalarEquals(value, candidate))
+  )
+    throw new TypeError("value is not in the catalog's allowed values");
+  const numeric = authoringFloatValue(value);
+  if (argument.minimum !== undefined && (numeric === undefined || numeric < argument.minimum))
+    throw new TypeError(`value must be at least ${argument.minimum}`);
+  if (argument.maximum !== undefined && (numeric === undefined || numeric > argument.maximum))
+    throw new TypeError(`value must be at most ${argument.maximum}`);
+}
+
+function scalarEquals(left: AuthoringScalar, right: AuthoringScalar): boolean {
+  if (isAuthoringFloat(left) && isAuthoringFloat(right)) return Object.is(left.value, right.value);
+  if (isAuthoringFloat(left) || isAuthoringFloat(right)) return false;
+  return Object.is(left, right);
 }
 
 function assertChoice(label: string, value: string, choices: readonly string[]): void {
@@ -354,7 +406,13 @@ function assertRecord(label: string, value: unknown): asserts value is Readonly<
 }
 
 function assertScalar(label: string, value: unknown): asserts value is AuthoringScalar {
-  if (value !== null && typeof value !== "string" && typeof value !== "boolean" && typeof value !== "number")
+  if (
+    value !== null &&
+    typeof value !== "string" &&
+    typeof value !== "boolean" &&
+    typeof value !== "number" &&
+    !isAuthoringFloat(value)
+  )
     throw new TypeError(`${label} must be a scalar`);
 }
 
@@ -363,8 +421,30 @@ function scalarKDL(value: AuthoringScalar): string {
   if (value === null) return "#null";
   if (typeof value === "string") return quoteKDL(value);
   if (typeof value === "boolean") return boolKDL(value);
+  if (isAuthoringFloat(value)) return formatFloatKDL(value.value);
   if (!Number.isFinite(value)) throw new TypeError("numeric value must be finite");
   return Object.is(value, -0) ? "-0.0" : String(value);
+}
+
+function authoringFloatValue(value: AuthoringScalar): number | undefined {
+  if (typeof value === "number") return value;
+  return isAuthoringFloat(value) ? value.value : undefined;
+}
+
+function isAuthoringFloat(value: unknown): value is AuthoringFloat {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (value as { readonly kind?: unknown }).kind === "float" &&
+    typeof (value as { readonly value?: unknown }).value === "number"
+  );
+}
+
+function formatFloatKDL(value: number): string {
+  if (!Number.isFinite(value)) throw new TypeError("float value must be finite");
+  const formatted = Object.is(value, -0) ? "-0" : String(value);
+  return /[.eE]/u.test(formatted) ? formatted : `${formatted}.0`;
 }
 
 function boolKDL(value: boolean): string {

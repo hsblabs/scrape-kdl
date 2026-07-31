@@ -62,14 +62,18 @@ const normalize = catalog.builtins.find(
 ```
 
 Each definition provides its input and output constraints, nullability effect,
-positional arity, named argument constraints, required arguments, and defaults.
-Go returns an independent catalog value. TypeScript returns a recursively frozen
-catalog. A writer accepts a call only when its name and arguments belong to the
-catalog selected by the document's `languageVersion`.
+positional arity, named argument constraints, required arguments, defaults, and
+the finite allowed values or numeric bounds needed to construct valid calls.
+For example, the catalog enumerates the target types accepted by `parse-int`
+and `parse-float` and exposes the `2..36` radix range. Go returns an independent
+catalog value. TypeScript returns a recursively frozen catalog. A writer accepts
+a call only when its name and arguments belong to the catalog selected by the
+document's `languageVersion`.
 
 Call scalars cover KDL strings, booleans, integers, finite floats, and null. Go
-uses `authoring.String`, `Bool`, `Int`, `Float`, and `Null`; TypeScript uses the
-corresponding native values, including `null`.
+uses `authoring.String`, `Bool`, `Int`, `Float`, and `Null`. TypeScript uses
+native values and `null`; use `float(1)` when an integral JavaScript number must
+remain the KDL float `1.0` rather than the integer `1`.
 
 The normative machine-readable catalog is
 [`docs/spec/builtins-v0.1.authoring.json`](spec/builtins-v0.1.authoring.json).

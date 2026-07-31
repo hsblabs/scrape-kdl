@@ -1,6 +1,10 @@
+---
+status: frozen v1 release-candidate contract
+---
+
 # Go and TypeScript public API contract
 
-Status: frozen v1 release-candidate contract. Before stable publication, a public-surface change is accepted only to resolve a release blocker and must include tests, compatibility notes, and a migration update. Semantic behavior remains governed by the dated language and IR specifications.
+Before stable publication, a public-surface change is accepted only to resolve a release blocker and must include tests, compatibility notes, and a migration update. Semantic behavior remains governed by the dated language and IR specifications.
 
 ## Shared capability surface
 
@@ -40,7 +44,8 @@ The Go `authoring` package and TypeScript authoring entry point expose one
 bounded semantic Authoring Document, a deterministic KDL writer, and a built-in
 catalog selected by exact language version. The catalog includes transform
 input and output constraints, nullability effects, positional arity, named
-arguments, and defaults. It has no moving `latest` alias.
+arguments, defaults, finite allowed values, and numeric bounds. It has no moving
+`latest` alias.
 
 Authoring output is KDL Source, not Validated IR. Callers must pass it through
 the ordinary compiler and handle structured diagnostics before execution. The
@@ -114,9 +119,10 @@ Unknown source fields are errors for struct destinations. Conversely, every expo
 - Go external transforms are named functions over `any` with runtime validation. TypeScript narrows the proposal to `JsonValue` at the type boundary and still performs runtime validation.
 - Go exposes `Result.Decode` because its extraction value is dynamically shaped; TypeScript callers apply their own static schema or type-narrowing tools to `ExtractionResult.value`.
 - Go returns independent built-in catalog values and uses typed scalar
-  constructors. TypeScript returns a recursively frozen catalog and uses its
-  native scalar union. Both writers validate calls against the selected catalog
-  and emit the same KDL Source.
+  constructors. TypeScript returns a recursively frozen catalog, uses native
+  scalar values, and provides `float(value)` when an integral number must retain
+  float syntax. Both writers validate calls against the selected catalog and
+  emit the same KDL Source.
 
 These are surface differences only. They do not permit different accepted KDL, diagnostics, IR, capability derivation, extraction values, warnings, timeout behavior, or security defaults.
 
