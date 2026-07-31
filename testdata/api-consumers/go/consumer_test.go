@@ -75,6 +75,10 @@ extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
 	if err != nil || result.Value["title"] != "Example" {
 		t.Fatalf("result = %#v, error = %v", result, err)
 	}
+	snapshot, err := program.ExtractSnapshot(ctx, "<h1>Snapshot</h1>", options)
+	if err != nil || snapshot.Value["title"] != "Snapshot" {
+		t.Fatalf("snapshot = %#v, error = %v", snapshot, err)
+	}
 	var decoded struct {
 		Title string `json:"title"`
 	}

@@ -21,7 +21,7 @@ KDL source
 - relative imports with aliases and cycle detection;
 - stable diagnostics and Validated IR JSON;
 - declared transforms, built-ins, match transforms, and external transforms;
-- HTTP fetch, sessions, charset decoding, response limits, and offline HTML fixtures;
+- HTTP fetch, sessions, charset decoding, response limits, and explicit offline snapshot execution;
 - portable CSS selector profile;
 - browser workflow and live-DOM extraction;
 - trusted-spec JavaScript evaluation with explicit opt-in;
@@ -160,7 +160,7 @@ The public API includes:
 - immutable `Program.Metadata` snapshots;
 - immutable `Program.Descriptor` acquisition settings;
 - `Program.IRJSON`;
-- `Program.Extract` and `Program.ExtractHTML`;
+- `Program.Extract`, HTTP-only `Program.ExtractHTML`, and acquisition-free `Program.ExtractSnapshot`;
 - strict `Result.Decode` conversion into typed Go structs and maps;
 - HTTP client and session injection;
 - external transform registry;
@@ -175,7 +175,7 @@ See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and
 The `@hsblabs/scrape-kdl` workspace is an ESM-only, publishable package scaffold for Node.js 26 and later.
 Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
 The package independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture without invoking Go.
-The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, HTTP/offline-HTML runtime, and browser-library-neutral runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
+The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, HTTP/offline-snapshot runtime, and browser-library-neutral runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
 `@hsblabs/scrape-kdl-playwright` is the official Playwright adapter. It owns isolated per-extraction browser contexts and an extraction-wide lease; no concrete browser library is a dependency of the core package.
 See `docs/spec/conformance-coverage.md` and `docs/html-compatibility.md` for the audited rule inventory and parser-compatibility gates.
 

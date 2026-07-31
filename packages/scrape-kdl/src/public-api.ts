@@ -3,7 +3,7 @@ import {
   supportedIRVersions as compilerSupportedIRVersions,
   supportedLanguageVersions as compilerSupportedLanguageVersions,
 } from "./compiler.js";
-import { executeProgram, prepareRuntime, type RuntimePlan } from "./runtime.js";
+import { executeProgram, executeSnapshot, prepareRuntime, type RuntimePlan } from "./runtime.js";
 import type { DiagnosticIR, ExtractorIR, JsonValue } from "./ir.js";
 
 export type { DiagnosticIR, ExtractorIR, JsonValue } from "./ir.js";
@@ -68,6 +68,7 @@ export interface Program {
   readonly descriptor: ProgramDescriptor;
   readonly ir: ExtractorIR;
   extract(inputs?: Readonly<Record<string, JsonValue>>, options?: ExecutionOptions): Promise<ExtractionResult>;
+  extractSnapshot(html: string, options?: ExecutionOptions): Promise<ExtractionResult>;
 }
 
 export async function compile(source: Source, options: CompileOptions = {}): Promise<CompileResult> {
@@ -233,6 +234,10 @@ class ProgramSnapshot implements Program {
     options: ExecutionOptions = {},
   ): Promise<ExtractionResult> {
     return executeProgram(this.ir, inputs, options, this.#plan);
+  }
+
+  async extractSnapshot(html: string, options: ExecutionOptions = {}): Promise<ExtractionResult> {
+    return executeSnapshot(this.ir, html, options, this.#plan);
   }
 }
 

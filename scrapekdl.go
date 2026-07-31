@@ -333,6 +333,16 @@ func (program *Program) ExtractHTML(ctx context.Context, html string, options Op
 	return convertResult(result), nil
 }
 
+// ExtractSnapshot executes the portable subset of an HTTP- or browser-mode
+// Program against already-decoded HTML without acquisition or browser activity.
+func (program *Program) ExtractSnapshot(ctx context.Context, html string, options Options) (*Result, error) {
+	result, err := program.prepared.ExecuteSnapshot(ctx, html, convertOptions(options))
+	if err != nil {
+		return nil, convertExecutionError(err)
+	}
+	return convertResult(result), nil
+}
+
 func convertOptions(options Options) executor.Options {
 	external := make(map[string]executor.ExternalTransform, len(options.ExternalTransforms))
 	for name, transform := range options.ExternalTransforms {

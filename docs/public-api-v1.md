@@ -16,7 +16,8 @@ Go and TypeScript expose the same observable capabilities:
 | inspect validated metadata | `Program.Metadata()` | `Program.metadata` |
 | inspect host-facing acquisition settings | `Program.Descriptor()` | `Program.descriptor` |
 | inspect Validated IR | `Program.IRJSON()` | `Program.ir` |
-| execute HTTP or saved HTML | `Program.Extract` and `Program.ExtractHTML` | `Program.extract`; the implementation may expose an equivalent saved-HTML test hook |
+| execute configured HTTP or browser acquisition | `Program.Extract` | `Program.extract` |
+| execute supplied HTML without acquisition | `Program.ExtractSnapshot` | `Program.extractSnapshot` |
 | register external transforms | `Options.ExternalTransforms` | `ExecutionOptions.externalTransforms` |
 | enforce URL policy | `Options.URLPolicy` | `ExecutionOptions.urlPolicy` |
 | block non-public targets | `PublicInternetURLPolicy`, `NewPublicInternetHTTPClient` | host-supplied policy; built-in equivalent is a follow-up |
@@ -62,6 +63,14 @@ Execution accepts inputs, session state, URL policy, time and size bounds, exter
 Browser elements are opaque adapter-owned handles. The public browser interfaces are declared in the root packages; no internal Go package type or Playwright/rod type appears in a public signature. Official adapters translate their library-specific handles behind this boundary. An adapter wrapping a mutable page may implement the optional extraction-wide lease. An adapter may also implement the optional bounded-query interface; the core falls back to `QueryAll`, so this addition does not break existing adapters.
 
 External transforms receive cancellation and JSON-compatible values. Implementations validate returned values immediately against declared output types. Registration does not grant browser, filesystem, or subprocess access.
+
+### Offline snapshot execution
+
+`Program.ExtractSnapshot` in Go and `Program.extractSnapshot` in TypeScript execute a whole compiled HTTP- or browser-mode program against an already-decoded HTML string without performing acquisition. They do not resolve URL inputs, invoke URL policy, use a session, send HTTP requests, acquire a browser lease, navigate, or call a browser adapter.
+
+Snapshot eligibility is a derived property of the complete immutable program and is prepared once with its other runtime state. It is not a new source mode and does not alter Validated IR. A program is eligible only when its output can be reproduced by the portable DOM runtime: it has no browser workflow and no JavaScript field value source, including inside nested collections. An ineligible call fails with `E_SNAPSHOT_UNSUPPORTED`; the runtime never skips those operations or returns output from a semantically different projection.
+
+Eligible programs retain ordinary selector, value-source, built-in and declared transform, external-transform, required/default, recovery, warning, partial-result, and cancellation behavior. Go's existing `Program.ExtractHTML` remains the narrower HTTP-mode entry point. Snapshot execution does not enable JavaScript and does not weaken browser security or URL-policy requirements for normal acquisition.
 
 ## Strict Go result decoding
 

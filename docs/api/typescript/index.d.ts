@@ -66,6 +66,7 @@ export interface Program {
   readonly descriptor: ProgramDescriptor;
   readonly ir: ExtractorIR;
   extract(inputs?: Readonly<Record<string, JsonValue>>, options?: ExecutionOptions): Promise<ExtractionResult>;
+  extractSnapshot(html: string, options?: ExecutionOptions): Promise<ExtractionResult>;
 }
 
 export declare function compile(source: Source, options?: CompileOptions): Promise<CompileResult>;

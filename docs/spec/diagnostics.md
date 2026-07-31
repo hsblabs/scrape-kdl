@@ -114,6 +114,7 @@ The following codes are emitted by an interpreter or browser adapter after stati
 - `E_HTML_DECODE`: response decoding failed.
 - `E_HTML_PARSE`: HTML parsing failed.
 - `E_BROWSER_MODE_REQUIRED`: browser execution was requested for a non-browser source.
+- `E_SNAPSHOT_UNSUPPORTED`: offline snapshot execution was requested for a program whose workflow or JavaScript output cannot be reproduced from supplied static HTML.
 - `E_BROWSER_ACQUIRE`: browser adapter lease acquisition failed.
 - `E_BROWSER_NAVIGATE`: navigation failed.
 - `E_BROWSER_WORKFLOW`: a workflow operation failed.

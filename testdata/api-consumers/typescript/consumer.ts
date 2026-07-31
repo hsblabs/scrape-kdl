@@ -29,11 +29,21 @@ const browser: BrowserAdapter = {
   async press() {},
   async scroll() {},
   async waitForNetworkIdle() {},
-  async evaluate(): Promise<JsonValue> { return null; },
-  async queryAll(): Promise<readonly BrowserElement[]> { return []; },
-  async text() { return ""; },
-  async html() { return ""; },
-  async attribute() { return undefined; },
+  async evaluate(): Promise<JsonValue> {
+    return null;
+  },
+  async queryAll(): Promise<readonly BrowserElement[]> {
+    return [];
+  },
+  async text() {
+    return "";
+  },
+  async html() {
+    return "";
+  },
+  async attribute() {
+    return undefined;
+  },
 };
 
 const source = {
@@ -50,7 +60,9 @@ if (compiled.program !== undefined) {
   const options: ExecutionOptions = {
     browser,
     externalTransforms: {
-      async decorate(_context, input) { return input; },
+      async decorate(_context, input) {
+        return input;
+      },
     },
     urlPolicy(_context, url) {
       if (url.protocol !== "https:") throw new Error("HTTPS required");
@@ -62,6 +74,7 @@ if (compiled.program !== undefined) {
   void compiled.program.descriptor.source.sessionPolicy;
   void compiled.program.ir;
   void compiled.program.extract({}, options);
+  void compiled.program.extractSnapshot("<h1>Snapshot</h1>", options);
 }
 
 try {
