@@ -25,11 +25,21 @@ test("public in-memory compilation returns immutable metadata and IR", async () 
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.program.metadata.name, "basic-http");
   assert.deepEqual(result.program.metadata.capabilities, ["http.fetch"]);
+  assert.deepEqual(result.program.descriptor, {
+    source: {
+      fetchMode: "http",
+      urlTemplate: "https://example.invalid/{id}",
+      sessionPolicy: "none",
+    },
+  });
   assert.equal(result.program.ir.irVersion, "2026-07-15");
   assert.ok(Object.isFrozen(result.program.metadata));
+  assert.ok(Object.isFrozen(result.program.descriptor));
+  assert.ok(Object.isFrozen(result.program.descriptor.source));
   assert.ok(Object.isFrozen(result.program.metadata.files));
   assert.ok(Object.isFrozen(result.program.ir));
   assert.throws(() => { result.program.metadata.capabilities.push("mutated"); }, TypeError);
+  assert.throws(() => { result.program.descriptor.source.urlTemplate = "mutated"; }, TypeError);
   assert.deepEqual(await result.program.extract({ id: "fixture" }, {
     fetch: async () => new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }),
   }), expected);

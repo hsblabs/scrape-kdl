@@ -15,6 +15,7 @@ There was no supported public release before v1. This guide is for applications 
 - Pass `context.Context` as the first argument to `Compile`, `Validate`, `CompileFile`, and `ValidateFile`.
 - Handle the operational `error` returned by all compile and validate entry points separately from document `Diagnostics`. Use `errors.Is` or `errors.As` for cancellation, deadlines, filesystem failures, and injected-loader causes.
 - Use `CompileFS` or `ValidateFS` for specifications stored in `embed.FS` or another application-owned `fs.FS`; import names remain slash-separated `io/fs` paths.
+- Use `Program.Descriptor()` when a Go host only needs validated fetch mode, raw URL template, and session policy; avoid decoding `IRJSON` for those acquisition settings.
 - Treat `Program.Version()` as a string rather than an integer.
 - Use the exported supported-language and supported-IR registries instead of comparing version dates.
 - Keep browser libraries in adapter modules; the core Go module does not depend on go-rod.
@@ -26,6 +27,7 @@ There was no supported public release before v1. This guide is for applications 
 - Install `@hsblabs/scrape-kdl-playwright` separately when Playwright browser execution is required.
 - Treat the exported IR structures as readonly wire-contract declarations.
 - Catch `SourceLoadError` for injected-loader failures and inspect its `cause`; aborts reject with the abort reason rather than becoming diagnostics.
+- Use `program.descriptor` for the same immutable acquisition settings in TypeScript; use `program.ir` only when the complete Validated IR is required.
 
 ## CLI automation
 

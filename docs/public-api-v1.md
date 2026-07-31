@@ -14,6 +14,7 @@ Go and TypeScript expose the same observable capabilities:
 | compile or validate an application filesystem | `CompileFS` and `ValidateFS` over `fs.FS` | Node.js entry-point or injected loader |
 | resolve imports without filesystem access | `CompileOptions.Loader` | `CompileOptions.loader` |
 | inspect validated metadata | `Program.Metadata()` | `Program.metadata` |
+| inspect host-facing acquisition settings | `Program.Descriptor()` | `Program.descriptor` |
 | inspect Validated IR | `Program.IRJSON()` | `Program.ir` |
 | execute HTTP or saved HTML | `Program.Extract` and `Program.ExtractHTML` | `Program.extract`; the implementation may expose an equivalent saved-HTML test hook |
 | register external transforms | `Options.ExternalTransforms` | `ExecutionOptions.externalTransforms` |
@@ -41,6 +42,12 @@ Cancellation, filesystem failures, and injected-loader failures are operational 
 The file conveniences are separate from injected loading. Go uses the host filesystem in `CompileFile` and `ValidateFile`. `CompileFS` and `ValidateFS` accept an application-provided `fs.FS`, require a non-directory `fs.ValidPath` root, resolve every nested import within that same filesystem, and reject lexical parent escapes before calling the filesystem. They preserve import-cycle, duplicate-import, and source-metadata behavior from ordinary compilation. Reads are checked for cancellation before and after each `fs.ReadFile`; the `fs.FS` interface cannot interrupt a read already in progress.
 
 `CompileFS` provides lexical containment, not stronger capabilities than its supplied filesystem. In particular, `os.DirFS` can follow a symlink outside its directory. Use `os.Root.FS` when symlink escape prevention is a security requirement. TypeScript keeps filesystem functions in the Node.js entry point so the core package does not acquire ambient filesystem authority.
+
+## Program descriptor
+
+`Program.Descriptor()` in Go and `Program.descriptor` in TypeScript expose the validated fetch mode, raw URL template, and explicit-session policy without requiring a host to decode the complete Validated IR. Go returns a value copy. TypeScript returns a recursively frozen object. Mutating either returned value cannot change the compiled program.
+
+The descriptor is intentionally limited to acquisition settings. Runtime inputs, workflow steps, output shapes, transforms, spans, and complete source metadata remain available through the Validated IR or `Program.Metadata`. Use the descriptor for a host-owned acquisition decision; use `IRJSON` or `program.ir` for language-neutral interchange, inspection, or tooling that needs the complete program.
 
 ## Validated program and diagnostics
 

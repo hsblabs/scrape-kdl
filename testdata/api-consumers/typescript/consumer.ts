@@ -57,6 +57,9 @@ if (compiled.program !== undefined) {
     },
   };
   void compiled.program.metadata.capabilities;
+  void compiled.program.descriptor.source.fetchMode;
+  void compiled.program.descriptor.source.urlTemplate;
+  void compiled.program.descriptor.source.sessionPolicy;
   void compiled.program.ir;
   void compiled.program.extract({}, options);
 }

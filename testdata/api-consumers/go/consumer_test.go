@@ -41,6 +41,10 @@ extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
 	if metadata.Name != "consumer" || metadata.LanguageVersion != "2026-07-15" || len(metadata.Files) != 2 {
 		t.Fatalf("metadata = %#v", metadata)
 	}
+	descriptor := program.Descriptor()
+	if descriptor.Source.FetchMode != scrapekdl.FetchModeHTTP || descriptor.Source.URLTemplate != "https://example.invalid/" || descriptor.Source.SessionPolicy != scrapekdl.SessionPolicyNone {
+		t.Fatalf("descriptor = %#v", descriptor)
+	}
 	embeddedProgram, embeddedDiagnostics, err := scrapekdl.CompileFS(ctx, fstest.MapFS{
 		"spec/main.kdl":   {Data: source.Data},
 		"spec/common.kdl": {Data: files["spec/common.kdl"]},

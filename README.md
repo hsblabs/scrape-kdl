@@ -151,6 +151,7 @@ The public API includes:
 - injected source loading for deterministic import resolution without filesystem access;
 - `fs.FS` compilation for embedded and application-owned specification trees;
 - immutable `Program.Metadata` snapshots;
+- immutable `Program.Descriptor` acquisition settings;
 - `Program.IRJSON`;
 - `Program.Extract` and `Program.ExtractHTML`;
 - HTTP client and session injection;
