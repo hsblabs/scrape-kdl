@@ -5,7 +5,9 @@ All notable implementation changes are recorded here. Formal releases will use S
 ## 1.0.0 — Unreleased
 
 - Added bounded Go and TypeScript authoring APIs with an explicit-version
-  built-in catalog and deterministic KDL writing. The shared tracer output is
+  built-in catalog and deterministic KDL writing. Catalog arguments expose
+  finite allowed values and numeric bounds, and TypeScript `float(value)`
+  preserves integral float syntax such as `1.0`. The shared tracer output is
   compiled by both implementations, while compiler syntax and Validated IR
   internals remain private.
 - Added a compile-checked transform cookbook for localized numbers, optional IDs, relative links, blank cells, nullable pipelines, and date/time strings without changing coercion or type rules.
