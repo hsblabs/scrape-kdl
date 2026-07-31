@@ -8,6 +8,10 @@ There was no supported public release before v1. This guide is for applications 
 - Add `language-version="2026-07-15"` to every extractor and transform module.
 - Regenerate Validated IR. The initial supported IR identifier is `2026-07-15`; working-draft `0.1` IR is rejected before acquisition.
 - Do not rely on unspecified KDL 2 syntax. The supported subset is the one documented in `docs/spec/`.
+- Replace consumer-owned transform name lists and KDL escaping with the explicit
+  versioned authoring catalog and deterministic writer when the bounded
+  Authoring Document covers the use case. Compile writer output normally; it is
+  KDL Source, not Validated IR.
 
 ## Go API
 
@@ -21,6 +25,9 @@ There was no supported public release before v1. This guide is for applications 
 - Treat `Program.Version()` as a string rather than an integer.
 - Use the exported supported-language and supported-IR registries instead of comparing version dates.
 - Keep browser libraries in adapter modules; the core Go module does not depend on go-rod.
+- Import `github.com/hsblabs/scrape-kdl/authoring` for bounded extractor
+  construction. Select `BuiltinCatalog("2026-07-15")`; there is no implicit
+  latest catalog.
 
 ## TypeScript API
 
@@ -31,6 +38,8 @@ There was no supported public release before v1. This guide is for applications 
 - Catch `SourceLoadError` for injected-loader failures and inspect its `cause`; aborts reject with the abort reason rather than becoming diagnostics.
 - Use `program.descriptor` for the same immutable acquisition settings in TypeScript; use `program.ir` only when the complete Validated IR is required.
 - Use `program.extractSnapshot` for the acquisition-free counterpart of Go `Program.ExtractSnapshot`.
+- Import `@hsblabs/scrape-kdl/authoring` for the matching bounded authoring model,
+  frozen versioned catalog, built-in call helper, and KDL writer.
 
 ## CLI automation
 

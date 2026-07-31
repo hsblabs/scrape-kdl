@@ -8,6 +8,7 @@ import {
   type SourceLoader,
 } from "@hsblabs/scrape-kdl";
 import { compileFile } from "@hsblabs/scrape-kdl/node";
+import { builtinCatalog, callBuiltin, write, type AuthoringDocument } from "@hsblabs/scrape-kdl/authoring";
 
 const files = new Map<string, string>([
   ["spec/common.kdl", `module "common" version="2026-07-15" language-version="2026-07-15" {}`],
@@ -90,3 +91,30 @@ try {
 }
 
 void compileFile("extractor.kdl");
+
+const catalog = builtinCatalog("2026-07-15");
+const normalize = catalog.builtins.find(({ name }) => name === "normalize-whitespace");
+if (normalize === undefined) throw new Error("authoring catalog is missing normalize-whitespace");
+const authoredDocument: AuthoringDocument = {
+  languageVersion: "2026-07-15",
+  extractor: {
+    name: "authored-consumer",
+    version: "2026-07-15",
+    source: { fetchMode: "http", urlTemplate: "https://example.invalid/", sessionPolicy: "none" },
+    inputs: [],
+    members: [
+      {
+        kind: "field",
+        name: "title",
+        type: "string",
+        required: true,
+        selector: "h1",
+        match: "one",
+        value: { kind: "text" },
+        transforms: [callBuiltin(normalize)],
+        onError: "fail",
+      },
+    ],
+  },
+};
+void compile({ path: "authored-consumer.kdl", data: write(authoredDocument) });

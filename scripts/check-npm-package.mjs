@@ -28,6 +28,8 @@ export async function checkNpmPackages({ releaseVersion, outputDirectory, publis
       "LICENSE",
       "NOTICE",
       "README.md",
+      "dist/authoring.js",
+      "dist/authoring.d.ts",
       "dist/index.js",
       "dist/index.d.ts",
       "dist/node.js",
@@ -322,6 +324,7 @@ async function collect(directory, output) {
 const runtimeConsumerSource = `
 import assert from "node:assert/strict";
 import { ExecutionError, compile, supportedIRVersions, supportedLanguageVersions, validate } from "@hsblabs/scrape-kdl";
+import { builtinCatalog, callBuiltin, supportedBuiltinCatalogVersions, write } from "@hsblabs/scrape-kdl/authoring";
 import { compileFile, validateFile } from "@hsblabs/scrape-kdl/node";
 import { PlaywrightAdapter } from "@hsblabs/scrape-kdl-playwright";
 
@@ -331,6 +334,7 @@ assert.equal(typeof compile, "function");
 assert.equal(typeof validate, "function");
 assert.deepEqual(supportedLanguageVersions(), ["2026-07-15"]);
 assert.deepEqual(supportedIRVersions(), ["2026-07-15"]);
+assert.deepEqual(supportedBuiltinCatalogVersions(), ["2026-07-15"]);
 const source = await import("node:fs/promises").then(({ readFile }) => readFile(new URL("./extractor.kdl", import.meta.url)));
 const memory = await compile({ path: "extractor.kdl", data: source });
 assert.equal(memory.program.metadata.name, "basic-http");
@@ -356,10 +360,27 @@ const imported = await compile({
 assert.equal(imported.program.metadata.name, "basic-http");
 assert.equal((await compileFile(new URL("./extractor.kdl", import.meta.url).pathname)).program.metadata.name, "basic-http");
 assert.deepEqual(await validateFile(new URL("./extractor.kdl", import.meta.url).pathname), []);
+const authoringCatalog = builtinCatalog("2026-07-15");
+const normalize = authoringCatalog.builtins.find(({ name }) => name === "normalize-whitespace");
+assert.ok(normalize);
+const authored = write({
+  languageVersion: "2026-07-15",
+  extractor: {
+    name: "package-authored", version: "2026-07-15",
+    source: { fetchMode: "http", urlTemplate: "https://example.invalid/", sessionPolicy: "none" },
+    inputs: [],
+    members: [{
+      kind: "field", name: "title", type: "string", required: true, selector: "h1", match: "one",
+      value: { kind: "text" }, transforms: [callBuiltin(normalize)], onError: "fail",
+    }],
+  },
+});
+assert.equal((await compile({ path: "package-authored.kdl", data: authored })).program.metadata.name, "package-authored");
 `;
 
 const typeConsumerSource = `
 import { ExecutionError, compile, supportedIRVersions, supportedLanguageVersions, validate } from "@hsblabs/scrape-kdl";
+import { builtinCatalog, callBuiltin, supportedBuiltinCatalogVersions, write } from "@hsblabs/scrape-kdl/authoring";
 import { compileFile, validateFile } from "@hsblabs/scrape-kdl/node";
 import { PlaywrightAdapter } from "@hsblabs/scrape-kdl-playwright";
 import type {
@@ -368,6 +389,11 @@ import type {
   ExternalTransformContext, ExtractionResult, ExtractorIR, JsonValue, Program, ProgramMetadata, Session,
   SessionCookie, Source, SourceFile, SourceLoadContext, SourceLoader, URLPolicyContext, Warning,
 } from "@hsblabs/scrape-kdl";
+import type {
+  ArgumentConstraint, AuthoringCollection, AuthoringDocument, AuthoringExtractor, AuthoringField, AuthoringInput,
+  AuthoringMember, AuthoringScalar, AuthoringSource, AuthoringValueSource, BuiltinCall, BuiltinCatalog,
+  BuiltinDefinition, InputConstraint, NamedArgument, NullabilityEffect, OutputConstraint, PositionalArguments,
+} from "@hsblabs/scrape-kdl/authoring";
 
 type PublicTypes = [
   BrowserAdapter, BrowserAdapterLease, BrowserAdapterQueryLimit, BrowserElement, BrowserEvaluateOptions, BrowserNavigateOptions,
@@ -377,11 +403,22 @@ type PublicTypes = [
 ];
 declare const publicTypes: PublicTypes;
 void publicTypes;
+type AuthoringTypes = [
+  ArgumentConstraint, AuthoringCollection, AuthoringDocument, AuthoringExtractor, AuthoringField, AuthoringInput,
+  AuthoringMember, AuthoringScalar, AuthoringSource, AuthoringValueSource, BuiltinCall, BuiltinCatalog,
+  BuiltinDefinition, InputConstraint, NamedArgument, NullabilityEffect, OutputConstraint, PositionalArguments,
+];
+declare const authoringTypes: AuthoringTypes;
+void authoringTypes;
 void ExecutionError;
 void compile;
 void validate;
 void supportedLanguageVersions;
 void supportedIRVersions;
+void builtinCatalog;
+void callBuiltin;
+void supportedBuiltinCatalogVersions;
+void write;
 void compileFile;
 void validateFile;
 void PlaywrightAdapter;

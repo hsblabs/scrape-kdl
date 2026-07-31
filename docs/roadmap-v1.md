@@ -30,10 +30,14 @@ The following surfaces are stable contracts at v1:
 - the Go and TypeScript public APIs;
 - HTTP and browser execution semantics;
 - the portable selector profile and built-in transform registry;
+- the bounded semantic authoring model, exact-version built-in catalog, and
+  deterministic KDL writer;
 - CLI commands, exit status classes, standard streams, and machine-readable output;
 - supported Linux and macOS distributions.
 
-Type generation, a language server, an inspector UI, and a browser authoring extension are not v1 release requirements.
+Type generation, a language server, an inspector UI, and a complete browser
+authoring extension are not v1 release requirements. The bounded authoring API
+does not expose a syntax tree, lossless formatter, or mutable Validated IR.
 The stable core contract is the browser-library-neutral adapter interface.
 The v1 distribution MUST also include at least one official adapter for each language so the browser contract can be tested and used without a downstream adapter project.
 The official adapters are go-rod for Go and Playwright for TypeScript.
@@ -44,6 +48,8 @@ Chromium is the supported browser target at v1; Playwright Firefox and WebKit co
 The TypeScript implementation is distributed as ESM-only npm packages in an npm-workspaces monorepo:
 
 - `@hsblabs/scrape-kdl` contains the compiler, diagnostics, IR, HTTP runtime, and browser-library-neutral interfaces;
+- `@hsblabs/scrape-kdl/authoring` contains the bounded authoring model, versioned
+  built-in catalog, and deterministic KDL writer;
 - `@hsblabs/scrape-kdl-playwright` contains the official Playwright adapter.
 
 The complete TypeScript pipeline targets Node.js 26 or later.

@@ -1,0 +1,24 @@
+extractor "authoring-tracer" version="2026-08-01" language-version="2026-07-15" {
+  source "html" {
+    fetch mode="http" url="https://example.invalid/items/{item_id}"
+    session policy="optional"
+  }
+  input "item_id" type="string" required=#true
+  field "title" type="string" required=#true {
+    select "h1" match="one"
+    value "text"
+    apply "normalize-whitespace"
+    apply "prepend" value="prefix \"quoted\"\n"
+  }
+  collection "items" required=#false min-items=1 on-row-error="skip" {
+    select "ul > li"
+    field "label" type="string?" required=#false {
+      select ".label" match="first"
+      value "attr" name="data-label"
+      apply "normalize-whitespace"
+      apply "empty-to-null"
+      apply "assert-enum" "known" #null
+      on-error "warn"
+    }
+  }
+}

@@ -5,6 +5,18 @@ This document is normative for Scraping KDL language version `2026-07-15`.
 For non-normative, compile-checked composition examples, see the
 [transform cookbook](../cookbook.md).
 
+The normative machine-readable contracts are:
+
+- [`builtins-v0.1.contract.json`](builtins-v0.1.contract.json) for compiler
+  arity and named-argument validation;
+- [`builtins-v0.1.authoring.json`](builtins-v0.1.authoring.json) for the public
+  versioned catalog, including input and output constraints, nullability,
+  defaults, and the compiler call contract.
+
+Repository checks require the Go and TypeScript compiler registries and public
+authoring catalogs to match these files. Catalog consumers must select the exact
+language version and must not infer a `latest` version.
+
 ## Common rules
 
 - Built-in names are reserved and cannot be shadowed.

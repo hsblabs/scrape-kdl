@@ -18,6 +18,9 @@ Before IR emission:
 - source spans are retained.
 
 A lossless syntax tree may exist internally for formatting and editor support, but it is not this IR.
+The public Authoring Document is also separate: it is a bounded semantic draft
+that writes new KDL Source, which must pass through the compiler before this IR
+can exist. See [`docs/authoring.md`](../authoring.md).
 
 ## Representations
 

@@ -48,6 +48,9 @@ See [`docs/patterns.md`](docs/patterns.md) for caller-owned pagination and
 list-to-detail extraction with CLI, Go, and TypeScript loops.
 See [`docs/cookbook.md`](docs/cookbook.md) for strict transform pipelines that
 handle localized numbers, optional IDs, links, blank cells, and date strings.
+See [`docs/authoring.md`](docs/authoring.md) for the bounded Go and TypeScript
+Authoring Document, explicit-version built-in catalog, and deterministic KDL
+writer.
 
 ## Public release candidate install
 
@@ -176,11 +179,13 @@ The public API includes:
 - browser adapter injection;
 - adapter-facing `NormalizeBrowserResult` validation and normalization;
 - explicit `SupportedLanguageVersions` and `SupportedIRVersions` registries.
+- a separate `authoring` package for bounded semantic construction, explicit
+  built-in catalog selection, and deterministic KDL writing.
 
 See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and intentional idiomatic differences.
 
 The `@hsblabs/scrape-kdl` workspace is an ESM-only, publishable package scaffold for Node.js 26 and later.
-Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
+Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/authoring` exposes bounded semantic authoring and KDL writing; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
 The package independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture without invoking Go.
 The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, HTTP/offline-snapshot runtime, and browser-library-neutral runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
 `@hsblabs/scrape-kdl-playwright` is the official Playwright adapter. It owns isolated per-extraction browser contexts and an extraction-wide lease; no concrete browser library is a dependency of the core package.

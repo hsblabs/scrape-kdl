@@ -8,6 +8,7 @@ import (
 	"testing/fstest"
 
 	scrapekdl "github.com/hsblabs/scrape-kdl"
+	"github.com/hsblabs/scrape-kdl/authoring"
 )
 
 func TestIndependentGoConsumer(t *testing.T) {
@@ -84,5 +85,32 @@ extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
 	}
 	if err := result.Decode(&decoded); err != nil || decoded.Title != "Example" {
 		t.Fatalf("decoded = %#v, error = %v", decoded, err)
+	}
+
+	catalog, err := authoring.BuiltinCatalog("2026-07-15")
+	if err != nil {
+		t.Fatal(err)
+	}
+	normalize, ok := catalog.Lookup("normalize-whitespace")
+	if !ok {
+		t.Fatal("authoring catalog is missing normalize-whitespace")
+	}
+	authored, err := authoring.Write(authoring.Document{
+		LanguageVersion: "2026-07-15",
+		Extractor: authoring.Extractor{
+			Name: "authored-consumer", Version: "2026-07-15",
+			Source: authoring.Source{FetchMode: scrapekdl.FetchModeHTTP, URLTemplate: "https://example.invalid/", SessionPolicy: scrapekdl.SessionPolicyNone},
+			Members: []authoring.Member{authoring.Field{
+				Name: "title", Type: "string", Required: true, Selector: "h1", Match: authoring.MatchOne,
+				Value: authoring.TextValue{}, Transforms: []authoring.BuiltinCall{normalize.Call(nil, nil)}, OnError: authoring.ErrorFail,
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	authoredProgram, authoredDiagnostics, err := scrapekdl.Compile(ctx, scrapekdl.Source{Path: "authored-consumer.kdl", Data: authored}, scrapekdl.CompileOptions{})
+	if err != nil || authoredDiagnostics.HasErrors() || authoredProgram == nil {
+		t.Fatalf("authored program = %#v, diagnostics = %#v, error = %v", authoredProgram, authoredDiagnostics, err)
 	}
 }

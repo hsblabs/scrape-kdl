@@ -27,10 +27,31 @@ Go and TypeScript expose the same observable capabilities:
 | bound first/one browser queries | optional `BrowserAdapterQueryLimit` | optional `BrowserAdapterQueryLimit` |
 | inspect extraction results | `Result`, `Result.Decode`, `Warning`, `ExecutionError` | `ExtractionResult`, `Warning`, `ExecutionError` |
 | discover compatibility | `SupportedLanguageVersions`, `SupportedIRVersions` | `supportedLanguageVersions`, `supportedIRVersions` |
+| discover built-in authoring metadata | `authoring.BuiltinCatalog(version)` | `builtinCatalog(version)` from `@hsblabs/scrape-kdl/authoring` |
+| write a bounded authoring document | `authoring.Write` | `write` from `@hsblabs/scrape-kdl/authoring` |
 
-The contract snapshot remains in `docs/api/typescript/`. The publishable implementation boundary is checked directly through `@hsblabs/scrape-kdl` and `@hsblabs/scrape-kdl/node`; declaration-to-schema and clean-consumer gates keep the package aligned with the approved Issue #19 surface. The root package implements the complete compiler plus HTTP, offline-HTML, and browser-library-neutral runtimes while preserving that approved surface.
+The contract snapshot remains in `docs/api/typescript/`. The publishable implementation boundary is checked directly through `@hsblabs/scrape-kdl`, `@hsblabs/scrape-kdl/authoring`, and `@hsblabs/scrape-kdl/node`; declaration-to-schema and clean-consumer gates keep the package aligned with the approved surface. The root package implements the complete compiler plus HTTP, offline-HTML, and browser-library-neutral runtimes while preserving that approved surface.
 
-The core declarations map to `@hsblabs/scrape-kdl`; Node.js file conveniences map to `@hsblabs/scrape-kdl/node`. The separate `@hsblabs/scrape-kdl-playwright` package supplies an official `BrowserAdapter` without adding Playwright to the core package's runtime dependencies.
+The core declarations map to `@hsblabs/scrape-kdl`; the bounded semantic authoring model maps to `@hsblabs/scrape-kdl/authoring`; Node.js file conveniences map to `@hsblabs/scrape-kdl/node`. The separate `@hsblabs/scrape-kdl-playwright` package supplies an official `BrowserAdapter` without adding Playwright to the core package's runtime dependencies.
+
+## Authoring boundary
+
+The Go `authoring` package and TypeScript authoring entry point expose one
+bounded semantic Authoring Document, a deterministic KDL writer, and a built-in
+catalog selected by exact language version. The catalog includes transform
+input and output constraints, nullability effects, positional arity, named
+arguments, and defaults. It has no moving `latest` alias.
+
+Authoring output is KDL Source, not Validated IR. Callers must pass it through
+the ordinary compiler and handle structured diagnostics before execution. The
+authoring model does not expose compiler syntax nodes or internal IR and does
+not model imports, modules, declared transforms, browser workflow, JavaScript,
+defaults, comments, or arbitrary KDL nodes in its first tracer.
+
+Deterministic KDL writing is also distinct from lossless source formatting. The
+writer creates new canonical source and owns string escaping; it does not retain
+comments or the lexical choices of an existing document. See
+[`docs/authoring.md`](authoring.md) for the supported model and examples.
 
 ## Source loading
 
@@ -92,9 +113,13 @@ Unknown source fields are errors for struct destinations. Conversely, every expo
 - Go browser methods accept context as the first argument. TypeScript carries abort signals in operation options.
 - Go external transforms are named functions over `any` with runtime validation. TypeScript narrows the proposal to `JsonValue` at the type boundary and still performs runtime validation.
 - Go exposes `Result.Decode` because its extraction value is dynamically shaped; TypeScript callers apply their own static schema or type-narrowing tools to `ExtractionResult.value`.
+- Go returns independent built-in catalog values and uses typed scalar
+  constructors. TypeScript returns a recursively frozen catalog and uses its
+  native scalar union. Both writers validate calls against the selected catalog
+  and emit the same KDL Source.
 
 These are surface differences only. They do not permit different accepted KDL, diagnostics, IR, capability derivation, extraction values, warnings, timeout behavior, or security defaults.
 
 ## Compatibility process
 
-The v1 candidate is frozen. Before stable publication, a release-blocking public API correction must update this document, both independent consumer checks, `CHANGELOG.md`, and `docs/migrating-to-v1.md`. After v1.0.0, compatible additions and breaking changes follow Semantic Versioning independently for the Go modules and npm packages.
+The v1 candidate is frozen. Before stable publication, a release-blocking public API correction must update this document, the relevant authoring or core declaration snapshot, both independent consumer checks, `CHANGELOG.md`, and `docs/migrating-to-v1.md`. After v1.0.0, compatible additions and breaking changes follow Semantic Versioning independently for the Go modules and npm packages.

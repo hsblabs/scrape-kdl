@@ -4,6 +4,10 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## 1.0.0 — Unreleased
 
+- Added bounded Go and TypeScript authoring APIs with an explicit-version
+  built-in catalog and deterministic KDL writing. The shared tracer output is
+  compiled by both implementations, while compiler syntax and Validated IR
+  internals remain private.
 - Added a compile-checked transform cookbook for localized numbers, optional IDs, relative links, blank cells, nullable pipelines, and date/time strings without changing coercion or type rules.
 - Documented caller-owned pagination and list-to-detail extraction patterns with compile-checked KDL plus bounded CLI, Go, and TypeScript loops.
 - Added Go `Program.ExtractSnapshot` and TypeScript `program.extractSnapshot` for acquisition-free portable extraction from supplied HTML, including browser-mode programs, with shared fixtures and explicit `E_SNAPSHOT_UNSUPPORTED` rejection for workflows and JavaScript output.

@@ -8,6 +8,12 @@ coercion or choose what a missing match means.
 The recipes below make that policy explicit. Every `kdl` block is compiled in
 both reference implementations by `make examples`.
 
+Applications that render transform choices should use the versioned
+[built-in authoring catalog](spec/builtins-v0.1.authoring.json) instead of
+copying names, arguments, defaults, or nullable behavior from these prose
+recipes. The [authoring API](authoring.md) shows how to select and call catalog
+entries.
+
 ## Localized number to integer or float
 
 Remove only separators and units whose meaning is known, then isolate the

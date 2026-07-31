@@ -6,6 +6,8 @@ Status: `v1.0.0-rc.1` draft. No public v1 artifact has been published.
 
 - Dated `2026-07-15` language and Validated IR contracts with deterministic diagnostics and canonical JSON.
 - Go and TypeScript compiler, HTTP runtime, browser runtime, and clean public API boundaries.
+- Matching bounded authoring APIs with a versioned built-in catalog and
+  deterministic KDL writing.
 - Official go-rod and Playwright adapters with extraction-wide browser isolation.
 - Go-only automation-friendly CLI with stable streams, JSON envelopes, exit statuses, signal handling, and session-file secret input.
 - Cross-language fixtures, examples, conformance, HTML differential, race, fuzz, performance, packaging, and browser release gates.
@@ -30,7 +32,9 @@ This is the first supported public contract. Applications using an untagged deve
 
 - Scraping KDL documents use the documented project subset rather than every generic KDL 2 representation.
 - Browser JavaScript and external transforms execute trusted application code and are not a sandbox for untrusted specifications.
-- Type generation, a language server, an inspector UI, and a browser authoring extension are outside the v1 scope.
+- Type generation, a language server, an inspector UI, and a complete browser
+  authoring extension are outside the v1 scope. The included authoring API is a
+  bounded semantic model, not an editor framework or lossless formatter.
 
 ## Publication checklist
 
