@@ -42,6 +42,11 @@ The project does not support anti-bot or access-control circumvention.
 See [`docs/responsible-use.md`](docs/responsible-use.md) before targeting a live
 service.
 
+## Authoring patterns
+
+See [`docs/patterns.md`](docs/patterns.md) for caller-owned pagination and
+list-to-detail extraction with CLI, Go, and TypeScript loops.
+
 ## Public release candidate install
 
 After `v1.0.0-rc.1` is published and its post-publication checks pass:

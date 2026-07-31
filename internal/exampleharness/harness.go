@@ -45,8 +45,13 @@ type Execution struct {
 }
 
 type Report struct {
-	Examples int
-	Updated  []string
+	Examples              int
+	DocumentationSnippets int
+	Updated               []string
+}
+
+var documentationExamplePaths = []string{
+	"docs/patterns.md",
 }
 
 func Check(ctx context.Context, root string, update bool) (Report, error) {
@@ -77,7 +82,85 @@ func Check(ctx context.Context, root string, update bool) (Report, error) {
 	if report.Examples == 0 {
 		return report, errors.New("no examples found")
 	}
+	for _, relativePath := range documentationExamplePaths {
+		count, err := checkDocumentationExamples(ctx, root, relativePath)
+		if err != nil {
+			return report, err
+		}
+		report.DocumentationSnippets += count
+	}
 	return report, nil
+}
+
+type documentationSnippet struct {
+	line   int
+	source string
+}
+
+func checkDocumentationExamples(ctx context.Context, root, relativePath string) (int, error) {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relativePath)))
+	if err != nil {
+		return 0, fmt.Errorf("read documentation examples %s: %w", relativePath, err)
+	}
+	snippets, err := extractKDLFences(string(data))
+	if err != nil {
+		return 0, fmt.Errorf("documentation examples %s: %w", relativePath, err)
+	}
+	if len(snippets) == 0 {
+		return 0, fmt.Errorf("documentation examples %s: no KDL fences found", relativePath)
+	}
+	for _, snippet := range snippets {
+		path := fmt.Sprintf("%s#L%d", relativePath, snippet.line)
+		program, diagnostics, err := scrapekdl.Compile(ctx, scrapekdl.Source{Path: path, Data: []byte(snippet.source)}, scrapekdl.CompileOptions{})
+		if err != nil {
+			return 0, fmt.Errorf("compile documentation example %s: %w", path, err)
+		}
+		if diagnostics.HasErrors() || program == nil {
+			encoded, _ := json.Marshal(diagnostics)
+			return 0, fmt.Errorf("compile documentation example %s: %s", path, encoded)
+		}
+	}
+	return len(snippets), nil
+}
+
+func extractKDLFences(markdown string) ([]documentationSnippet, error) {
+	lines := strings.Split(markdown, "\n")
+	var snippets []documentationSnippet
+	inFence := false
+	kdlFence := false
+	startLine := 0
+	var source strings.Builder
+	for index, line := range lines {
+		marker := strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+		if !inFence {
+			if !strings.HasPrefix(marker, "```") {
+				continue
+			}
+			inFence = true
+			kdlFence = marker == "```kdl"
+			if kdlFence {
+				startLine = index + 2
+				source.Reset()
+			}
+			continue
+		}
+		if marker == "```" {
+			if kdlFence {
+				snippets = append(snippets, documentationSnippet{line: startLine, source: source.String()})
+			}
+			inFence = false
+			kdlFence = false
+			continue
+		}
+		if kdlFence {
+			source.WriteString(line)
+			source.WriteByte('\n')
+		}
+	}
+	if inFence {
+		return nil, errors.New("unclosed fenced code block")
+	}
+	return snippets, nil
 }
 
 func checkExample(ctx context.Context, directory, directoryName string, update bool) ([]string, error) {

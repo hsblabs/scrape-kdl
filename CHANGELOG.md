@@ -4,6 +4,7 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## 1.0.0 — Unreleased
 
+- Documented caller-owned pagination and list-to-detail extraction patterns with compile-checked KDL plus bounded CLI, Go, and TypeScript loops.
 - Added Go `Program.ExtractSnapshot` and TypeScript `program.extractSnapshot` for acquisition-free portable extraction from supplied HTML, including browser-mode programs, with shared fixtures and explicit `E_SNAPSHOT_UNSUPPORTED` rejection for workflows and JavaScript output.
 - Added strict, atomic `Result.Decode` conversion for typed Go structs and maps, including nested collections, exact integer conversion, explicit missing/null behavior, and unknown-field rejection without changing warning or partial state.
 - Added immutable Go and TypeScript program descriptors for fetch mode, raw URL template, and session policy, avoiding full Validated IR decoding for host-owned acquisition.
