@@ -16,6 +16,7 @@ There was no supported public release before v1. This guide is for applications 
 - Handle the operational `error` returned by all compile and validate entry points separately from document `Diagnostics`. Use `errors.Is` or `errors.As` for cancellation, deadlines, filesystem failures, and injected-loader causes.
 - Use `CompileFS` or `ValidateFS` for specifications stored in `embed.FS` or another application-owned `fs.FS`; import names remain slash-separated `io/fs` paths.
 - Use `Program.Descriptor()` when a Go host only needs validated fetch mode, raw URL template, and session policy; avoid decoding `IRJSON` for those acquisition settings.
+- Use `Result.Decode(&destination)` instead of consumer-owned `map[string]any` assertions. Decoding is strict: missing required fields, nullability mismatches, unknown fields, sign changes, and numeric overflow return errors.
 - Treat `Program.Version()` as a string rather than an integer.
 - Use the exported supported-language and supported-IR registries instead of comparing version dates.
 - Keep browser libraries in adapter modules; the core Go module does not depend on go-rod.

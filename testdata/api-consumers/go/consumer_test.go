@@ -75,4 +75,10 @@ extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
 	if err != nil || result.Value["title"] != "Example" {
 		t.Fatalf("result = %#v, error = %v", result, err)
 	}
+	var decoded struct {
+		Title string `json:"title"`
+	}
+	if err := result.Decode(&decoded); err != nil || decoded.Title != "Example" {
+		t.Fatalf("decoded = %#v, error = %v", decoded, err)
+	}
 }

@@ -4,6 +4,7 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## 1.0.0 — Unreleased
 
+- Added strict, atomic `Result.Decode` conversion for typed Go structs and maps, including nested collections, exact integer conversion, explicit missing/null behavior, and unknown-field rejection without changing warning or partial state.
 - Added immutable Go and TypeScript program descriptors for fetch mode, raw URL template, and session policy, avoiding full Validated IR decoding for host-owned acquisition.
 - Added `CompileFS` and `ValidateFS` for nested, relative compilation from `fs.FS`, including `embed.FS`, lexical escape rejection, cancellation checks, and documented symlink-containment limits.
 - Separated operational compilation failures from document diagnostics. Go compile and validate entry points now return an `error` that preserves cancellation and loader/filesystem causes, while TypeScript rejects loader failures with `SourceLoadError` and retains the original `cause`.

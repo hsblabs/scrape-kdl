@@ -24,7 +24,7 @@ Go and TypeScript expose the same observable capabilities:
 | execute browser mode | `BrowserAdapter` | `BrowserAdapter` |
 | serialize mutable browser pages | optional `BrowserAdapterLease` | optional `BrowserAdapterLease` |
 | bound first/one browser queries | optional `BrowserAdapterQueryLimit` | optional `BrowserAdapterQueryLimit` |
-| inspect extraction results | `Result`, `Warning`, `ExecutionError` | `ExtractionResult`, `Warning`, `ExecutionError` |
+| inspect extraction results | `Result`, `Result.Decode`, `Warning`, `ExecutionError` | `ExtractionResult`, `Warning`, `ExecutionError` |
 | discover compatibility | `SupportedLanguageVersions`, `SupportedIRVersions` | `supportedLanguageVersions`, `supportedIRVersions` |
 
 The contract snapshot remains in `docs/api/typescript/`. The publishable implementation boundary is checked directly through `@hsblabs/scrape-kdl` and `@hsblabs/scrape-kdl/node`; declaration-to-schema and clean-consumer gates keep the package aligned with the approved Issue #19 surface. The root package implements the complete compiler plus HTTP, offline-HTML, and browser-library-neutral runtimes while preserving that approved surface.
@@ -63,6 +63,18 @@ Browser elements are opaque adapter-owned handles. The public browser interfaces
 
 External transforms receive cancellation and JSON-compatible values. Implementations validate returned values immediately against declared output types. Registration does not grant browser, filesystem, or subprocess access.
 
+## Strict Go result decoding
+
+`Result.Decode(destination)` converts the completed `Result.Value` into a fresh Go struct or string-keyed map and assigns the destination only after the entire conversion succeeds. The method does not start extraction, mutate `Result`, or hide `Warnings` and `Partial`; callers retain and inspect those fields independently. A partial result may be decoded, but a recovered null still fails when its destination is non-nullable.
+
+Field matching is exact. An exported struct field uses the non-empty name in its `json` tag, or its exact Go field name when the tag has no name. Unexported fields and fields tagged `json:"-"` are ignored. Embedded fields are not flattened implicitly. Nested structs, pointers, maps, slices, and fixed arrays are decoded recursively. No custom JSON unmarshaler is invoked.
+
+Missing and null values are accepted only by pointer, map, slice, or interface destinations. A missing non-nullable struct field and null for a non-nullable destination are errors. A map destination preserves the distinction between an absent key and a present key with a nil value; a nullable struct field is nil for both missing and explicit null.
+
+Signed and unsigned integer sources are converted directly through exact integer arithmetic. Sign changes, overflow, fractional `json.Number` values, and float-to-integer conversions are rejected; integer values are never rounded through `float64`. Float destinations accept finite floating sources, and `float32` rejects overflow or precision loss.
+
+Unknown source fields are errors for struct destinations. Conversely, every exported, non-skipped, non-nullable destination field must exist in the source. A destination must be a non-nil pointer to a struct or string-keyed map; invalid destinations return an error rather than panicking.
+
 ## Intentional language differences
 
 - Go uses `context.Context`, `(value, diagnostics, error)` compilation results, `error`, `net/http`, and `time.Duration`. TypeScript uses promise rejection for operational compilation failures, optional `AbortSignal`, readonly data, platform `fetch`, `URL`, and millisecond numbers.
@@ -70,6 +82,7 @@ External transforms receive cancellation and JSON-compatible values. Implementat
 - Go keeps Validated IR opaque and exposes JSON plus metadata so internal compiler representations do not become public. TypeScript exposes the published readonly IR declaration because it is already the package's cross-language wire contract.
 - Go browser methods accept context as the first argument. TypeScript carries abort signals in operation options.
 - Go external transforms are named functions over `any` with runtime validation. TypeScript narrows the proposal to `JsonValue` at the type boundary and still performs runtime validation.
+- Go exposes `Result.Decode` because its extraction value is dynamically shaped; TypeScript callers apply their own static schema or type-narrowing tools to `ExtractionResult.value`.
 
 These are surface differences only. They do not permit different accepted KDL, diagnostics, IR, capability derivation, extraction values, warnings, timeout behavior, or security defaults.
 

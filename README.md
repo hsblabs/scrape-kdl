@@ -143,6 +143,13 @@ result, err := program.Extract(ctx, map[string]any{
 if err != nil {
     // Inspect *scrapekdl.ExecutionError.Code.
 }
+
+var output struct {
+    Title string `json:"title"`
+}
+if err := result.Decode(&output); err != nil {
+    // Reject missing, null, mismatched, or overflowing values.
+}
 ```
 
 The public API includes:
@@ -154,6 +161,7 @@ The public API includes:
 - immutable `Program.Descriptor` acquisition settings;
 - `Program.IRJSON`;
 - `Program.Extract` and `Program.ExtractHTML`;
+- strict `Result.Decode` conversion into typed Go structs and maps;
 - HTTP client and session injection;
 - external transform registry;
 - custom charset decoding;
