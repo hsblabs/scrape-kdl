@@ -51,6 +51,7 @@ type Report struct {
 }
 
 var documentationExamplePaths = []string{
+	"docs/cookbook.md",
 	"docs/patterns.md",
 }
 

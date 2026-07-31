@@ -7,7 +7,7 @@ import { executeHTML } from "../packages/scrape-kdl/dist/runtime.js";
 
 const root = process.cwd();
 const examplesRoot = join(root, "examples");
-const documentationPaths = ["docs/patterns.md"];
+const documentationPaths = ["docs/cookbook.md", "docs/patterns.md"];
 let examples = 0;
 let executions = 0;
 let documentationSnippets = 0;

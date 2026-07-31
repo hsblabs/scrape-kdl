@@ -16,8 +16,8 @@ func TestCheckedInExamples(t *testing.T) {
 	if report.Examples < 4 {
 		t.Fatalf("examples = %d, want at least 4", report.Examples)
 	}
-	if report.DocumentationSnippets < 2 {
-		t.Fatalf("documentation snippets = %d, want at least 2", report.DocumentationSnippets)
+	if report.DocumentationSnippets < 8 {
+		t.Fatalf("documentation snippets = %d, want at least 8", report.DocumentationSnippets)
 	}
 	if len(report.Updated) != 0 {
 		t.Fatalf("ordinary check updated files: %v", report.Updated)

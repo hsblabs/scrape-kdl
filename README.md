@@ -46,6 +46,8 @@ service.
 
 See [`docs/patterns.md`](docs/patterns.md) for caller-owned pagination and
 list-to-detail extraction with CLI, Go, and TypeScript loops.
+See [`docs/cookbook.md`](docs/cookbook.md) for strict transform pipelines that
+handle localized numbers, optional IDs, links, blank cells, and date strings.
 
 ## Public release candidate install
 

@@ -2,6 +2,9 @@
 
 This document is normative for Scraping KDL language version `2026-07-15`.
 
+For non-normative, compile-checked composition examples, see the
+[transform cookbook](../cookbook.md).
+
 ## Common rules
 
 - Built-in names are reserved and cannot be shadowed.
