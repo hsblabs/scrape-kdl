@@ -1,6 +1,15 @@
+---
+status: draft stable release notes
+published-candidate: v1.0.0-rc.1
+published-candidate-date: 2026-07-30
+next-candidate-required: true
+---
+
 # scrape-kdl v1.0.0 release notes
 
-Status: `v1.0.0-rc.1` draft. No public v1 artifact has been published.
+`v1.0.0-rc.1` is public. The post-candidate API and documentation changes in
+issues #43, #45, and #54 through #59 require a new release candidate and a fresh
+14-day blocker-free period before these notes can become stable release notes.
 
 ## Highlights
 

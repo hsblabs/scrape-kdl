@@ -1,124 +1,78 @@
+---
+updated: 2026-08-01
+status: public release candidate active
+---
+
 # v1 release readiness
 
-Updated: 2026-07-31
+This file records verified release state and the remaining dependency order. It
+does not authorize creating or pushing a tag, publishing a package or Release,
+deploying Pages, or changing external configuration. Every publication step
+still requires explicit project-owner approval immediately before it runs.
 
-This file separates verified repository preparation, private operation, and
-checks that require public registry or module visibility. It does not authorize
-creating a tag, Release, package version, Pages deployment, or visibility change.
+## Published `v1.0.0-rc.1`
 
-## Private preparation
+The first public candidate was published on 2026-07-30 UTC. The following
+surfaces were rechecked read-only on 2026-08-01:
 
-| Area | Status | Evidence |
+| Surface | Verified state |
+|---|---|
+| Repository | Public, with the specification site as its homepage |
+| Specification site | Dated IR schema returns HTTP 200 as JSON |
+| Core Git tag | Annotated `v1.0.0-rc.1`, peeled commit `65ebd8e19fd2b7ff8086adfa22dd6a1df89da7db` |
+| Core GitHub Release | Published prerelease with four Linux/macOS CLI archives, two npm archives, and checksums |
+| Core Go module | `github.com/hsblabs/scrape-kdl@v1.0.0-rc.1` resolves through the module proxy |
+| Core npm package | `@hsblabs/scrape-kdl@1.0.0-rc.1` resolves with registry integrity and signature metadata |
+| Playwright npm package | `@hsblabs/scrape-kdl-playwright@1.0.0-rc.1` resolves with registry integrity and signature metadata |
+| go-rod Git tag | Annotated `adapters/rod/v1.0.0-rc.1`, peeled commit `c188d77dec2d32a0557989fcda6162cfcf9718dd` |
+| go-rod GitHub Release | Published prerelease with four Linux/macOS CLI archives and checksums |
+| go-rod Go module | `github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0-rc.1` resolves through the module proxy |
+| Release controls | `github-pages`, `github-release`, and `npm-publish` Environments exist; both release-tag rulesets are active |
+
+Both npm packages currently show `next` and `latest` pointing to the only
+published version, `1.0.0-rc.1`. Stable publication must move `latest` to
+`1.0.0`. Do not delete or rewrite the immutable candidate version.
+
+## Post-candidate development
+
+The current development branch adds the following issue implementations after
+the `v1.0.0-rc.1` commit:
+
+| Issue | Change | Commit |
 |---|---|---|
-| Go and TypeScript API contracts | Ready | independent consumer checks in `make api-contract` |
-| Language, diagnostics, and IR parity | Ready | conformance and canonical-IR gates |
-| HTTP and Chromium browser behavior | Ready | release matrix, go-rod E2E, and Playwright E2E |
-| Supported target matrix | Ready | Linux/macOS amd64/arm64 cross-build gates |
-| CLI and npm artifacts | Ready | failure-safe `make release-dist` bundle and clean consumers |
-| License and notice payloads | Ready | `LICENSE` and `NOTICE` required in CLI and npm archives |
-| Migration and release notes | Ready | `docs/migrating-to-v1.md` and `docs/release-notes-v1.md` |
-| Maintenance and recovery policy | Ready | `SUPPORT.md`, `SECURITY.md`, and `docs/releasing.md` |
-| Accidental-publication protection | Ready in code | public-visibility checks, typed confirmations, globally serialized npm publishing, and GitHub Environment boundaries |
-| Release credential isolation | Ready in code | tokenless npm OIDC is available only to the protected publish job |
-| Private hosted dress rehearsal | Pending execution | run `Private release rehearsal` from the private branch |
-| Restricted npm artifact metadata | Ready in code | source and private bundles use `publishConfig.access=restricted`; public staging must opt in explicitly |
-| Private core GitHub Release | Ready in code | manual `Release private core` workflow, private visibility guard, annotated `-private.N` tag requirement |
-| Private go-rod GitHub Release | Ready in code | manual adapter workflow builds four CLI archives with checksums |
-| Private npm OIDC publication | Ready after bootstrap | manual restricted bootstrap creates package records; later versions use `release-npm-private.yml` |
-| Private Go/npm consumer checks | Ready in code | authenticated scripts verify both Go modules and both npm packages |
+| #57 | Separate operational compilation failures from diagnostics | `68319c5` |
+| #58 | Add `fs.FS` compilation entry points | `8fd43a9` |
+| #56 | Expose immutable acquisition descriptors | `e2d5552` |
+| #54 | Add strict typed Go result decoding | `855ba0f` |
+| #55 | Define offline snapshot execution | `cbb5bb4` |
+| #43 | Document pagination and list-to-detail patterns | `7ed06f6` |
+| #45 | Add the strict transform cookbook | `3ecf8c4` |
+| #59 | Add bounded authoring APIs and the versioned built-in catalog | `bbe0587` |
 
-The complete local `make release-gate` passed on 2026-07-31 for the current
-public-readiness changes. The repository has no release tags or GitHub Releases.
+These changes alter the intended stable public surface and are not present in
+`v1.0.0-rc.1`. The immutable candidate therefore cannot qualify the new surface
+for stable release. After review and integration, the next candidate must use a
+new version such as `v1.0.0-rc.2`; it must not move or reuse the rc.1 tags.
 
-## Owner-controlled private setup
+On 2026-08-01, commit `bbe0587` and its ancestors passed `make verify` and
+`make release-check`, including conformance, race, clean Go and npm consumers,
+package contents, performance, release-matrix, and archive gates.
+Remote CI and supported-target checks remain required after integration.
 
-- Confirm the npm `@hsblabs` organization has paid private-package support and
-  that the publishing owner has 2FA enabled.
-- Run the private rehearsal for the exact first version, proposed as
-  `v0.9.0-private.1`.
-- Bootstrap the two restricted npm package records from the inspected archives
-  with an interactive npm session. Do not create or store an npm publication
-  token in GitHub.
-- Configure both package records to trust `hsblabs/scrape-kdl` workflow
-  `release-npm-private.yml` for `npm publish`. Do not specify a GitHub
-  Environment while the current plan cannot provide one.
-- Grant npm teams read access and give CI consumers separate read-only tokens.
-- Grant intended Go and CLI consumers read access to the private GitHub
-  repository.
-
-GitHub currently returns `403` for protected Environments and repository
-rulesets on this private repository's plan. The private workflows therefore do
-not claim those controls. They use typed confirmations, private-visibility
-checks, annotated existing tags, serialized jobs, and least-privilege
-permissions instead.
-
-## Owner-controlled public setup while still private
-
-- Set a concise repository description. Set the homepage to the verified Pages
-  URL after the specification site is deployed.
-- Protect the `npm-publish` GitHub Environment with required reviewers, prevent self-review and administrator bypass, and allow only `main`.
-- Configure both npm package records to trust `hsblabs/scrape-kdl` workflow `release-npm.yml` with Environment `npm-publish` for `npm publish`; do not configure `NPM_TOKEN`.
-- Protect the `github-release` GitHub Environment and add restrictive rulesets for core and go-rod release tags.
-- Protect the `github-pages` Environment with required reviewers and select GitHub Actions as the Pages source.
-- Enable vulnerability alerts, Dependabot security updates, secret scanning, and
-  code scanning when the repository plan exposes them.
-- Confirm the authenticated npm account can create both packages in the `@hsblabs` scope.
-- Review and approve the draft v1 release notes and 90-day previous-minor security window.
-
-These settings change external repository or registry configuration and therefore remain owner actions. Some GitHub plans expose required-reviewer protection only after the repository is public; where that limitation applies, complete the settings after publicization but before any release tag or publication workflow.
-
-## Requires public visibility or a public artifact
-
-- Make the repository public.
-- Deploy and verify `https://hsblabs.github.io/scrape-kdl/ir/2026-07-15/schema.json`.
-- Publish a core release-candidate tag and verify it through the Go module proxy.
-- Publish both npm candidates and both official adapters.
-- Run clean installs against public Go and npm endpoints on every supported target.
-- Complete at least 14 consecutive days with no unresolved release blocker.
-- Obtain separate owner approval for stable `v1.0.0` publication.
-
-The exact sequence, post-publication checks, and recovery actions are defined in `docs/releasing.md`.
-
-## Public `v1.0.0-rc.1` tracker
-
-The first public candidate is `v1.0.0-rc.1`. It includes the public repository,
-specification site, Go core, both npm packages, four-platform core CLI archives,
-the go-rod module, and four-platform go-rod CLI archives.
-
-Repository changes, verification, a pull request, and owner-setting instructions
-may proceed without another publication decision. Changing repository
-visibility, deploying Pages, creating or pushing release tags, creating GitHub
-Releases, and publishing Go, npm, or CLI artifacts remain stopped until the
-project owner gives a separate approval immediately before publication.
+## Remaining dependency order for issue #18
 
 | ID | Work | Blocked by | Status |
 |---|---|---|---|
-| RC-01 | Review the private-release preparation against current `main` and issue #18 | none | Complete |
-| RC-02 | Align the public candidate contract and documentation on `v1.0.0-rc.1` | RC-01 | Complete |
-| RC-03 | Run local release, security, conformance, browser, packaging, and adapter gates | RC-02 | Complete |
-| RC-04 | Merge the preparation pull request after required CI and review pass | RC-03 | Complete |
-| RC-05 | Review private tags, Releases, package versions, repository history, responsible-use guidance, and public examples before publicization | RC-04 | Complete |
-| RC-06 | Obtain publication approval; make the repository public; configure Environments, rulesets, npm trusted publishers, and Pages | RC-05 | Owner gate |
-| RC-07 | Deploy and verify the specification site | RC-06 | Pending |
-| RC-08 | Publish and verify the core Go module and CLI candidate | RC-07 | Pending |
-| RC-09 | Publish and verify both npm candidates | RC-08 and Go proxy visibility | Pending |
-| RC-10 | Update go-rod to the published core, pass its gates, then publish and verify its module and CLI candidate | RC-08 | Pending |
-| RC-11 | Run clean public-consumer and archive checks on every supported target | RC-09 and RC-10 | Pending |
-| RC-12 | Complete 14 consecutive blocker-free days and request separate stable-release approval | RC-11 | Pending |
+| V1-01 | Review and integrate the post-candidate issue commits | none | Pending |
+| V1-02 | Pass required remote CI and supported-target release gates on the integrated commit | V1-01 | Pending |
+| V1-03 | Obtain explicit owner approval and publish a new core, npm, and go-rod candidate in documented dependency order | V1-02 | Owner gate |
+| V1-04 | Verify the new candidate through GitHub Releases, Go proxies, npm, Pages, clean consumers, checksums, provenance, and native archives | V1-03 | Pending |
+| V1-05 | Complete at least 14 consecutive days with no unresolved release blocker | V1-04 | Time gate |
+| V1-06 | Obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | Owner gate |
+| V1-07 | Publish and independently verify every stable distribution surface, then close issue #18 | V1-06 | Pending |
 
-### RC-05 audit findings
+The 14-day period starts only after the new candidate in V1-03 is published and
+V1-04 passes. No stable publication date can be calculated before then.
 
-The 2026-07-31 pre-publication audit found no Git tags, GitHub Releases, Pages
-deployment, large repository blobs over 5 MiB, sensitive filenames, or
-high-confidence secret patterns in the current tree, Git history, issue and pull
-request text, or completed GitHub Actions logs.
-
-The responsible-use and neutral-example remediation was merged in pull request
-#50. The stale remote branch `codex/v1-17-hardening` was deleted after owner
-approval.
-
-Before publicization:
-
-- confirm both npm package names while authenticated as a publishing owner;
-- complete the owner-controlled metadata, Environment, ruleset, trusted
-  publisher, Pages, and security-feature setup above.
+The exact publication commands, dependency order, post-publication checks, and
+immutable-version recovery rules are in [`docs/releasing.md`](releasing.md).
