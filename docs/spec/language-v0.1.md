@@ -1,6 +1,8 @@
-# Scraping KDL Language Specification v0.1
+---
+status: working draft
+---
 
-Status: Working Draft
+# Scraping KDL Language Specification v0.1
 
 ## Scope
 

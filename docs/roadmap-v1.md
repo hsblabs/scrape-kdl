@@ -1,6 +1,10 @@
-# Roadmap to v1.0.0
+---
+status: approved
+approved: 2026-07-14
+implementation-decisions-updated: 2026-07-15
+---
 
-Status: Approved on 2026-07-14; implementation decisions updated on 2026-07-15.
+# Roadmap to v1.0.0
 
 This roadmap defines the compatibility contracts and release gates required before `scrape-kdl` reaches `v1.0.0`.
 The primary v1 products are the Go library and the TypeScript library.

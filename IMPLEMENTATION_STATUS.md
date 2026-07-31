@@ -90,7 +90,7 @@ Implemented:
 - Node.js 26 typecheck, formatting, source lint, tests, coverage thresholds, package-content inspection, and packed clean-consumer smoke gates on Linux and macOS;
 - the complete documented TypeScript KDL subset with exact UTF-8 byte spans, stable invalid-UTF-8 rejection, and shared Go/TypeScript parser cases and fuzz seeds;
 - injectable lexical import loading for extractor and module documents, including exact shared diagnostics for missing sources, aliases, remote paths, wrong kinds, import order, and cycles;
-- explicit filesystem import loading only through the TypeScript Node.js entry point.
+- explicit filesystem import loading only through the TypeScript Node.js entry point;
 - bounded Go and TypeScript Authoring Documents, deterministic KDL writers, and
   an exact-version built-in catalog checked against both compiler registries.
 
