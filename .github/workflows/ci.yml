@@ -3,11 +3,29 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
     paths-ignore:
+      - "**.md"
+      - "docs/index.html"
+      - "docs/llms.txt"
+      - "docs/spec/**.ebnf"
+      - "docs/spec/**.kdl"
       - ".codex/**"
       - ".claude/**"
       - ".github/ISSUE_TEMPLATE/**"
+      - ".github/workflows/pages.yml"
+      - ".gitignore"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/index.html"
+      - "docs/llms.txt"
+      - "docs/spec/**.ebnf"
+      - "docs/spec/**.kdl"
+      - ".codex/**"
+      - ".claude/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/workflows/pages.yml"
+      - ".gitignore"
   workflow_dispatch:
 
 permissions:
@@ -18,7 +36,87 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.scope.outputs.go }}
+      rod: ${{ steps.scope.outputs.rod }}
+      support: ${{ steps.scope.outputs.support }}
+      playwright: ${{ steps.scope.outputs.playwright }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Classify changed paths
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            {
+              echo "go=true"
+              echo "rod=true"
+              echo "support=true"
+              echo "playwright=true"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          mapfile -t changed_paths < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          go=false
+          rod=false
+          support=false
+          playwright=false
+
+          for path in "${changed_paths[@]}"; do
+            case "$path" in
+              adapters/rod/**|testdata/rodstub/**)
+                rod=true
+                continue
+                ;;
+            esac
+
+            case "$path" in
+              *.go|go.mod|go.sum|*/go.mod|*/go.sum|go.work|go.work.sum|cmd/**|internal/**|authoring/**|docs/ir/go/**)
+                go=true
+                support=true
+                ;;
+            esac
+
+            case "$path" in
+              Makefile|docs/support-matrix.json|scripts/check-support-matrix.mjs)
+                support=true
+                ;;
+            esac
+
+            case "$path" in
+              adapters/rod/**|testdata/rodstub/**|scripts/verify-rod*.sh|scrapekdl.go|compilefs.go|decode.go|descriptor.go|doc.go|go.mod|go.sum)
+                rod=true
+                ;;
+            esac
+
+            case "$path" in
+              packages/scrape-kdl-playwright/**|packages/scrape-kdl/src/**|package.json|package-lock.json|tsconfig*.json|Makefile|fixtures/valid/rod-browser-e2e.kdl|fixtures/html/rod-browser-e2e.html|fixtures/expected-output/rod-browser-e2e.json|fixtures/html-compat/**)
+                playwright=true
+                ;;
+            esac
+          done
+
+          {
+            echo "go=$go"
+            echo "rod=$rod"
+            echo "support=$support"
+            echo "playwright=$playwright"
+          } >> "$GITHUB_OUTPUT"
+
   core:
+    needs: changes
     name: Core / ${{ matrix.os }} / Go 1.26.x
     runs-on: ${{ matrix.os }}
     strategy:
@@ -53,6 +151,8 @@ jobs:
       - run: ./scripts/check-format.sh
 
   race:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     name: Race / ubuntu-latest / Go 1.26.x
     runs-on: ubuntu-latest
     steps:
@@ -64,6 +164,8 @@ jobs:
       - run: go test -race ./...
 
   rod-contract:
+    needs: changes
+    if: needs.changes.outputs.rod == 'true'
     name: go-rod adapter contract
     runs-on: ubuntu-latest
     steps:
@@ -75,6 +177,8 @@ jobs:
       - run: ./scripts/verify-rod-contract.sh
 
   support-matrix:
+    needs: changes
+    if: needs.changes.outputs.support == 'true'
     name: Package target / ${{ matrix.target }}
     runs-on: ubuntu-latest
     strategy:
@@ -93,6 +197,8 @@ jobs:
       - run: make support-matrix-target TARGET=${{ matrix.target }}
 
   rod-real:
+    needs: changes
+    if: needs.changes.outputs.rod == 'true'
     name: go-rod adapter / real dependency
     runs-on: ubuntu-latest
     steps:
@@ -104,6 +210,8 @@ jobs:
       - run: ./scripts/verify-rod.sh
 
   playwright-chromium:
+    needs: changes
+    if: needs.changes.outputs.playwright == 'true'
     name: Playwright adapter / Chromium
     runs-on: ubuntu-latest
     timeout-minutes: 20
