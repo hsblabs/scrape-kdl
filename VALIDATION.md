@@ -41,6 +41,27 @@ This includes:
 - CLI build, validation, offline extraction, and version output;
 - go-rod adapter compilation and tests against the local API contract stub.
 
+## Unified public release orchestration
+
+Validated on 2026-08-01 without creating a tag, GitHub Release, npm version, or
+external configuration change:
+
+- `make verify`;
+- `make release-check`;
+- `make release-gate` with the installed Google Chrome executable, including
+  real go-rod and Playwright Chromium E2E;
+- `make release-plan`, including a checksum comparison against the published
+  `v1.0.0-rc.2` root module;
+- retry and mismatch contract tests for Go proxy polling, npm registry
+  integrity, GitHub Release assets, annotated tags, and public/private channel
+  separation;
+- `actionlint` and `pinact run --check --verify` for every workflow.
+
+The first release-check run exposed that the repository's local module-proxy
+fixture included the new release tool's nested `go.mod`. The fixture now omits
+that nested module, matching the Go module zip rule used by the checksum tool;
+the clean root consumer and complete release gates passed after the correction.
+
 ## Private distribution verification
 
 The private-package changes passed:

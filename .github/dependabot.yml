@@ -14,6 +14,13 @@ updates:
     groups:
       rod-go-dependencies:
         patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /scripts/releaseplan
+    schedule:
+      interval: weekly
+    groups:
+      release-tool-go-dependencies:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

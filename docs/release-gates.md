@@ -17,7 +17,17 @@ The support contract is machine-readable in `docs/support-matrix.json`. Pull-req
 Before any public tag, build the exact private candidate bundle:
 
 ```bash
+make check-public-release-plan VERSION=v1.0.0-rc.1
 make release-dist VERSION=v1.0.0-rc.1 OUT=dist
+```
+
+The release-plan check proves that the independent go-rod module requires the
+same future core version and contains the checksums anticipated from the exact
+Git revision. During release preparation, generate that metadata only after
+committing the root-module source:
+
+```bash
+make prepare-public-release VERSION=v1.0.0-rc.1
 ```
 
 The bundle gate defaults both npm archives to restricted access. Set

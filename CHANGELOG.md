@@ -30,6 +30,9 @@ All notable implementation changes are recorded here. Formal releases will use S
 - Added a failure-safe private release bundle containing four CLI archives, two clean-consumer-tested npm archives, Apache `NOTICE` files, and SHA-256 checksums without publishing or changing workspace development versions.
 - Added guarded private rehearsal, npm publication, and specification-site workflows; public workflows require visibility checks, typed confirmation, owner-configured GitHub Environments, and protected release tags.
 - Pinned every GitHub Action to a full commit SHA and moved npm publication to globally serialized, tokenless OIDC trusted publishing with build/publish permission isolation.
+- Unified public core, npm, Playwright, and go-rod publication behind one
+  protected, resumable workflow while retaining the required distinct Go module
+  tags.
 - Added v1 migration notes, draft release notes, an explicit maintenance window, post-publication verification, and immutable-version recovery procedures.
 - Standardized the Go, TypeScript, and CLI default HTTP User-Agent as `scrape-kdl/1.0`.
 

@@ -5,6 +5,8 @@ cd "$root"
 
 ./scripts/check-format.sh
 ./scripts/check-module-paths.sh
+make release-plan
+make release-publish-contract
 ./scripts/check-golden.sh
 ./scripts/check-diagnostics.sh
 GOTOOLCHAIN=local go run ./cmd/check-examples

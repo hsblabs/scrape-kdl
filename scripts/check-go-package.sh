@@ -17,7 +17,8 @@ mkdir -p "$proxy" "$consumer"
 
 git -C "$root" archive --format=zip --prefix="$module@$version/" HEAD -- . \
   ':(exclude)adapters/rod' ':(exclude)docs/ir/go' ':(exclude)packages' \
-  ':(exclude)testdata/rodstub' >"$proxy/$version.zip"
+  ':(exclude)scripts/releaseplan' ':(exclude)testdata/rodstub' \
+  >"$proxy/$version.zip"
 cp "$root/go.mod" "$proxy/$version.mod"
 printf '{"Version":"%s","Time":"2026-07-15T00:00:00Z"}\n' "$version" >"$proxy/$version.info"
 printf '%s\n' "$version" >"$proxy/list"

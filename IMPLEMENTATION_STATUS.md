@@ -62,6 +62,8 @@ Implemented:
 - release-clean nested module configuration;
 - isolated root and go-rod modules with temporary verification workspaces;
 - CI, browser E2E, and release workflows;
+- a single protected, resumable public release orchestrator for core, npm, and
+  go-rod publication;
 - Apache-2.0 licensing;
 - security, contribution, support, compatibility, and versioning policies;
 - release archive generation and checksum script;

@@ -32,7 +32,7 @@ update in [#63](https://github.com/hsblabs/scrape-kdl/pull/63).
 | go-rod Git tag | Annotated `adapters/rod/v1.0.0-rc.2`, peeled commit `c850bc67162eed3d63f34922e2aac58c37f11d52` |
 | go-rod GitHub Release | Published prerelease with four Linux/macOS CLI archives and checksums; workflow run `30685417102` passed |
 | go-rod Go module | `github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0-rc.2` resolves through the module proxy and a clean `go install` |
-| Release controls | `github-pages`, `github-release`, and `npm-publish` Environments exist; both release-tag rulesets are active |
+| Release controls | Legacy `github-release` and `npm-publish` Environments exist; both release-tag rulesets are active. The unified `release-publish` migration remains pending |
 
 The immutable `rc.1` and `rc.2` versions remain published. Stable publication
 must publish new `v1.0.0` artifacts and move npm `latest` to `1.0.0`; it must not
@@ -80,8 +80,8 @@ explicit project-owner approval after that time.
 | V1-03 | Obtain explicit owner approval and publish a new core, npm, and go-rod candidate in documented dependency order | V1-02 | Completed with `v1.0.0-rc.2` |
 | V1-04 | Verify the new candidate through GitHub Releases, Go proxies, npm, Pages, clean consumers, checksums, provenance, and native archives | V1-03 | Completed at `2026-08-01T05:22:31Z` |
 | V1-05 | Complete at least 14 consecutive days with no unresolved release blocker | V1-04 | In progress; earliest completion `2026-08-15T05:22:31Z` |
-| V1-06 | Obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | Owner gate |
-| V1-07 | Publish and independently verify every stable distribution surface, then close issue #18 | V1-06 | Pending |
+| V1-06 | Migrate the unified Environment, npm trusted publishers, and tag-rule bypass, then obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | Owner and configuration gate |
+| V1-07 | Run the unified publication once, independently verify every stable distribution surface, then close issue #18 | V1-06 | Pending |
 
 Issue #18 remains open during V1-05. A release blocker resets the consecutive
 14-day period after the blocker is resolved and the candidate is requalified.

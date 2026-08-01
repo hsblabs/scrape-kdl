@@ -1,22 +1,57 @@
-name: Release core
+name: Publish public release
 
 on:
-  push:
-    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without a leading v
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH_RELEASE to allow all public writes
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: public-release
+  cancel-in-progress: false
 
 jobs:
-  release:
-    if: github.event.repository.visibility == 'public'
-    environment: github-release
+  prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_TAG: v${{ inputs.version }}
+      REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      REQUEST_REF_NAME: ${{ github.ref_name }}
+      REQUEST_REF_TYPE: ${{ github.ref_type }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Validate publication request
+        env:
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [[ "$RELEASE_CONFIRMATION" != PUBLISH_RELEASE ]]; then
+            echo "confirmation must be PUBLISH_RELEASE" >&2
+            exit 1
+          fi
+          if [[ "$REPOSITORY_VISIBILITY" != public ]]; then
+            echo "refusing public release while repository visibility is $REPOSITORY_VISIBILITY" >&2
+            exit 1
+          fi
+          if [[ "$REQUEST_REF_TYPE" != branch || "$REQUEST_REF_NAME" != "$DEFAULT_BRANCH" ]]; then
+            echo "public releases must be dispatched from the default branch $DEFAULT_BRANCH" >&2
+            exit 1
+          fi
+          ./scripts/validate-public-release-tag.sh core "$RELEASE_TAG"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.26.5"
@@ -26,19 +61,85 @@ jobs:
           node-version: "26.x"
           cache: npm
       - run: npm ci
-      - run: ./scripts/validate-public-release-tag.sh core "${GITHUB_REF_NAME}"
-      - run: make release-check
-      - run: make release-dist VERSION="${GITHUB_REF_NAME}" OUT=dist NPM_ACCESS=public
-      - name: Create GitHub release
+      - run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify release plan
+        run: make check-public-release-plan VERSION="$RELEASE_TAG" REVISION="$GITHUB_SHA"
+      - run: make release-gate
+      - name: Build inspected core and npm bundle
+        run: make release-dist VERSION="$RELEASE_TAG" OUT=dist/core NPM_ACCESS=public
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: public-release-${{ inputs.version }}
+          path: dist/core/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: prepare
+    environment: release-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_TAG: v${{ inputs.version }}
+      ROD_TAG: adapters/rod/v${{ inputs.version }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.5"
+          cache: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.x"
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: public-release-${{ inputs.version }}
+          path: dist/core
+      - name: Reject a stale release source
+        run: |
+          git fetch origin "$DEFAULT_BRANCH"
+          if [[ "$(git rev-parse "origin/$DEFAULT_BRANCH")" != "$GITHUB_SHA" ]]; then
+            echo "default branch advanced after release preparation; dispatch a new release run" >&2
+            exit 1
+          fi
+      - name: Reverify inspected bundle
+        run: ./scripts/verify-release-bundle.sh "$RELEASE_TAG" dist/core public
+      - name: Configure annotated release tags
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Publish core tag and GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+        run: ./scripts/publish-github-release.sh core "$RELEASE_TAG" "$GITHUB_SHA" dist/core
+      - name: Wait for public core Go module
+        run: ./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl "$RELEASE_TAG"
+      - name: Publish npm packages through OIDC
+        run: ./scripts/publish-npm-release.sh "$RELEASE_VERSION" dist/core
+      - name: Reverify go-rod release plan
+        run: make check-public-release-plan VERSION="$RELEASE_TAG" REVISION="$GITHUB_SHA"
+      - name: Verify go-rod against the published core
+        working-directory: adapters/rod
         run: |
-          release_flags=()
-          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
-            release_flags+=(--prerelease --latest=false)
-          fi
-          gh release create "${GITHUB_REF_NAME}" dist/* \
-            --verify-tag \
-            --generate-notes \
-            --title "${GITHUB_REF_NAME}" \
-            "${release_flags[@]}"
+          GOWORK=off GOTOOLCHAIN=local go mod verify
+          GOWORK=off GOTOOLCHAIN=local go mod tidy -diff
+          GOWORK=off GOTOOLCHAIN=local go test ./...
+          GOWORK=off GOTOOLCHAIN=local go vet ./...
+          GOWORK=off GOTOOLCHAIN=local go test -tags=e2e -timeout=15m ./...
+      - name: Build go-rod release archives
+        run: ./scripts/build-rod-release.sh "$ROD_TAG" dist/rod
+      - name: Publish go-rod tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/publish-github-release.sh rod "$ROD_TAG" "$GITHUB_SHA" dist/rod
+      - name: Wait for public go-rod module
+        run: ./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl/adapters/rod "$RELEASE_TAG"
