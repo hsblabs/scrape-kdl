@@ -197,11 +197,12 @@ Complete these owner-controlled settings before the first public candidate:
    release, and adapter release jobs refuse to run while repository visibility
    is private; the private workflows remain separate.
 
-If the private npm channel has been used, replace each package's single trusted
-publisher configuration from `release-npm-private.yml` to `release-npm.yml`.
-The public workflow's explicit `--access public` changes the package access
-level, making the package and its existing versions downloadable by everyone.
-Review all private versions before approving that change.
+Both npm packages are public. Their public release archives contain
+`publishConfig.access=public`, while `release-npm.yml` omits the `--access`
+argument so publishing a new version does not mutate the existing package
+visibility. If a package is ever restricted again, change its access explicitly
+before using the public workflow; do not make a visibility change an incidental
+side effect of version publication.
 
 The npm and Pages workflows also require typed confirmations. Environment approval remains the primary protection against accidental publication. Required-reviewer availability for private repositories depends on the GitHub plan; if it is unavailable while private, configure and verify it immediately after publicization and before creating or publishing any release tag.
 
