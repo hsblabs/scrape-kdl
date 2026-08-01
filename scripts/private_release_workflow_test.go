@@ -128,20 +128,23 @@ func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 	root := repositoryRoot(t)
 	tests := []struct {
 		path     string
-		archives []string
+		required []string
 		forbid   []string
 	}{
 		{
 			path: ".github/workflows/release-npm-private.yml",
-			archives: []string{
+			required: []string{
 				`npm publish "./dist/hsblabs-scrape-kdl-$RELEASE_VERSION.tgz"`,
 				`npm publish "./dist/hsblabs-scrape-kdl-playwright-$RELEASE_VERSION.tgz"`,
 			},
 		},
 		{
 			path: ".github/workflows/release-npm.yml",
-			archives: []string{
+			required: []string{
 				`npm publish "./$archive" --tag "$NPM_DIST_TAG"`,
+				`wait_for_npm_value "$package@$RELEASE_VERSION" version "$RELEASE_VERSION"`,
+				`wait_for_npm_value "$package" "dist-tags.$NPM_DIST_TAG" "$RELEASE_VERSION"`,
+				`for attempt in {1..12}; do`,
 			},
 			forbid: []string{`npm publish "./$archive" --access public`},
 		},
@@ -154,9 +157,9 @@ func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 				t.Fatal(err)
 			}
 			content := string(data)
-			for _, archive := range test.archives {
-				if !strings.Contains(content, archive) {
-					t.Errorf("%s is missing %q", test.path, archive)
+			for _, required := range test.required {
+				if !strings.Contains(content, required) {
+					t.Errorf("%s is missing %q", test.path, required)
 				}
 			}
 			for _, forbidden := range test.forbid {
