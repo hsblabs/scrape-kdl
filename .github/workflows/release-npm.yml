@@ -105,6 +105,21 @@ jobs:
         env:
           NPM_DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
         run: |
+          wait_for_npm_value() {
+            local package="$1"
+            local field="$2"
+            local expected="$3"
+            local actual=""
+            for attempt in {1..12}; do
+              actual="$(npm view "$package" "$field" 2>/dev/null || true)"
+              if [[ "$actual" == "$expected" ]]; then
+                return 0
+              fi
+              sleep 5
+            done
+            echo "timed out waiting for npm $package $field=$expected (last=$actual)" >&2
+            return 1
+          }
           package=@hsblabs/scrape-kdl
           archive="dist/hsblabs-scrape-kdl-$RELEASE_VERSION.tgz"
           if npm view "$package@$RELEASE_VERSION" version >/dev/null 2>&1; then
@@ -112,12 +127,27 @@ jobs:
           else
             npm publish "./$archive" --tag "$NPM_DIST_TAG"
           fi
-          test "$(npm view "$package@$RELEASE_VERSION" version)" = "$RELEASE_VERSION"
-          test "$(npm view "$package" "dist-tags.$NPM_DIST_TAG")" = "$RELEASE_VERSION"
+          wait_for_npm_value "$package@$RELEASE_VERSION" version "$RELEASE_VERSION"
+          wait_for_npm_value "$package" "dist-tags.$NPM_DIST_TAG" "$RELEASE_VERSION"
       - name: Publish Playwright adapter through OIDC
         env:
           NPM_DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
         run: |
+          wait_for_npm_value() {
+            local package="$1"
+            local field="$2"
+            local expected="$3"
+            local actual=""
+            for attempt in {1..12}; do
+              actual="$(npm view "$package" "$field" 2>/dev/null || true)"
+              if [[ "$actual" == "$expected" ]]; then
+                return 0
+              fi
+              sleep 5
+            done
+            echo "timed out waiting for npm $package $field=$expected (last=$actual)" >&2
+            return 1
+          }
           package=@hsblabs/scrape-kdl-playwright
           archive="dist/hsblabs-scrape-kdl-playwright-$RELEASE_VERSION.tgz"
           if npm view "$package@$RELEASE_VERSION" version >/dev/null 2>&1; then
@@ -125,5 +155,5 @@ jobs:
           else
             npm publish "./$archive" --tag "$NPM_DIST_TAG"
           fi
-          test "$(npm view "$package@$RELEASE_VERSION" version)" = "$RELEASE_VERSION"
-          test "$(npm view "$package" "dist-tags.$NPM_DIST_TAG")" = "$RELEASE_VERSION"
+          wait_for_npm_value "$package@$RELEASE_VERSION" version "$RELEASE_VERSION"
+          wait_for_npm_value "$package" "dist-tags.$NPM_DIST_TAG" "$RELEASE_VERSION"
