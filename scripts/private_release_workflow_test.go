@@ -123,3 +123,40 @@ func TestRodReleaseWorkflowsAttachBinaryArchives(t *testing.T) {
 		}
 	}
 }
+
+func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
+	root := repositoryRoot(t)
+	tests := []struct {
+		path     string
+		archives []string
+	}{
+		{
+			path: ".github/workflows/release-npm-private.yml",
+			archives: []string{
+				`npm publish "./dist/hsblabs-scrape-kdl-$RELEASE_VERSION.tgz"`,
+				`npm publish "./dist/hsblabs-scrape-kdl-playwright-$RELEASE_VERSION.tgz"`,
+			},
+		},
+		{
+			path: ".github/workflows/release-npm.yml",
+			archives: []string{
+				`npm publish "./$archive"`,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.path, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join(root, test.path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			content := string(data)
+			for _, archive := range test.archives {
+				if !strings.Contains(content, archive) {
+					t.Errorf("%s is missing %q", test.path, archive)
+				}
+			}
+		})
+	}
+}

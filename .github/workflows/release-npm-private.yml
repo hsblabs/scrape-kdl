@@ -87,7 +87,7 @@ jobs:
             }
           ' "$npm_version"
       - name: Publish restricted core package through OIDC
-        run: npm publish "dist/hsblabs-scrape-kdl-$RELEASE_VERSION.tgz" --access restricted --tag private
+        run: npm publish "./dist/hsblabs-scrape-kdl-$RELEASE_VERSION.tgz" --access restricted --tag private
 
   publish-adapter:
     needs: [build, publish-core]
@@ -109,4 +109,4 @@ jobs:
           node-version: "26.x"
           registry-url: https://registry.npmjs.org
       - name: Publish restricted Playwright adapter through OIDC
-        run: npm publish "dist/hsblabs-scrape-kdl-playwright-$RELEASE_VERSION.tgz" --access restricted --tag private
+        run: npm publish "./dist/hsblabs-scrape-kdl-playwright-$RELEASE_VERSION.tgz" --access restricted --tag private
