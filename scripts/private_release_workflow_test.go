@@ -129,6 +129,7 @@ func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 	tests := []struct {
 		path     string
 		archives []string
+		forbid   []string
 	}{
 		{
 			path: ".github/workflows/release-npm-private.yml",
@@ -142,6 +143,7 @@ func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 			archives: []string{
 				`npm publish "./$archive" --tag "$NPM_DIST_TAG"`,
 			},
+			forbid: []string{`npm publish "./$archive" --access public`},
 		},
 	}
 
@@ -155,6 +157,11 @@ func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 			for _, archive := range test.archives {
 				if !strings.Contains(content, archive) {
 					t.Errorf("%s is missing %q", test.path, archive)
+				}
+			}
+			for _, forbidden := range test.forbid {
+				if strings.Contains(content, forbidden) {
+					t.Errorf("%s contains forbidden %q", test.path, forbidden)
 				}
 			}
 		})
