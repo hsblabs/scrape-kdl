@@ -140,7 +140,7 @@ func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 		{
 			path: ".github/workflows/release-npm.yml",
 			archives: []string{
-				`npm publish "./$archive"`,
+				`npm publish "./$archive" --tag "$NPM_DIST_TAG"`,
 			},
 		},
 	}

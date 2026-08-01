@@ -110,7 +110,7 @@ jobs:
           if npm view "$package@$RELEASE_VERSION" version >/dev/null 2>&1; then
             echo "$package@$RELEASE_VERSION is already published"
           else
-            npm publish "./$archive" --access public --tag "$NPM_DIST_TAG"
+            npm publish "./$archive" --tag "$NPM_DIST_TAG"
           fi
           test "$(npm view "$package@$RELEASE_VERSION" version)" = "$RELEASE_VERSION"
           test "$(npm view "$package" "dist-tags.$NPM_DIST_TAG")" = "$RELEASE_VERSION"
@@ -123,7 +123,7 @@ jobs:
           if npm view "$package@$RELEASE_VERSION" version >/dev/null 2>&1; then
             echo "$package@$RELEASE_VERSION is already published"
           else
-            npm publish "./$archive" --access public --tag "$NPM_DIST_TAG"
+            npm publish "./$archive" --tag "$NPM_DIST_TAG"
           fi
           test "$(npm view "$package@$RELEASE_VERSION" version)" = "$RELEASE_VERSION"
           test "$(npm view "$package" "dist-tags.$NPM_DIST_TAG")" = "$RELEASE_VERSION"
