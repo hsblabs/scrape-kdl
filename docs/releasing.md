@@ -197,11 +197,10 @@ used:
    `release-publish`, and allowed action `npm publish`. After verifying OIDC
    publication, retain the package setting that requires 2FA and disallows
    tokens.
-3. Keep active tag rulesets for `v*.*.*` and `adapters/rod/v*.*.*`. Permit the
-   GitHub Actions app to bypass tag creation so the protected workflow can
-   create annotated tags, but continue to restrict update, deletion, and
-   non-fast-forward changes. Release owners retain their audited emergency
-   bypass.
+3. Keep active tag rulesets for `v*.*.*` and `adapters/rod/v*.*.*`. Leave tag
+   creation unrestricted so the protected workflow can create annotated tags,
+   but restrict update, deletion, and non-fast-forward changes. Release owners
+   retain their audited emergency bypass.
 4. Configure the `github-pages` Environment with required reviewers and GitHub
    Pages using GitHub Actions as its source.
 5. Confirm that both npm package trusted-publisher records and both tag rulesets
@@ -244,7 +243,13 @@ releases:
    root-module file afterward without rerunning it.
 3. Run the private rehearsal, retain its checksums, merge the reviewed release
    preparation PR, and confirm the unified external settings above.
-4. After the separate project-owner approval, dispatch the workflow from
+4. Confirm that both Go versions are unused from the exact Git tags and GitHub
+   Releases only. Before the corresponding tag exists, do not query
+   `proxy.golang.org` and do not run `go list`, `go get`, or `go mod download`
+   for the future version. The public proxy can cache that negative answer for
+   up to 30 minutes; its first request must follow tag publication. See the
+   [official Go module proxy FAQ](https://proxy.golang.org/).
+5. After the separate project-owner approval, dispatch the workflow from
    `main`:
 
    ```bash
@@ -255,12 +260,12 @@ releases:
      -f confirmation=PUBLISH_RELEASE
    ```
 
-5. Approve the single `release-publish` deployment. The workflow creates both
+6. Approve the single `release-publish` deployment. The workflow creates both
    annotated Go tags at the same commit, waits for core proxy visibility,
    publishes and verifies both npm archives, tests go-rod against the published
    core, creates the adapter tag and Release, and waits for adapter proxy
    visibility. Prereleases use npm `next`; stable releases use `latest`.
-6. Run every independent post-publication check below and record the results on
+7. Run every independent post-publication check below and record the results on
    issue #18.
 
 The Go module rules still require distinct `vX.Y.Z` and
@@ -278,7 +283,7 @@ go list -m github.com/hsblabs/scrape-kdl@vX.Y.Z
 go list -m github.com/hsblabs/scrape-kdl/adapters/rod@vX.Y.Z
 npm view @hsblabs/scrape-kdl@X.Y.Z version
 npm view @hsblabs/scrape-kdl-playwright@X.Y.Z version
-curl --fail https://hsblabs.github.io/scrape-kdl/ir/2026-07-15/schema.json
+ax https://hsblabs.github.io/scrape-kdl/ir/2026-07-15/schema.json
 ```
 
 Also verify npm provenance, install the Go and npm modules into new consumer projects, run `npm audit signatures`, execute the documented basic example, download every CLI archive, verify `checksums.txt`, and run the native archive on Linux amd64, Linux arm64, macOS amd64, and macOS arm64.

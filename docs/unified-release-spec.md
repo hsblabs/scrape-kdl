@@ -59,6 +59,9 @@ same version is legal only from the same source and with the same artifacts.
   archive before they are skipped.
 - Stable versions select npm `latest`; prereleases select `next`.
 - go-rod uses the exact core version and no committed `replace` directive.
+- A future Go version is checked only against exact Git tags and GitHub
+  Releases before publication. Its first public-proxy request occurs after the
+  corresponding tag exists, so a pre-tag negative response cannot be cached.
 - Go proxy and npm registry reads use bounded retries and report the last value.
 - Publication is globally serialized and never canceled in progress.
 
@@ -72,9 +75,9 @@ workflow is first used, an administrator must:
    must dispatch and approve the release, otherwise prevent it;
 2. change both npm trusted publishers to workflow `release.yml`, Environment
    `release-publish`, and allowed action `npm publish`;
-3. allow the GitHub Actions app to bypass creation restrictions for
-   `v*.*.*` and `adapters/rod/v*.*.*`, while retaining update, deletion, and
-   non-fast-forward protection;
+3. leave creation unrestricted for `v*.*.*` and
+   `adapters/rod/v*.*.*`, while retaining update, deletion, and
+   non-fast-forward protection plus an audited release-owner emergency bypass;
 4. verify the Environment and both tag rulesets before dispatch.
 
 ## Implementation tickets

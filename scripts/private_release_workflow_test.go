@@ -151,6 +151,43 @@ func TestPublicReleaseHasOneCallerVisibleWorkflow(t *testing.T) {
 	}
 }
 
+func TestPublicReleasePublishesGoTagsBeforeProxyLookup(t *testing.T) {
+	root := repositoryRoot(t)
+	content := readFile(t, filepath.Join(root, ".github/workflows/release.yml"))
+	tests := []struct {
+		name    string
+		publish string
+		lookup  string
+	}{
+		{
+			name:    "core",
+			publish: `./scripts/publish-github-release.sh core "$RELEASE_TAG"`,
+			lookup:  `./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl "$RELEASE_TAG"`,
+		},
+		{
+			name:    "go-rod",
+			publish: `./scripts/publish-github-release.sh rod "$ROD_TAG"`,
+			lookup:  `./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl/adapters/rod "$RELEASE_TAG"`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			publishIndex := strings.Index(content, test.publish)
+			lookupIndex := strings.Index(content, test.lookup)
+			if publishIndex < 0 {
+				t.Fatalf("release workflow is missing tag publication %q", test.publish)
+			}
+			if lookupIndex < 0 {
+				t.Fatalf("release workflow is missing proxy lookup %q", test.lookup)
+			}
+			if publishIndex >= lookupIndex {
+				t.Fatalf("%s proxy lookup occurs before tag publication", test.name)
+			}
+		})
+	}
+}
+
 func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 	root := repositoryRoot(t)
 	tests := []struct {
