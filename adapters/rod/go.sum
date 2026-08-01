@@ -1,7 +1,7 @@
 github.com/go-rod/rod v0.116.2 h1:A5t2Ky2A+5eD/ZJQr1EfsQSe5rms5Xof/qj296e+ZqA=
 github.com/go-rod/rod v0.116.2/go.mod h1:H+CMO9SCNc2TJ2WfrG+pKhITz57uGNYU43qYHh438Mg=
-github.com/hsblabs/scrape-kdl v1.0.0-rc.2 h1:y76R6lNzXtC7zVaPZ/F2aYmIUrkaquplSsNeure47LA=
-github.com/hsblabs/scrape-kdl v1.0.0-rc.2/go.mod h1:ODaUzunFVbVneFG+OFVAL0Oz5ka5Wh5Szi3eaTB/61g=
+github.com/hsblabs/scrape-kdl v1.0.0-rc.3 h1:E5oIKfQB/slBYjPfrRCF4UfkDYzna1X9NglBDkvb37g=
+github.com/hsblabs/scrape-kdl v1.0.0-rc.3/go.mod h1:ODaUzunFVbVneFG+OFVAL0Oz5ka5Wh5Szi3eaTB/61g=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 h1:KRzFb2m7YtdldCEkzs6KqmJw4nqEVZGK7IN2kJkjTuQ=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.2/go.mod h1:JXeL+ps8p7/KNMjDQk3TCwPpBy0wYklyWTfbkIzdIFU=
 github.com/ysmood/fetchup v0.2.3 h1:ulX+SonA0Vma5zUFXtv52Kzip/xe7aj4vqT5AJwQ+ZQ=
