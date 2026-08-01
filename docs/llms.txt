@@ -1,0 +1,46 @@
+# Scraping KDL
+
+> Scraping KDL is a declarative language and Go reference implementation for describing HTML extraction in KDL, validating programs into a language-neutral IR, and executing them through HTTP or live browser adapters.
+
+This site is the public entry point for the Scraping KDL v0.1 language contracts and the dated Validated IR schema. The repository is the source of truth for the implementation and normative documents.
+
+## Start here
+
+- [Project repository](https://github.com/hsblabs/scrape-kdl): Source code, issues, examples, and contribution information.
+- [README](https://github.com/hsblabs/scrape-kdl/blob/main/README.md): Project overview, implemented capabilities, installation, and usage.
+- [Language specification v0.1](https://github.com/hsblabs/scrape-kdl/blob/main/docs/spec/language-v0.1.md): Normative syntax, document kinds, acquisition, workflow, selection, values, transforms, and output rules.
+- [Validated IR schema](https://hsblabs.github.io/scrape-kdl/ir/2026-07-15/schema.json): JSON Schema for the dated `2026-07-15` Validated IR contract.
+
+## Normative contracts
+
+- [Built-in transform registry v0.1](https://github.com/hsblabs/scrape-kdl/blob/main/docs/spec/builtins-v0.1.md): Built-in transforms, argument rules, types, and failure behavior.
+- [Portable CSS selector profile v0.1](https://github.com/hsblabs/scrape-kdl/blob/main/docs/spec/selectors-v0.1.md): Selector syntax and semantics shared by browser and portable runtimes.
+- [Diagnostics](https://github.com/hsblabs/scrape-kdl/blob/main/docs/spec/diagnostics.md): Public diagnostic codes, severities, locations, and stable ordering requirements.
+- [Validated IR documentation](https://github.com/hsblabs/scrape-kdl/blob/main/docs/ir/README.md): IR boundary, representations, stability, and canonical JSON rules.
+- [Grammar summary](https://github.com/hsblabs/scrape-kdl/blob/main/docs/spec/grammar-summary.ebnf): Compact grammar reference for the supported language subset.
+
+## Implementation and usage
+
+- [Compiler pipeline](https://github.com/hsblabs/scrape-kdl/blob/main/docs/compiler-pipeline.md): Package boundaries and the parse, validate, lower, and execute stages.
+- [Authoring API](https://github.com/hsblabs/scrape-kdl/blob/main/docs/authoring.md): Bounded Go and TypeScript authoring model and deterministic KDL writer.
+- [Command-line contract](https://github.com/hsblabs/scrape-kdl/blob/main/docs/cli.md): Commands, streams, JSON output, exit statuses, cancellation, and secret handling.
+- [Go and TypeScript public API](https://github.com/hsblabs/scrape-kdl/blob/main/docs/public-api-v1.md): Shared capabilities, compilation, execution, adapters, and result handling.
+- [HTTP runtime](https://github.com/hsblabs/scrape-kdl/blob/main/docs/http-runtime.md): HTTP acquisition, sessions, redirects, limits, decoding, and URL policy.
+- [Browser runtime](https://github.com/hsblabs/scrape-kdl/blob/main/docs/browser-runtime.md): Browser adapter boundary, JavaScript capability, leases, and query limits.
+- [Patterns](https://github.com/hsblabs/scrape-kdl/blob/main/docs/patterns.md): Caller-owned pagination and list-to-detail extraction patterns.
+- [Cookbook](https://github.com/hsblabs/scrape-kdl/blob/main/docs/cookbook.md): Strict transform pipelines for common extraction tasks.
+
+## Security and compatibility
+
+- [Security model](https://github.com/hsblabs/scrape-kdl/blob/main/docs/security-model.md): Trust boundaries, host responsibilities, and runtime safeguards.
+- [Responsible use](https://github.com/hsblabs/scrape-kdl/blob/main/docs/responsible-use.md): Authorization, terms, robots.txt, rate limits, and prohibited circumvention.
+- [Compatibility](https://github.com/hsblabs/scrape-kdl/blob/main/docs/compatibility.md): Supported language, IR, runtime, platform, and encoding compatibility.
+- [HTML compatibility](https://github.com/hsblabs/scrape-kdl/blob/main/docs/html-compatibility.md): Portable parsing behavior and compatibility fixtures.
+- [Roadmap to v1.0.0](https://github.com/hsblabs/scrape-kdl/blob/main/docs/roadmap-v1.md): Product boundary, compatibility versions, conformance, and release milestones.
+
+## Repository navigation
+
+- [Valid fixtures](https://github.com/hsblabs/scrape-kdl/tree/main/fixtures/valid): Examples of accepted Scraping KDL programs.
+- [Invalid fixtures](https://github.com/hsblabs/scrape-kdl/tree/main/fixtures/invalid): Programs and cases used to verify deterministic diagnostics.
+- [Conformance suite](https://github.com/hsblabs/scrape-kdl/tree/main/conformance): Cross-language manifests, schemas, and runner documentation.
+- [Release readiness](https://github.com/hsblabs/scrape-kdl/blob/main/docs/release-readiness.md): Verification and owner-controlled publication gates.
