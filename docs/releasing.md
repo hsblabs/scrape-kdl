@@ -183,43 +183,84 @@ the visibility change would expose their source references, notes, and attached
 assets. Restricted npm packages remain private until their package access is
 changed explicitly.
 
-## One-time public release setup
+## Unified public release setup
 
-Complete these owner-controlled settings before the first public candidate:
+Complete these owner-controlled settings before the unified workflow is first
+used:
 
-1. Configure the `npm-publish` GitHub Environment with required reviewers, prevent self-review and administrator bypass, and permit deployments only from `main`. Do not add an npm publication token.
-2. Configure both npm packages with the GitHub Actions trusted publisher `hsblabs/scrape-kdl`, workflow filename `release-npm.yml`, Environment `npm-publish`, and allowed action `npm publish`. After verifying OIDC publication, set publishing access to require 2FA and disallow tokens.
-3. Configure the `github-release` GitHub Environment with required reviewers, prevent self-review and administrator bypass, and permit only `v*.*.*` and `adapters/rod/v*.*.*` tags.
-4. Add active tag rulesets for `v*.*.*` and `adapters/rod/v*.*.*` that restrict tag creation, update, deletion, and bypass rights to the release owners.
-5. Configure the `github-pages` Environment with required reviewers and GitHub Pages using GitHub Actions as its source.
-6. Confirm ownership of both npm package names.
-7. Decide when to make the repository public. The public npm, Pages, core
-   release, and adapter release jobs refuse to run while repository visibility
-   is private; the private workflows remain separate.
+1. Configure the `release-publish` GitHub Environment with required reviewers,
+   prevent self-review and administrator bypass, and permit deployments only
+   from `main`. Do not add an npm publication token.
+2. Configure both npm packages with the GitHub Actions trusted publisher
+   `hsblabs/scrape-kdl`, workflow filename `release.yml`, Environment
+   `release-publish`, and allowed action `npm publish`. After verifying OIDC
+   publication, retain the package setting that requires 2FA and disallows
+   tokens.
+3. Keep active tag rulesets for `v*.*.*` and `adapters/rod/v*.*.*`. Permit the
+   GitHub Actions app to bypass tag creation so the protected workflow can
+   create annotated tags, but continue to restrict update, deletion, and
+   non-fast-forward changes. Release owners retain their audited emergency
+   bypass.
+4. Configure the `github-pages` Environment with required reviewers and GitHub
+   Pages using GitHub Actions as its source.
+5. Confirm that both npm package trusted-publisher records and both tag rulesets
+   show the new workflow before dispatching a release.
+
+The legacy `npm-publish` and `github-release` Environments are not used by the
+unified public workflow. Remove them only after confirming that no retained
+private or historical workflow depends on them.
 
 Both npm packages are public. Their public release archives contain
-`publishConfig.access=public`, while `release-npm.yml` omits the `--access`
+`publishConfig.access=public`, while `release.yml` omits the `--access`
 argument so publishing a new version does not mutate the existing package
 visibility. If a package is ever restricted again, change its access explicitly
 before using the public workflow; do not make a visibility change an incidental
 side effect of version publication.
 
-The npm and Pages workflows also require typed confirmations. Environment approval remains the primary protection against accidental publication. Required-reviewer availability for private repositories depends on the GitHub plan; if it is unavailable while private, configure and verify it immediately after publicization and before creating or publishing any release tag.
+The release and Pages workflows require separate typed confirmations.
+`release-publish` approval remains the primary protection against accidental
+core, npm, and go-rod publication.
 
-The npm workflow requires Node.js 26, npm 11.5.1 or later, a GitHub-hosted runner, and `id-token: write`. It never reads `NPM_TOKEN`: the build job has no OIDC permission, and only the protected publish job can request short-lived credentials. Trusted publishing automatically emits provenance after the repository and packages are public.
+The publish job requires Node.js 26, npm 11.5.1 or later, a GitHub-hosted
+runner, and `id-token: write`. It never reads `NPM_TOKEN`: the preparation job
+has no OIDC or write permission, and only the protected publish job can request
+short-lived credentials. Trusted publishing automatically emits provenance.
 
 ## Release candidate and stable sequence
 
-Use the same dependency order for release candidates and stable releases:
+Use one preparation PR and one publication run for release candidates and stable
+releases:
 
-1. Update `CHANGELOG.md`, `docs/release-notes-v1.md`, `docs/migrating-to-v1.md`, and `IMPLEMENTATION_STATUS.md`.
-2. Run the private rehearsal and retain its checksums.
-3. After owner approval, make the repository public and manually run `Publish specification site`; verify the dated schema URL returns the checked-in JSON.
-4. Create and push an annotated core tag such as `v1.0.0-rc.1`. The core workflow reruns `release-check`, rebuilds the complete bundle from the tag, and creates the GitHub Release.
-5. Confirm the core module is visible through the Go module proxy before releasing anything that depends on it.
-6. Manually run `Publish npm packages` for the same version. Prereleases use the `next` dist-tag; stable releases use `latest`. All npm publications are globally serialized. The workflow builds and inspects both archives without OIDC permission, then the protected publish job downloads only those archives, publishes core through trusted publishing, confirms its version and dist-tag, and repeats the process for the Playwright adapter.
-7. Update `adapters/rod/go.mod` to require the published core version. Run `make test-rod` and `make test-rod-e2e`, then create and push the annotated `adapters/rod/vX.Y.Z` tag.
-8. Run every post-publication check below and record the results on issue #18.
+1. Update `CHANGELOG.md`, release notes, migration notes, and implementation
+   status, then commit every release-facing root-module change.
+2. Run `make prepare-public-release VERSION=vX.Y.Z`. Review and commit the exact
+   `adapters/rod/go.mod` and `adapters/rod/go.sum` changes. The command computes
+   the future root module checksum from the committed Git tree; do not change a
+   root-module file afterward without rerunning it.
+3. Run the private rehearsal, retain its checksums, merge the reviewed release
+   preparation PR, and confirm the unified external settings above.
+4. After the separate project-owner approval, dispatch the workflow from
+   `main`:
+
+   ```bash
+   gh workflow run release.yml \
+     --repo hsblabs/scrape-kdl \
+     --ref main \
+     -f version=X.Y.Z \
+     -f confirmation=PUBLISH_RELEASE
+   ```
+
+5. Approve the single `release-publish` deployment. The workflow creates both
+   annotated Go tags at the same commit, waits for core proxy visibility,
+   publishes and verifies both npm archives, tests go-rod against the published
+   core, creates the adapter tag and Release, and waits for adapter proxy
+   visibility. Prereleases use npm `next`; stable releases use `latest`.
+6. Run every independent post-publication check below and record the results on
+   issue #18.
+
+The Go module rules still require distinct `vX.Y.Z` and
+`adapters/rod/vX.Y.Z` tag names. Their version, commit, workflow run, and owner
+approval are shared.
 
 Stable `v1.0.0` additionally requires at least 14 consecutive days with no unresolved release blocker after the public release candidate and a separate project-owner approval.
 
@@ -250,7 +291,9 @@ Go module tags and versions observed by a module proxy are immutable. npm consum
 - Failed stable npm release: deprecate the affected npm version with a useful message and publish a patch.
 - Failed stable Go, adapter, or CLI release: publish a patch from a reviewed revert or fix; do not replace tag assets with different bytes.
 - Security incident: stop the remaining publication sequence, open a private security advisory, rotate any affected credentials, and publish coordinated patched versions.
-- Partial publication: resume from the first missing dependent artifact. The npm workflow is idempotent and skips versions already visible in the registry.
+- Partial publication: rerun `release.yml` for the same version and source. The
+  orchestrator verifies and skips matching tags, Release assets, and npm
+  versions, then resumes at the first missing state. Any mismatch fails closed.
 
 ## Supported release targets
 

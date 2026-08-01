@@ -83,7 +83,7 @@ workflow is first used, an administrator must:
 | UR-01 | Prepare and verify a future core dependency in go-rod from an exact Git revision, with checksum regression tests | none | Completed |
 | UR-02 | Make GitHub Release, Go proxy, and npm publication steps idempotent and artifact-verifying | UR-01 | Completed |
 | UR-03 | Replace the three public workflows with one protected sequential orchestrator | UR-01, UR-02 | Completed |
-| UR-04 | Align release contracts, workflow regression tests, changelog, and administrator handoff | UR-03 | In progress |
+| UR-04 | Align release contracts, workflow regression tests, changelog, and administrator handoff | UR-03 | Completed |
 
 Each ticket is committed after its focused tests pass. The complete change must
 pass `make verify`, `make release-check`, workflow linting, and release-plan

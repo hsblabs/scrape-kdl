@@ -65,19 +65,25 @@ else
   git -C "$root" push origin "refs/tags/$tag"
 fi
 
-release_flags=()
 expected_prerelease=false
 if [[ "$tag" == *-* ]]; then
-  release_flags+=(--prerelease --latest=false)
   expected_prerelease=true
 fi
 
 if ! gh release view "$tag" >/dev/null 2>&1; then
-  gh release create "$tag" "${artifacts[@]}" \
-    --verify-tag \
-    --generate-notes \
-    --title "$tag" \
-    "${release_flags[@]}"
+  if [[ "$expected_prerelease" == true ]]; then
+    gh release create "$tag" "${artifacts[@]}" \
+      --verify-tag \
+      --generate-notes \
+      --title "$tag" \
+      --prerelease \
+      --latest=false
+  else
+    gh release create "$tag" "${artifacts[@]}" \
+      --verify-tag \
+      --generate-notes \
+      --title "$tag"
+  fi
 fi
 
 is_draft="$(gh release view "$tag" --json isDraft --jq .isDraft)"

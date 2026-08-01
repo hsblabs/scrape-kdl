@@ -118,6 +118,129 @@ esac
 	}
 }
 
+func TestPublishGitHubReleaseResumesMatchingStateAndRejectsDifferentAssets(t *testing.T) {
+	sourceRoot := repositoryRoot(t)
+	testRoot := filepath.Join(t.TempDir(), "repository")
+	remote := filepath.Join(t.TempDir(), "remote.git")
+	if err := os.MkdirAll(filepath.Join(testRoot, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{
+		"publish-github-release.sh",
+		"validate-public-release-tag.sh",
+		"validate-release-tag.sh",
+	} {
+		copyExecutable(t, filepath.Join(sourceRoot, "scripts", name), filepath.Join(testRoot, "scripts", name))
+	}
+	if err := os.WriteFile(filepath.Join(testRoot, "source.go"), []byte("package source\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runTestGit(t, "", "init", "--bare", remote)
+	runTestGit(t, testRoot, "init")
+	runTestGit(t, testRoot, "config", "user.email", "release@example.invalid")
+	runTestGit(t, testRoot, "config", "user.name", "release test")
+	runTestGit(t, testRoot, "add", ".")
+	runTestGit(t, testRoot, "commit", "-m", "release source")
+	runTestGit(t, testRoot, "remote", "add", "origin", remote)
+	runTestGit(t, testRoot, "push", "-u", "origin", "HEAD")
+
+	artifacts := t.TempDir()
+	archive := filepath.Join(artifacts, "scrape-kdl_1.2.3_linux_amd64.tar.gz")
+	if err := os.WriteFile(archive, []byte("inspected artifact"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	state := t.TempDir()
+	writeExecutable(t, filepath.Join(bin, "gh"), `#!/bin/sh
+set -eu
+command=$1
+operation=$2
+tag=$3
+assets="$GH_STATE/assets"
+case "$command:$operation" in
+  release:view)
+    test -f "$GH_STATE/release"
+    case "$*" in
+      *"--json isDraft"*) echo false ;;
+      *"--json isPrerelease"*) echo false ;;
+      *"--json assets"*) find "$assets" -type f -exec basename {} \; | sort ;;
+    esac
+    ;;
+  release:create)
+    shift 3
+    mkdir -p "$assets"
+    for argument in "$@"; do
+      if test -f "$argument"; then
+        cp "$argument" "$assets/"
+      fi
+    done
+    touch "$GH_STATE/release"
+    echo create >>"$GH_STATE/log"
+    ;;
+  release:upload)
+    cp "$4" "$assets/"
+    echo upload >>"$GH_STATE/log"
+    ;;
+  release:download)
+    shift 3
+    pattern=
+    destination=
+    while test "$#" -gt 0; do
+      case "$1" in
+        --pattern) pattern=$2; shift 2 ;;
+        --dir) destination=$2; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    cp "$assets/$pattern" "$destination/"
+    ;;
+  *)
+    echo "unexpected gh command: $*" >&2
+    exit 2
+    ;;
+esac
+`)
+
+	run := func() ([]byte, error) {
+		command := exec.Command(
+			"bash",
+			filepath.Join(testRoot, "scripts", "publish-github-release.sh"),
+			"core",
+			"v1.2.3",
+			"HEAD",
+			artifacts,
+		)
+		command.Dir = testRoot
+		command.Env = append(os.Environ(),
+			"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+			"GH_STATE="+state,
+		)
+		return command.CombinedOutput()
+	}
+
+	if output, err := run(); err != nil {
+		t.Fatalf("first publication: %v\n%s", err, output)
+	}
+	if output, err := run(); err != nil {
+		t.Fatalf("matching retry: %v\n%s", err, output)
+	}
+	if log := readFile(t, filepath.Join(state, "log")); strings.Count(log, "create") != 1 {
+		t.Fatalf("GitHub Release create count is not one:\n%s", log)
+	}
+	remoteTag := strings.TrimSpace(runTestGit(t, testRoot, "ls-remote", "--tags", "origin", "refs/tags/v1.2.3^{}"))
+	if remoteTag == "" {
+		t.Fatal("annotated release tag was not pushed")
+	}
+
+	if err := os.WriteFile(archive, []byte("different artifact"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	output, err := run()
+	if err == nil || !strings.Contains(string(output), "asset differs from inspected artifact") {
+		t.Fatalf("different retry error = %v\n%s", err, output)
+	}
+}
+
 func TestPublicReleaseActionsFailClosed(t *testing.T) {
 	root := repositoryRoot(t)
 	tests := []struct {
@@ -181,4 +304,28 @@ func writeExecutable(t *testing.T, path, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func copyExecutable(t *testing.T, source, destination string) {
+	t.Helper()
+	data, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(destination, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func runTestGit(t *testing.T, directory string, args ...string) string {
+	t.Helper()
+	command := exec.Command("git", args...)
+	if directory != "" {
+		command.Dir = directory
+	}
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
+	}
+	return string(output)
 }

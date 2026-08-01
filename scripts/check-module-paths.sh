@@ -5,8 +5,9 @@ cd "$root"
 
 [[ "$(head -n1 go.mod)" == 'module github.com/hsblabs/scrape-kdl' ]]
 [[ "$(head -n1 adapters/rod/go.mod)" == 'module github.com/hsblabs/scrape-kdl/adapters/rod' ]]
+[[ "$(head -n1 scripts/releaseplan/go.mod)" == 'module github.com/hsblabs/scrape-kdl/scripts/releaseplan' ]]
 
-for module in go.mod adapters/rod/go.mod docs/ir/go/go.mod testdata/rodstub/go.mod; do
+for module in go.mod adapters/rod/go.mod docs/ir/go/go.mod scripts/releaseplan/go.mod testdata/rodstub/go.mod; do
   if ! grep -qx 'go 1.26' "$module"; then
     echo "$module must declare Go 1.26" >&2
     exit 1

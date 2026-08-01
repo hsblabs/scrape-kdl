@@ -1,6 +1,7 @@
 # Versioning policy
 
-The Go modules and npm packages follow Semantic Versioning independently.
+The Go modules and npm packages each follow Semantic Versioning. Public release
+trains assign them one shared version after validating every surface together.
 
 - Core module: `github.com/hsblabs/scrape-kdl`
 - go-rod adapter: `github.com/hsblabs/scrape-kdl/adapters/rod`
@@ -17,7 +18,12 @@ Stable diagnostic codes are part of the language tooling contract. Their message
 
 The CLI contract candidate began at v0.5 and is frozen for v1. Before stable publication, changes to commands, help, streams, JSON envelopes, exit status classes, signals, or secret input are accepted only for release blockers and require black-box tests, compatibility notes, and a migration update. These behaviors receive v1 Semantic Versioning guarantees at publication.
 
-The adapter may release more frequently than the core. Its `go.mod` must depend on a published core version and must not contain a local `replace` directive.
+Public core, npm, Playwright, and go-rod releases use the same version and are
+published by one orchestrator. Go still requires separate `vX.Y.Z` and
+`adapters/rod/vX.Y.Z` tag names for the two modules; both tags point to the same
+release commit. The adapter's `go.mod` must depend on that exact core version
+and must not contain a local `replace` directive. Private operational releases
+retain their separately approved workflows.
 
 The npm packages are ESM-only and require Node.js 26 or later. Package versions do not select a language or IR contract; the supported opaque identifiers are exposed separately by the package API. Before publication, workspace manifests use `0.0.0-development`, and packed artifacts must contain no `workspace:`, `file:`, or local-path dependency.
 
@@ -41,4 +47,10 @@ Release candidates and stable releases follow this dependency order:
 4. publish the clean-consumer-tested TypeScript core, then the Playwright adapter against that published core;
 5. validate and publish the go-rod adapter against the published Go core.
 
-An adapter release may be retried without changing a core version. The Playwright adapter must declare a published compatible `@hsblabs/scrape-kdl` range and must never rely on the workspace-only development version in a published artifact. Publication remains a separate project-owner gate; repository verification only prepares and inspects artifacts.
+A partial public release may be retried only for the same version, source
+commit, and inspected artifacts. Matching immutable states are skipped; a
+mismatch requires a new prerelease or patch version. The Playwright adapter must
+declare a published compatible `@hsblabs/scrape-kdl` range and must never rely
+on the workspace-only development version in a published artifact. Publication
+remains a separate project-owner gate; repository verification only prepares
+and inspects artifacts.

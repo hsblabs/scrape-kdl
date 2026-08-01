@@ -130,6 +130,27 @@ func TestRodReleaseWorkflowsAttachBinaryArchives(t *testing.T) {
 	}
 }
 
+func TestPublicReleaseHasOneCallerVisibleWorkflow(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, path := range []string{
+		".github/workflows/release-npm.yml",
+		".github/workflows/release-rod.yml",
+	} {
+		if _, err := os.Stat(filepath.Join(root, path)); !os.IsNotExist(err) {
+			t.Errorf("obsolete public workflow still exists: %s", path)
+		}
+	}
+	content := readFile(t, filepath.Join(root, ".github/workflows/release.yml"))
+	if count := strings.Count(content, "environment: release-publish"); count != 1 {
+		t.Errorf("release-publish Environment count = %d; want 1", count)
+	}
+	for _, forbidden := range []string{"npx ", "on:\n  push:", "NPM_TOKEN"} {
+		if strings.Contains(content, forbidden) {
+			t.Errorf("unified public workflow contains forbidden %q", forbidden)
+		}
+	}
+}
+
 func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 	root := repositoryRoot(t)
 	tests := []struct {
