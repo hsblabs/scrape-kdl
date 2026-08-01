@@ -80,8 +80,8 @@ workflow is first used, an administrator must:
 
 | ID | Tracer-bullet outcome | Blocked by | Status |
 |---|---|---|---|
-| UR-01 | Prepare and verify a future core dependency in go-rod from an exact Git revision, with checksum regression tests | none | In progress |
-| UR-02 | Make GitHub Release, Go proxy, and npm publication steps idempotent and artifact-verifying | UR-01 | Pending |
+| UR-01 | Prepare and verify a future core dependency in go-rod from an exact Git revision, with checksum regression tests | none | Completed |
+| UR-02 | Make GitHub Release, Go proxy, and npm publication steps idempotent and artifact-verifying | UR-01 | In progress |
 | UR-03 | Replace the three public workflows with one protected sequential orchestrator | UR-01, UR-02 | Pending |
 | UR-04 | Align release contracts, workflow regression tests, changelog, and administrator handoff | UR-03 | Pending |
 

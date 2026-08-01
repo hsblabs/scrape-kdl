@@ -1,5 +1,5 @@
 .PHONY: test race vet build format-check module-check golden diagnostics examples examples-go examples-typescript html-differential ir-contract builtin-contract api-contract typescript-contract typescript-package conformance-coverage conformance release-matrix hardening validate-example extract-example verify
-.PHONY: package-go performance support-matrix support-matrix-target test-rod-contract test-rod test-rod-e2e test-playwright-e2e release-check release-gate release-dist release-rod-dist
+.PHONY: package-go performance support-matrix support-matrix-target test-rod-contract test-rod test-rod-e2e test-playwright-e2e release-plan release-check release-gate release-dist release-rod-dist prepare-public-release check-public-release-plan
 
 test:
 	GOTOOLCHAIN=local go test ./...
@@ -112,7 +112,11 @@ test-playwright-e2e:
 	npm run build:typescript
 	npm run test:e2e --workspace @hsblabs/scrape-kdl-playwright
 
-verify: format-check module-check golden diagnostics examples ir-contract builtin-contract api-contract typescript-package conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract
+verify: format-check module-check golden diagnostics examples ir-contract builtin-contract api-contract typescript-package conformance-coverage conformance vet test race build validate-example extract-example test-rod-contract release-plan
+
+release-plan:
+	cd scripts/releaseplan && GOWORK=off GOTOOLCHAIN=local go mod tidy -diff
+	cd scripts/releaseplan && GOWORK=off GOTOOLCHAIN=local go test ./...
 
 release-check:
 	./scripts/verify-release.sh
@@ -125,3 +129,9 @@ release-dist:
 
 release-rod-dist:
 	./scripts/build-rod-release.sh "$${VERSION:?set VERSION=adapters/rod/vX.Y.Z}" "$${OUT:-dist}"
+
+prepare-public-release:
+	cd scripts/releaseplan && GOTOOLCHAIN=local go run . prepare "$${VERSION:?set VERSION=vX.Y.Z}" HEAD
+
+check-public-release-plan:
+	cd scripts/releaseplan && GOTOOLCHAIN=local go run . check "$${VERSION:?set VERSION=vX.Y.Z}" "$${REVISION:-HEAD}"
