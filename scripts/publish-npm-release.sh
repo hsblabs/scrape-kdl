@@ -79,7 +79,8 @@ publish_package() {
 
   current_tag="$(npm view "$package" "dist-tags.$dist_tag" 2>/dev/null || true)"
   if [[ -z "$current_tag" ]]; then
-    npm dist-tag add "$package@$version" "$dist_tag"
+    echo "npm $package@$version exists without the expected $dist_tag dist-tag; trusted publishing cannot repair registry metadata" >&2
+    return 1
   elif [[ "$current_tag" != "$version" ]]; then
     echo "refusing to move npm $package $dist_tag from $current_tag to $version" >&2
     return 1

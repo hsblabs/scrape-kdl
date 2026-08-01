@@ -67,8 +67,9 @@ same version is legal only from the same source and with the same artifacts.
 The repository change does not mutate external settings. Before the unified
 workflow is first used, an administrator must:
 
-1. create `release-publish` with required reviewers, no self-review or
-   administrator bypass, and default-branch-only deployment;
+1. create `release-publish` with required reviewers, no administrator bypass,
+   and default-branch-only deployment; allow self-review when a single owner
+   must dispatch and approve the release, otherwise prevent it;
 2. change both npm trusted publishers to workflow `release.yml`, Environment
    `release-publish`, and allowed action `npm publish`;
 3. allow the GitHub Actions app to bypass creation restrictions for

@@ -118,6 +118,56 @@ esac
 	}
 }
 
+func TestPublishNpmReleaseRejectsExistingVersionWithoutExpectedDistTag(t *testing.T) {
+	root := repositoryRoot(t)
+	artifacts := t.TempDir()
+	version := "1.2.3"
+	coreArchive := filepath.Join(artifacts, "hsblabs-scrape-kdl-"+version+".tgz")
+	playwrightArchive := filepath.Join(artifacts, "hsblabs-scrape-kdl-playwright-"+version+".tgz")
+	if err := os.WriteFile(coreArchive, []byte("core archive"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(playwrightArchive, []byte("playwright archive"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	bin := t.TempDir()
+	logFile := filepath.Join(t.TempDir(), "npm.log")
+	writeExecutable(t, filepath.Join(bin, "npm"), `#!/bin/sh
+printf '%s\n' "$*" >>"$NPM_LOG"
+case "$1" in
+  --version) echo 11.5.1 ;;
+  view)
+    case "$3" in
+      version) echo 1.2.3 ;;
+      dist.integrity) echo "$CORE_INTEGRITY" ;;
+      dist-tags.latest) exit 0 ;;
+    esac
+    ;;
+  *)
+    echo "unexpected npm command: $*" >&2
+    exit 10
+    ;;
+esac
+`)
+
+	command := exec.Command("bash", filepath.Join(root, "scripts", "publish-npm-release.sh"), version, artifacts)
+	command.Env = append(os.Environ(),
+		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"NPM_LOG="+logFile,
+		"CORE_INTEGRITY="+npmIntegrity([]byte("core archive")),
+		"NPM_WAIT_ATTEMPTS=1",
+		"NPM_WAIT_INTERVAL_SECONDS=0",
+	)
+	output, err := command.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "trusted publishing cannot repair registry metadata") {
+		t.Fatalf("missing dist-tag error = %v\n%s", err, output)
+	}
+	if log := readFile(t, logFile); strings.Contains(log, "dist-tag add") {
+		t.Fatalf("missing dist-tag was mutated:\n%s", log)
+	}
+}
+
 func TestPublishGitHubReleaseResumesMatchingStateAndRejectsDifferentAssets(t *testing.T) {
 	sourceRoot := repositoryRoot(t)
 	testRoot := filepath.Join(t.TempDir(), "repository")
@@ -265,7 +315,7 @@ func TestPublicReleaseActionsFailClosed(t *testing.T) {
 				"refusing to move npm",
 				"dist.integrity",
 			},
-			forbid: []string{"NPM_TOKEN", "--access public"},
+			forbid: []string{"NPM_TOKEN", "--access public", "npm dist-tag add"},
 		},
 		{
 			path: "scripts/wait-public-go-module.sh",

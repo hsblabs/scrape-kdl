@@ -189,8 +189,9 @@ Complete these owner-controlled settings before the unified workflow is first
 used:
 
 1. Configure the `release-publish` GitHub Environment with required reviewers,
-   prevent self-review and administrator bypass, and permit deployments only
-   from `main`. Do not add an npm publication token.
+   prevent administrator bypass, and permit deployments only from `main`. If a
+   single owner must dispatch and approve a release, allow self-review;
+   otherwise prevent it. Do not add an npm publication token.
 2. Configure both npm packages with the GitHub Actions trusted publisher
    `hsblabs/scrape-kdl`, workflow filename `release.yml`, Environment
    `release-publish`, and allowed action `npm publish`. After verifying OIDC
@@ -209,6 +210,10 @@ used:
 The legacy `npm-publish` and `github-release` Environments are not used by the
 unified public workflow. Remove them only after confirming that no retained
 private or historical workflow depends on them.
+
+Trusted publishing authorizes `npm publish`, not an independent dist-tag repair.
+If a version already exists without its expected `latest` or `next` tag, the
+workflow stops for owner investigation instead of mutating registry metadata.
 
 Both npm packages are public. Their public release archives contain
 `publishConfig.access=public`, while `release.yml` omits the `--access`
