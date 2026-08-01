@@ -49,17 +49,18 @@ type transformDecl struct {
 }
 
 type Compiler struct {
-	ctx           context.Context
-	loader        SourceLoader
-	sources       map[string][]byte
-	absolutePaths bool
-	diags         diagnostic.List
-	documents     map[string]*loadedDocument
-	loading       map[string]bool
-	files         []ir.SourceFile
-	capabilities  map[string]struct{}
-	jsPresent     bool
-	entryDir      string
+	ctx            context.Context
+	loader         SourceLoader
+	sources        map[string][]byte
+	absolutePaths  bool
+	diags          diagnostic.List
+	documents      map[string]*loadedDocument
+	loading        map[string]bool
+	files          []ir.SourceFile
+	capabilities   map[string]struct{}
+	jsPresent      bool
+	operationalErr error
+	entryDir       string
 }
 
 type SourceLoader func(context.Context, string) ([]byte, error)
@@ -76,11 +77,11 @@ func New() *Compiler {
 	}
 }
 
-func CompileFile(path string) (*ir.Extractor, diagnostic.List) {
+func CompileFile(path string) (*ir.Extractor, diagnostic.List, error) {
 	return CompileFileContext(context.Background(), path)
 }
 
-func CompileFileContext(ctx context.Context, path string) (*ir.Extractor, diagnostic.List) {
+func CompileFileContext(ctx context.Context, path string) (*ir.Extractor, diagnostic.List, error) {
 	if ctx == nil {
 		panic("compiler: nil context")
 	}
@@ -91,7 +92,7 @@ func CompileFileContext(ctx context.Context, path string) (*ir.Extractor, diagno
 	return c.compile(absPath)
 }
 
-func CompileSource(ctx context.Context, path string, data []byte, loader SourceLoader) (*ir.Extractor, diagnostic.List) {
+func CompileSource(ctx context.Context, path string, data []byte, loader SourceLoader) (*ir.Extractor, diagnostic.List, error) {
 	if ctx == nil {
 		panic("compiler: nil context")
 	}
@@ -105,27 +106,33 @@ func CompileSource(ctx context.Context, path string, data []byte, loader SourceL
 	return c.compile(path)
 }
 
-func (c *Compiler) compile(path string) (*ir.Extractor, diagnostic.List) {
+func (c *Compiler) compile(path string) (*ir.Extractor, diagnostic.List, error) {
 	root := c.loadDocument(path, docExtractor)
+	if c.operationalErr != nil {
+		return nil, nil, c.operationalErr
+	}
 	if root == nil || c.diags.HasErrors() {
-		return nil, c.diags.Sorted()
+		return nil, c.diags.Sorted(), nil
 	}
 	out := c.compileExtractor(root)
 	if c.jsPresent {
 		c.diags.Add("W_JAVASCRIPT_PRESENT", diagnostic.SeverityWarning, "specification contains trusted JavaScript execution", root.root.Span, "source")
 	}
 	if c.diags.HasErrors() {
-		return nil, c.diags.Sorted()
+		return nil, c.diags.Sorted(), nil
 	}
-	return out, c.diags.Sorted()
+	return out, c.diags.Sorted(), nil
 }
 
-func ValidateFile(path string) diagnostic.List {
-	_, diags := CompileFile(path)
-	return diags
+func ValidateFile(path string) (diagnostic.List, error) {
+	_, diags, err := CompileFile(path)
+	return diags, err
 }
 
 func (c *Compiler) loadDocument(path string, expected documentKind) *loadedDocument {
+	if c.operationalErr != nil {
+		return nil
+	}
 	path = c.cleanPath(path)
 	if c.loading[path] {
 		span := zeroSpan(c.displayPath(path))
@@ -142,24 +149,25 @@ func (c *Compiler) loadDocument(path string, expected documentKind) *loadedDocum
 	defer delete(c.loading, path)
 
 	if err := c.ctx.Err(); err != nil {
-		c.diags.Add("E_KDL_SYNTAX", diagnostic.SeverityError, fmt.Sprintf("read %q: %v", c.displayPath(path), err), zeroSpan(c.displayPath(path)), "")
+		c.operationalErr = fmt.Errorf("read %q: %w", c.displayPath(path), err)
 		return nil
 	}
 	data, ok := c.sources[path]
 	var err error
 	if !ok {
 		if c.loader == nil {
-			err = fmt.Errorf("no source loader configured")
+			c.operationalErr = fmt.Errorf("read %q: no source loader configured", c.displayPath(path))
+			return nil
 		} else {
 			data, err = c.loader(c.ctx, path)
 		}
 	}
 	if err != nil {
-		c.diags.Add("E_KDL_SYNTAX", diagnostic.SeverityError, fmt.Sprintf("read %q: %v", c.displayPath(path), err), zeroSpan(c.displayPath(path)), "")
+		c.operationalErr = fmt.Errorf("read %q: %w", c.displayPath(path), err)
 		return nil
 	}
 	if err := c.ctx.Err(); err != nil {
-		c.diags.Add("E_KDL_SYNTAX", diagnostic.SeverityError, fmt.Sprintf("read %q: %v", c.displayPath(path), err), zeroSpan(c.displayPath(path)), "")
+		c.operationalErr = fmt.Errorf("read %q: %w", c.displayPath(path), err)
 		return nil
 	}
 	data = append([]byte(nil), data...)

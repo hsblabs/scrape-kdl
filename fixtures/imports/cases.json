@@ -102,18 +102,8 @@
     "path": "spec/main.kdl",
     "source": "import \"./missing.kdl\" as=\"missing\"\nextractor \"entry\" version=\"2026-07-15\" language-version=\"2026-07-15\" { source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" } field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" } }\n",
     "files": {},
-    "diagnostics": [
-      {
-        "code": "E_KDL_SYNTAX",
-        "severity": "error",
-        "message": "read \"missing.kdl\": missing source",
-        "span": {
-          "file": "missing.kdl",
-          "start": { "offset": 0, "line": 1, "column": 1 },
-          "end": { "offset": 0, "line": 1, "column": 1 }
-        }
-      }
-    ]
+    "diagnostics": [],
+    "operationalError": "missing source"
   },
   {
     "name": "import-after-root",

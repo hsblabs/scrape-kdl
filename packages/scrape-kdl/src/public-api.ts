@@ -3,11 +3,12 @@ import {
   supportedIRVersions as compilerSupportedIRVersions,
   supportedLanguageVersions as compilerSupportedLanguageVersions,
 } from "./compiler.js";
-import { executeProgram, prepareRuntime, type RuntimePlan } from "./runtime.js";
+import { executeProgram, executeSnapshot, prepareRuntime, type RuntimePlan } from "./runtime.js";
 import type { DiagnosticIR, ExtractorIR, JsonValue } from "./ir.js";
 
 export type { DiagnosticIR, ExtractorIR, JsonValue } from "./ir.js";
 export { ExecutionError } from "./execution-error.js";
+export { SourceLoadError } from "./source-load-error.js";
 
 export interface Source {
   readonly path: string;
@@ -49,10 +50,25 @@ export interface ProgramMetadata {
   readonly capabilities: readonly string[];
 }
 
+export type FetchMode = "http" | "browser";
+export type SessionPolicy = "none" | "optional" | "required";
+
+export interface SourceDescriptor {
+  readonly fetchMode: FetchMode;
+  readonly urlTemplate: string;
+  readonly sessionPolicy: SessionPolicy;
+}
+
+export interface ProgramDescriptor {
+  readonly source: SourceDescriptor;
+}
+
 export interface Program {
   readonly metadata: ProgramMetadata;
+  readonly descriptor: ProgramDescriptor;
   readonly ir: ExtractorIR;
   extract(inputs?: Readonly<Record<string, JsonValue>>, options?: ExecutionOptions): Promise<ExtractionResult>;
+  extractSnapshot(html: string, options?: ExecutionOptions): Promise<ExtractionResult>;
 }
 
 export async function compile(source: Source, options: CompileOptions = {}): Promise<CompileResult> {
@@ -190,6 +206,7 @@ export interface ExtractionResult {
 class ProgramSnapshot implements Program {
   readonly ir: ExtractorIR;
   readonly metadata: ProgramMetadata;
+  readonly descriptor: ProgramDescriptor;
   readonly #plan: RuntimePlan;
 
   constructor(ir: ExtractorIR) {
@@ -203,6 +220,13 @@ class ProgramSnapshot implements Program {
       files: structuredClone(ir.files),
       capabilities: [...ir.capabilities],
     });
+    this.descriptor = deepFreeze({
+      source: {
+        fetchMode: ir.source.fetch.mode,
+        urlTemplate: ir.source.fetch.urlTemplate.raw,
+        sessionPolicy: ir.source.sessionPolicy,
+      },
+    });
   }
 
   async extract(
@@ -210,6 +234,10 @@ class ProgramSnapshot implements Program {
     options: ExecutionOptions = {},
   ): Promise<ExtractionResult> {
     return executeProgram(this.ir, inputs, options, this.#plan);
+  }
+
+  async extractSnapshot(html: string, options: ExecutionOptions = {}): Promise<ExtractionResult> {
+    return executeSnapshot(this.ir, html, options, this.#plan);
   }
 }
 

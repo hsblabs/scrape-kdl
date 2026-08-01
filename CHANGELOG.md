@@ -4,6 +4,19 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## 1.0.0 — Unreleased
 
+- Added bounded Go and TypeScript authoring APIs with an explicit-version
+  built-in catalog and deterministic KDL writing. Catalog arguments expose
+  finite allowed values and numeric bounds, and TypeScript `float(value)`
+  preserves integral float syntax such as `1.0`. The shared tracer output is
+  compiled by both implementations, while compiler syntax and Validated IR
+  internals remain private.
+- Added a compile-checked transform cookbook for localized numbers, optional IDs, relative links, blank cells, nullable pipelines, and date/time strings without changing coercion or type rules.
+- Documented caller-owned pagination and list-to-detail extraction patterns with compile-checked KDL plus bounded CLI, Go, and TypeScript loops.
+- Added Go `Program.ExtractSnapshot` and TypeScript `program.extractSnapshot` for acquisition-free portable extraction from supplied HTML, including browser-mode programs, with shared fixtures and explicit `E_SNAPSHOT_UNSUPPORTED` rejection for workflows and JavaScript output.
+- Added strict, atomic `Result.Decode` conversion for typed Go structs and maps, including nested collections, exact integer conversion, explicit missing/null behavior, and unknown-field rejection without changing warning or partial state.
+- Added immutable Go and TypeScript program descriptors for fetch mode, raw URL template, and session policy, avoiding full Validated IR decoding for host-owned acquisition.
+- Added `CompileFS` and `ValidateFS` for nested, relative compilation from `fs.FS`, including `embed.FS`, lexical escape rejection, cancellation checks, and documented symlink-containment limits.
+- Separated operational compilation failures from document diagnostics. Go compile and validate entry points now return an `error` that preserves cancellation and loader/filesystem causes, while TypeScript rejects loader failures with `SourceLoadError` and retains the original `cause`.
 - Added responsible-use guidance and neutralized the remaining real-brand
   references in specifications and fixtures before public release.
 - Fixed the public release boundary so private-channel versions cannot reach

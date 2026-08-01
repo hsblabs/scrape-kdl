@@ -40,6 +40,12 @@
         "fixtures/html-compat/wpt-foreign-object.html",
         "fixtures/html-compat/wpt-integration-points.html"
       ]
+    },
+    {
+      "id": "snapshot-runtime-2026-07-15",
+      "purpose": "Shared portable and rejected offline snapshot observations consumed by Go and TypeScript runtime tests.",
+      "consumers": ["go", "typescript"],
+      "artifacts": ["fixtures/snapshot/cases.json"]
     }
   ],
   "suites": {
@@ -135,6 +141,18 @@
         { "implementation": "typescript", "job": "core", "stages": ["validate", "compile"] },
         { "implementation": "typescript", "job": "browser-e2e", "stages": ["browser"] },
         { "implementation": "go", "job": "browser-e2e", "stages": ["browser"] }
+      ]
+    },
+    {
+      "id": "valid.authoring-tracer",
+      "status": "release-blocking",
+      "categories": ["valid"],
+      "suites": ["pr", "release", "language", "typescript-core"],
+      "artifacts": [{ "path": "fixtures/authoring/tracer.kdl", "role": "source" }],
+      "expectations": { "outcome": "valid" },
+      "executions": [
+        { "implementation": "go", "job": "core", "stages": ["validate", "compile"] },
+        { "implementation": "typescript", "job": "core", "stages": ["validate", "compile"] }
       ]
     },
 

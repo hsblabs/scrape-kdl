@@ -39,6 +39,7 @@ export interface RuntimePlan {
   readonly transforms: ReadonlyMap<string, TransformIR>;
   readonly selectors: ReadonlyMap<string, ReturnType<typeof parseSelector>>;
   readonly regexes: WeakMap<ResolvedTransformCallIR, PortableRegex>;
+  readonly snapshotError?: ExecutionError;
 }
 
 export async function executeProgram(
@@ -76,6 +77,19 @@ export async function executeHTML(
   return executeDocument(preflightRuntime(ir, options, "http", prepared), parseHTML(html));
 }
 
+export async function executeSnapshot(
+  ir: ExtractorIR,
+  html: string,
+  options: ExecutionOptions = {},
+  prepared?: RuntimePlan,
+): Promise<ExtractionResult> {
+  checkAbort(options.signal, "output");
+  const mode = ir.source.fetch.mode;
+  const plan = prepared ?? prepareRuntime(ir, mode);
+  if (plan.snapshotError !== undefined) throw plan.snapshotError;
+  return executeDocument(preflightRuntime(ir, options, mode, plan), parseHTML(html));
+}
+
 export function prepareRuntime(ir: ExtractorIR, mode: "http" | "browser"): RuntimePlan {
   if (ir.source.fetch.mode !== mode) {
     const code = mode === "http" ? "E_BROWSER_RUNTIME_MISSING" : "E_BROWSER_MODE_REQUIRED";
@@ -96,7 +110,36 @@ export function prepareRuntime(ir: ExtractorIR, mode: "http" | "browser"): Runti
   }
   const selectors = new Map<string, ReturnType<typeof parseSelector>>();
   preflightOutput(ir.output, mode, selectors);
-  return { ir, mode, transforms, selectors, regexes: new WeakMap() };
+  const snapshotError = snapshotCompatibilityError(ir);
+  const plan = { ir, mode, transforms, selectors, regexes: new WeakMap<ResolvedTransformCallIR, PortableRegex>() };
+  return snapshotError === undefined ? plan : { ...plan, snapshotError };
+}
+
+function snapshotCompatibilityError(ir: ExtractorIR): ExecutionError | undefined {
+  if (ir.source.workflow.length > 0)
+    return new ExecutionError(
+      "E_SNAPSHOT_UNSUPPORTED",
+      "offline snapshot execution cannot reproduce browser workflow",
+      {
+        path: "source.workflow",
+      },
+    );
+  const inspect = (object: OutputObjectIR): ExecutionError | undefined => {
+    for (const member of object.members) {
+      if (member.kind === "field" && member.valueSource.kind === "javascript")
+        return new ExecutionError(
+          "E_SNAPSHOT_UNSUPPORTED",
+          "offline snapshot execution cannot evaluate JavaScript value sources",
+          { path: member.id },
+        );
+      if (member.kind === "collection") {
+        const nested = inspect(member.row);
+        if (nested !== undefined) return nested;
+      }
+    }
+    return undefined;
+  };
+  return inspect(ir.output);
 }
 
 export function preflightRuntime(

@@ -17,7 +17,7 @@ The generic parser preserves property order and duplicates. Application-level re
 
 No network request, browser launch, navigation, session mutation, or external transform call exists in the compiler package. The compiler only reads the entry KDL file and relative imported modules.
 
-The TypeScript core has no ambient filesystem or network loader. In-memory compilation resolves relative paths lexically and delegates imported bytes to `SourceLoader`; the Node.js `./node` entry point supplies filesystem loading explicitly. Load errors, duplicate aliases, wrong document kinds, remote paths, and cycles become deterministic diagnostics before semantic compilation or acquisition.
+The TypeScript core has no ambient filesystem or network loader. In-memory compilation resolves relative paths lexically and delegates imported bytes to `SourceLoader`; the Node.js `./node` entry point supplies filesystem loading explicitly. Duplicate aliases, wrong document kinds, remote paths, and cycles become deterministic diagnostics before semantic compilation or acquisition. Cancellation and source-loading failures remain operational errors with their original cause rather than being classified as KDL syntax findings.
 
 ## Package boundaries
 

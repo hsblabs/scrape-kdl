@@ -7,8 +7,10 @@ import { executeHTML } from "../packages/scrape-kdl/dist/runtime.js";
 
 const root = process.cwd();
 const examplesRoot = join(root, "examples");
+const documentationPaths = ["docs/cookbook.md", "docs/patterns.md"];
 let examples = 0;
 let executions = 0;
+let documentationSnippets = 0;
 
 for (const entry of await readdir(examplesRoot, { withFileTypes: true })) {
   if (!entry.isDirectory()) continue;
@@ -62,9 +64,42 @@ for (const entry of await readdir(examplesRoot, { withFileTypes: true })) {
   examples++;
 }
 
+for (const path of documentationPaths) {
+  const markdown = await readFile(join(root, path), "utf8");
+  const snippets = extractKDLFences(markdown);
+  assert.ok(snippets.length > 0, `${path}: no KDL fences found`);
+  for (const snippet of snippets) {
+    const compiled = await compile({ path: `${path}#L${snippet.line}`, data: snippet.source });
+    assert.ok(compiled.program, `${path}#L${snippet.line}: ${JSON.stringify(compiled.diagnostics)}`);
+    documentationSnippets++;
+  }
+}
+
 assert.ok(examples > 0);
 console.log(`TypeScript examples: ${examples} example(s), ${executions} execution(s) passed`);
+console.log(`TypeScript documentation snippets: ${documentationSnippets} snippet(s) passed`);
 
 function fixtureFetch(html) {
   return async () => new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
+}
+
+function extractKDLFences(markdown) {
+  const lines = markdown.split("\n");
+  const snippets = [];
+  let fence;
+  for (let index = 0; index < lines.length; index++) {
+    const marker = lines[index].replace(/\r$/, "").trim();
+    if (fence === undefined) {
+      if (marker.startsWith("```")) fence = { kdl: marker === "```kdl", line: index + 2, source: [] };
+      continue;
+    }
+    if (marker === "```") {
+      if (fence.kdl) snippets.push({ line: fence.line, source: `${fence.source.join("\n")}\n` });
+      fence = undefined;
+      continue;
+    }
+    if (fence.kdl) fence.source.push(lines[index]);
+  }
+  assert.equal(fence, undefined, "unclosed fenced code block");
+  return snippets;
 }

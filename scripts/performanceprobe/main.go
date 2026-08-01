@@ -28,13 +28,13 @@ func main() {
 	must(json.Unmarshal(inputsData, &inputs))
 
 	compile := func() {
-		program, diagnostics := scrapekdl.Compile(context.Background(), scrapekdl.Source{Path: "extractor.kdl", Data: source}, scrapekdl.CompileOptions{})
-		if diagnostics.HasErrors() || program == nil {
+		program, diagnostics, err := scrapekdl.Compile(context.Background(), scrapekdl.Source{Path: "extractor.kdl", Data: source}, scrapekdl.CompileOptions{})
+		if err != nil || diagnostics.HasErrors() || program == nil {
 			panic("compile workload failed")
 		}
 	}
-	program, diagnostics := scrapekdl.Compile(context.Background(), scrapekdl.Source{Path: "extractor.kdl", Data: source}, scrapekdl.CompileOptions{})
-	if diagnostics.HasErrors() || program == nil {
+	program, diagnostics, err := scrapekdl.Compile(context.Background(), scrapekdl.Source{Path: "extractor.kdl", Data: source}, scrapekdl.CompileOptions{})
+	if err != nil || diagnostics.HasErrors() || program == nil {
 		panic("prepare workload failed")
 	}
 	extract := func() {

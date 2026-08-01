@@ -16,8 +16,24 @@ func TestCheckedInExamples(t *testing.T) {
 	if report.Examples < 4 {
 		t.Fatalf("examples = %d, want at least 4", report.Examples)
 	}
+	if report.DocumentationSnippets < 8 {
+		t.Fatalf("documentation snippets = %d, want at least 8", report.DocumentationSnippets)
+	}
 	if len(report.Updated) != 0 {
 		t.Fatalf("ordinary check updated files: %v", report.Updated)
+	}
+}
+
+func TestExtractKDLFencesTracksLinesAndRejectsUnclosedBlocks(t *testing.T) {
+	snippets, err := extractKDLFences("# Example\n\n```text\nignored\n```\n\n```kdl\nextractor \"x\" {}\n```\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snippets) != 1 || snippets[0].line != 8 || snippets[0].source != "extractor \"x\" {}\n" {
+		t.Fatalf("snippets = %#v", snippets)
+	}
+	if _, err := extractKDLFences("```kdl\nextractor \"x\" {}"); err == nil {
+		t.Fatal("unclosed fence accepted")
 	}
 }
 

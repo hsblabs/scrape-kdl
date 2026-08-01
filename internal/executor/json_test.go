@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hsblabs/scrape-kdl/internal/compiler"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 )
 
@@ -51,7 +50,7 @@ func TestExecuteHTMLRejectsTrailingDataInDefault(t *testing.T) {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "value" type="string" required=#false default="fallback" { select ".missing"; value "text"; on-error "default" }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}

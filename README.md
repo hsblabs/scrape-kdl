@@ -2,8 +2,9 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Current release target: `v1.0.0-rc.1`. Check GitHub Releases and the package
-registries for publication status.
+Current published candidate: `v1.0.0-rc.1`. The development surface requires a
+new candidate before stable `v1.0.0`; see `docs/release-readiness.md` for the
+owner and time gates.
 The normative specification documents use the v0.1 document series and the initial compatibility identifiers `language-version="2026-07-15"` and `irVersion: "2026-07-15"`.
 
 ```text
@@ -21,7 +22,7 @@ KDL source
 - relative imports with aliases and cycle detection;
 - stable diagnostics and Validated IR JSON;
 - declared transforms, built-ins, match transforms, and external transforms;
-- HTTP fetch, sessions, charset decoding, response limits, and offline HTML fixtures;
+- HTTP fetch, sessions, charset decoding, response limits, and explicit offline snapshot execution;
 - portable CSS selector profile;
 - browser workflow and live-DOM extraction;
 - trusted-spec JavaScript evaluation with explicit opt-in;
@@ -41,6 +42,16 @@ The project does not support anti-bot or access-control circumvention.
 
 See [`docs/responsible-use.md`](docs/responsible-use.md) before targeting a live
 service.
+
+## Authoring patterns
+
+See [`docs/patterns.md`](docs/patterns.md) for caller-owned pagination and
+list-to-detail extraction with CLI, Go, and TypeScript loops.
+See [`docs/cookbook.md`](docs/cookbook.md) for strict transform pipelines that
+handle localized numbers, optional IDs, links, blank cells, and date strings.
+See [`docs/authoring.md`](docs/authoring.md) for the bounded Go and TypeScript
+Authoring Document, explicit-version built-in catalog, and deterministic KDL
+writer.
 
 ## Public release candidate install
 
@@ -123,7 +134,10 @@ scrape-kdl version
 ## Go API
 
 ```go
-program, diagnostics := scrapekdl.CompileFile(ctx, "extractor.kdl")
+program, diagnostics, err := scrapekdl.CompileFile(ctx, "extractor.kdl")
+if err != nil {
+    // Cancellation, filesystem, and other operational failures retain their cause.
+}
 if diagnostics.HasErrors() {
     // Render diagnostics and stop before network or browser activity.
 }
@@ -140,15 +154,25 @@ result, err := program.Extract(ctx, map[string]any{
 if err != nil {
     // Inspect *scrapekdl.ExecutionError.Code.
 }
+
+var output struct {
+    Title string `json:"title"`
+}
+if err := result.Decode(&output); err != nil {
+    // Reject missing, null, mismatched, or overflowing values.
+}
 ```
 
 The public API includes:
 
-- context-first `Compile`, `Validate`, `CompileFile`, and `ValidateFile` entry points;
+- context-first `Compile`, `Validate`, `CompileFile`, `ValidateFile`, `CompileFS`, and `ValidateFS` entry points;
 - injected source loading for deterministic import resolution without filesystem access;
+- `fs.FS` compilation for embedded and application-owned specification trees;
 - immutable `Program.Metadata` snapshots;
+- immutable `Program.Descriptor` acquisition settings;
 - `Program.IRJSON`;
-- `Program.Extract` and `Program.ExtractHTML`;
+- `Program.Extract`, HTTP-only `Program.ExtractHTML`, and acquisition-free `Program.ExtractSnapshot`;
+- strict `Result.Decode` conversion into typed Go structs and maps;
 - HTTP client and session injection;
 - external transform registry;
 - custom charset decoding;
@@ -156,13 +180,15 @@ The public API includes:
 - browser adapter injection;
 - adapter-facing `NormalizeBrowserResult` validation and normalization;
 - explicit `SupportedLanguageVersions` and `SupportedIRVersions` registries.
+- a separate `authoring` package for bounded semantic construction, explicit
+  built-in catalog selection, and deterministic KDL writing.
 
 See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and intentional idiomatic differences.
 
 The `@hsblabs/scrape-kdl` workspace is an ESM-only, publishable package scaffold for Node.js 26 and later.
-Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
+Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/authoring` exposes bounded semantic authoring and KDL writing; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
 The package independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture without invoking Go.
-The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, HTTP/offline-HTML runtime, and browser-library-neutral runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
+The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, HTTP/offline-snapshot runtime, and browser-library-neutral runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
 `@hsblabs/scrape-kdl-playwright` is the official Playwright adapter. It owns isolated per-extraction browser contexts and an extraction-wide lease; no concrete browser library is a dependency of the core package.
 See `docs/spec/conformance-coverage.md` and `docs/html-compatibility.md` for the audited rule inventory and parser-compatibility gates.
 

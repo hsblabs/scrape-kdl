@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/url"
 	"testing"
+	"testing/fstest"
 
 	scrapekdl "github.com/hsblabs/scrape-kdl"
+	"github.com/hsblabs/scrape-kdl/authoring"
 )
 
 func TestIndependentGoConsumer(t *testing.T) {
@@ -14,20 +16,24 @@ func TestIndependentGoConsumer(t *testing.T) {
 	files := map[string][]byte{
 		"spec/common.kdl": []byte(`module "common" version="2026-07-15" language-version="2026-07-15" {}`),
 	}
-	program, diagnostics := scrapekdl.Compile(ctx, scrapekdl.Source{
+	source := scrapekdl.Source{
 		Path: "spec/main.kdl",
 		Data: []byte(`import "common.kdl" as="common"
 extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="http" url="https://example.invalid/" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`),
-	}, scrapekdl.CompileOptions{Loader: func(_ context.Context, path string) ([]byte, error) {
+	}
+	program, diagnostics, err := scrapekdl.Compile(ctx, source, scrapekdl.CompileOptions{Loader: func(_ context.Context, path string) ([]byte, error) {
 		data, ok := files[path]
 		if !ok {
 			return nil, fmt.Errorf("missing source %q", path)
 		}
 		return data, nil
 	}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if diagnostics.HasErrors() || program == nil {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -35,6 +41,17 @@ extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
 	metadata := program.Metadata()
 	if metadata.Name != "consumer" || metadata.LanguageVersion != "2026-07-15" || len(metadata.Files) != 2 {
 		t.Fatalf("metadata = %#v", metadata)
+	}
+	descriptor := program.Descriptor()
+	if descriptor.Source.FetchMode != scrapekdl.FetchModeHTTP || descriptor.Source.URLTemplate != "https://example.invalid/" || descriptor.Source.SessionPolicy != scrapekdl.SessionPolicyNone {
+		t.Fatalf("descriptor = %#v", descriptor)
+	}
+	embeddedProgram, embeddedDiagnostics, err := scrapekdl.CompileFS(ctx, fstest.MapFS{
+		"spec/main.kdl":   {Data: source.Data},
+		"spec/common.kdl": {Data: files["spec/common.kdl"]},
+	}, "spec/main.kdl")
+	if err != nil || embeddedDiagnostics.HasErrors() || embeddedProgram == nil {
+		t.Fatalf("CompileFS result = %#v, diagnostics = %#v, error = %v", embeddedProgram, embeddedDiagnostics, err)
 	}
 	publicTarget, err := url.Parse("https://8.8.8.8/")
 	if err != nil {
@@ -58,5 +75,42 @@ extractor "consumer" version="2026-07-15" language-version="2026-07-15" {
 	result, err := program.ExtractHTML(ctx, "<h1>Example</h1>", options)
 	if err != nil || result.Value["title"] != "Example" {
 		t.Fatalf("result = %#v, error = %v", result, err)
+	}
+	snapshot, err := program.ExtractSnapshot(ctx, "<h1>Snapshot</h1>", options)
+	if err != nil || snapshot.Value["title"] != "Snapshot" {
+		t.Fatalf("snapshot = %#v, error = %v", snapshot, err)
+	}
+	var decoded struct {
+		Title string `json:"title"`
+	}
+	if err := result.Decode(&decoded); err != nil || decoded.Title != "Example" {
+		t.Fatalf("decoded = %#v, error = %v", decoded, err)
+	}
+
+	catalog, err := authoring.BuiltinCatalog("2026-07-15")
+	if err != nil {
+		t.Fatal(err)
+	}
+	normalize, ok := catalog.Lookup("normalize-whitespace")
+	if !ok {
+		t.Fatal("authoring catalog is missing normalize-whitespace")
+	}
+	authored, err := authoring.Write(authoring.Document{
+		LanguageVersion: "2026-07-15",
+		Extractor: authoring.Extractor{
+			Name: "authored-consumer", Version: "2026-07-15",
+			Source: authoring.Source{FetchMode: scrapekdl.FetchModeHTTP, URLTemplate: "https://example.invalid/", SessionPolicy: scrapekdl.SessionPolicyNone},
+			Members: []authoring.Member{authoring.Field{
+				Name: "title", Type: "string", Required: true, Selector: "h1", Match: authoring.MatchOne,
+				Value: authoring.TextValue{}, Transforms: []authoring.BuiltinCall{normalize.Call(nil, nil)}, OnError: authoring.ErrorFail,
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	authoredProgram, authoredDiagnostics, err := scrapekdl.Compile(ctx, scrapekdl.Source{Path: "authored-consumer.kdl", Data: authored}, scrapekdl.CompileOptions{})
+	if err != nil || authoredDiagnostics.HasErrors() || authoredProgram == nil {
+		t.Fatalf("authored program = %#v, diagnostics = %#v, error = %v", authoredProgram, authoredDiagnostics, err)
 	}
 }

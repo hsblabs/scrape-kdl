@@ -88,9 +88,35 @@ func ExecuteHTML(ctx context.Context, extractor *ir.Extractor, html string, opti
 	return prepared.ExecuteHTML(ctx, html, options)
 }
 
+// ExecuteSnapshot runs portable output extraction against supplied HTML for an
+// HTTP- or browser-mode extractor without performing acquisition.
+func ExecuteSnapshot(ctx context.Context, extractor *ir.Extractor, html string, options Options) (*Result, error) {
+	prepared, err := Prepare(extractor)
+	if err != nil {
+		return nil, err
+	}
+	return prepared.ExecuteSnapshot(ctx, html, options)
+}
+
 func executeHTMLPrepared(ctx context.Context, prepared *Prepared, html string, options Options) (*Result, error) {
 	options = options.withDefaults()
 	engine, err := newPreparedEngine(ctx, prepared, options)
+	if err != nil {
+		return nil, err
+	}
+	if err := executionContextError(ctx, "output"); err != nil {
+		return nil, err
+	}
+	document, err := dom.ParseHTML(strings.NewReader(html))
+	if err != nil {
+		return nil, &ExecutionError{Code: "E_HTML_PARSE", Message: err.Error(), Cause: err}
+	}
+	return engine.executeDocument(document)
+}
+
+func executeSnapshotPrepared(ctx context.Context, prepared *Prepared, html string, options Options) (*Result, error) {
+	options = options.withDefaults()
+	engine, err := newPreparedDOMEngine(ctx, prepared, options)
 	if err != nil {
 		return nil, err
 	}
@@ -113,10 +139,14 @@ func newEngine(ctx context.Context, extractor *ir.Extractor, options Options) (*
 }
 
 func newPreparedEngine(ctx context.Context, prepared *Prepared, options Options) (*engine, error) {
-	extractor := prepared.extractor
 	if prepared.mode != "http" {
 		return nil, &ExecutionError{Code: "E_BROWSER_RUNTIME_MISSING", Message: fmt.Sprintf("HTTP runtime cannot execute fetch mode %q", prepared.mode)}
 	}
+	return newPreparedDOMEngine(ctx, prepared, options)
+}
+
+func newPreparedDOMEngine(ctx context.Context, prepared *Prepared, options Options) (*engine, error) {
+	extractor := prepared.extractor
 	transforms := newTransformRuntime(ctx, extractor, options.ExternalTransforms)
 	if err := transforms.preflightExternalBindings(); err != nil {
 		return nil, err

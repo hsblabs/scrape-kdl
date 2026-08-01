@@ -20,6 +20,8 @@ Hosts should apply:
 
 Injected source loaders are host-owned authority boundaries. They receive lexically resolved import paths and should constrain those paths to the intended source set, honor cancellation, and avoid embedding source contents or credentials in returned errors. The compiler performs parsing, cycle detection, hashing, and validation after loading; it does not grant an injected loader filesystem, network, or subprocess access.
 
+`CompileFS` and `ValidateFS` constrain root and import names to slash-separated `io/fs` paths and reject lexical parent escapes. The supplied `fs.FS` still defines the actual authority. `os.DirFS` may follow symlinks outside its directory; use `os.Root.FS` when symlink containment is required. An `fs.FS` read cannot be interrupted through the interface, so cancellation is checked immediately before and after each read.
+
 `session policy="none"` suppresses only the explicit runtime `Session`. It does not clear an `http.Client` cookie jar or an existing browser context. Hosts that require credential-free execution must provide isolated stateless clients or contexts.
 
 Core and go-rod CLI users must pass cookies and sensitive headers through `--session-file` or explicit `--session-file -` standard input; direct secret-bearing header and cookie flags are rejected. Files should be readable only by the intended user and removed or rotated according to the host application's secret-management policy.

@@ -198,7 +198,10 @@ func parseInvocation(args []string) (invocation, error) {
 }
 
 func executeInvocation(ctx context.Context, command invocation, stdin io.Reader) (*scrapekdl.Result, scrapekdl.Diagnostics, error) {
-	program, diagnostics := scrapekdl.CompileFile(ctx, command.spec)
+	program, diagnostics, err := scrapekdl.CompileFile(ctx, command.spec)
+	if err != nil {
+		return nil, nil, err
+	}
 	if diagnostics.HasErrors() || program == nil {
 		return nil, diagnostics, nil
 	}

@@ -1,0 +1,55 @@
+[
+  {
+    "name": "http-portable-output",
+    "source": "extractor \"snapshot-http\" version=\"2026-07-15\" language-version=\"2026-07-15\" {\n  source \"html\" { fetch mode=\"http\" url=\"https://example.invalid/\" }\n  field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" }\n}\n",
+    "html": "<h1>Saved over HTTP</h1>",
+    "expected": {
+      "value": { "title": "Saved over HTTP" },
+      "warnings": [],
+      "partial": false
+    }
+  },
+  {
+    "name": "browser-portable-output",
+    "source": "extractor \"snapshot-portable\" version=\"2026-07-15\" language-version=\"2026-07-15\" {\n  source \"html\" { fetch mode=\"browser\" url=\"https://example.invalid/\" }\n  field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" }\n  collection \"items\" min-items=1 {\n    select \"ul > li\"\n    field \"name\" type=\"string\" required=#true { select \"span\"; value \"text\" }\n  }\n}\n",
+    "html": "<h1>Saved</h1><ul><li><span>One</span></li><li><span>Two</span></li></ul>",
+    "expected": {
+      "value": { "title": "Saved", "items": [{ "name": "One" }, { "name": "Two" }] },
+      "warnings": [],
+      "partial": false
+    }
+  },
+  {
+    "name": "browser-portable-recovery-and-external-transform",
+    "source": "extractor \"snapshot-runtime-contracts\" version=\"2026-07-15\" language-version=\"2026-07-15\" {\n  source \"html\" { fetch mode=\"browser\" url=\"https://example.invalid/\" }\n  transform \"decorate\" input=\"string\" output=\"string\" { external symbol=\"decorate\" }\n  field \"decorated\" type=\"string\" required=#true { select \"#name\"; value \"text\"; apply \"decorate\" }\n  field \"warned\" type=\"string?\" required=#false {\n    select \"#bad\"; value \"text\"; apply \"assert-matches\" pattern=\"^ok$\"; on-error \"warn\"\n  }\n}\n",
+    "html": "<b id=\"name\">Ada</b><b id=\"bad\">bad</b>",
+    "externalTransform": true,
+    "expected": {
+      "value": { "decorated": "Ada!", "warned": null },
+      "warnings": [
+        {
+          "code": "W_ERROR_RECOVERED",
+          "message": "E_TRANSFORM at output.warned: value does not match required pattern",
+          "path": "output.warned"
+        },
+        {
+          "code": "W_PARTIAL_EXTRACTION",
+          "message": "extraction completed with one or more recovered errors"
+        }
+      ],
+      "partial": true
+    }
+  },
+  {
+    "name": "browser-workflow",
+    "source": "extractor \"snapshot-workflow\" version=\"2026-07-15\" language-version=\"2026-07-15\" {\n  source \"html\" {\n    fetch mode=\"browser\" url=\"https://example.invalid/\"\n    workflow { click \"button.load\" }\n  }\n  field \"title\" type=\"string\" required=#true { select \"h1\"; value \"text\" }\n}\n",
+    "html": "<button class=\"load\">Load</button><h1>Before workflow</h1>",
+    "error": { "code": "E_SNAPSHOT_UNSUPPORTED", "path": "source.workflow" }
+  },
+  {
+    "name": "browser-javascript-value",
+    "source": "extractor \"snapshot-javascript\" version=\"2026-07-15\" language-version=\"2026-07-15\" {\n  source \"html\" { fetch mode=\"browser\" url=\"https://example.invalid/\" }\n  field \"computed\" type=\"string\" required=#true {\n    evaluate-js \"() => document.title\" scope=\"document\" returns=\"string\"\n  }\n}\n",
+    "html": "<title>Saved</title>",
+    "error": { "code": "E_SNAPSHOT_UNSUPPORTED", "path": "output.computed" }
+  }
+]

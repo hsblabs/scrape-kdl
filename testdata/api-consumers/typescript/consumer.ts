@@ -1,5 +1,6 @@
 import {
   compile,
+  SourceLoadError,
   type BrowserAdapter,
   type BrowserElement,
   type ExecutionOptions,
@@ -7,6 +8,7 @@ import {
   type SourceLoader,
 } from "@hsblabs/scrape-kdl";
 import { compileFile } from "@hsblabs/scrape-kdl/node";
+import { builtinCatalog, callBuiltin, float, write, type AuthoringDocument } from "@hsblabs/scrape-kdl/authoring";
 
 const files = new Map<string, string>([
   ["spec/common.kdl", `module "common" version="2026-07-15" language-version="2026-07-15" {}`],
@@ -28,11 +30,21 @@ const browser: BrowserAdapter = {
   async press() {},
   async scroll() {},
   async waitForNetworkIdle() {},
-  async evaluate(): Promise<JsonValue> { return null; },
-  async queryAll(): Promise<readonly BrowserElement[]> { return []; },
-  async text() { return ""; },
-  async html() { return ""; },
-  async attribute() { return undefined; },
+  async evaluate(): Promise<JsonValue> {
+    return null;
+  },
+  async queryAll(): Promise<readonly BrowserElement[]> {
+    return [];
+  },
+  async text() {
+    return "";
+  },
+  async html() {
+    return "";
+  },
+  async attribute() {
+    return undefined;
+  },
 };
 
 const source = {
@@ -49,15 +61,61 @@ if (compiled.program !== undefined) {
   const options: ExecutionOptions = {
     browser,
     externalTransforms: {
-      async decorate(_context, input) { return input; },
+      async decorate(_context, input) {
+        return input;
+      },
     },
     urlPolicy(_context, url) {
       if (url.protocol !== "https:") throw new Error("HTTPS required");
     },
   };
   void compiled.program.metadata.capabilities;
+  void compiled.program.descriptor.source.fetchMode;
+  void compiled.program.descriptor.source.urlTemplate;
+  void compiled.program.descriptor.source.sessionPolicy;
   void compiled.program.ir;
   void compiled.program.extract({}, options);
+  void compiled.program.extractSnapshot("<h1>Snapshot</h1>", options);
+}
+
+try {
+  await compile(source, { loader });
+} catch (error) {
+  if (error instanceof SourceLoadError) {
+    void error.path;
+    void error.fromPath;
+    void error.cause;
+  } else {
+    throw error;
+  }
 }
 
 void compileFile("extractor.kdl");
+
+const catalog = builtinCatalog("2026-07-15");
+const normalize = catalog.builtins.find(({ name }) => name === "normalize-whitespace");
+if (normalize === undefined) throw new Error("authoring catalog is missing normalize-whitespace");
+const authoredDocument: AuthoringDocument = {
+  languageVersion: "2026-07-15",
+  extractor: {
+    name: "authored-consumer",
+    version: "2026-07-15",
+    source: { fetchMode: "http", urlTemplate: "https://example.invalid/", sessionPolicy: "none" },
+    inputs: [],
+    members: [
+      {
+        kind: "field",
+        name: "title",
+        type: "string",
+        required: true,
+        selector: "h1",
+        match: "one",
+        value: { kind: "text" },
+        transforms: [callBuiltin(normalize)],
+        onError: "fail",
+      },
+    ],
+  },
+};
+void compile({ path: "authored-consumer.kdl", data: write(authoredDocument) });
+void float(1);

@@ -20,7 +20,13 @@ make release-dist VERSION=v1.0.0-rc.1 OUT=dist
 - `@hsblabs/scrape-kdl` and `@hsblabs/scrape-kdl-playwright` npm archives with release-only metadata;
 - SHA-256 checksums covering all six archives.
 
-The checked-in workspace manifests remain `0.0.0-development`. npm versions and compatible adapter ranges are changed only in temporary staging directories. Every npm archive is installed into a clean consumer and exercised before it enters the bundle.
+This repository does not use Changesets and does not commit release versions to
+workspace manifests. Release-facing changes are recorded directly in
+`CHANGELOG.md`, release notes, migration notes, and implementation status. The
+checked-in workspace manifests remain `0.0.0-development`; npm versions,
+compatible adapter ranges, and public access are changed only in temporary
+staging directories. Every npm archive is installed into a clean consumer and
+exercised before it enters the bundle.
 
 The `Private release rehearsal` workflow performs the same complete gate and stores the bundle as a private GitHub Actions artifact for 14 days. It has no registry or repository write permission.
 

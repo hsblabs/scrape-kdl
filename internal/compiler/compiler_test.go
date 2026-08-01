@@ -19,13 +19,31 @@ func fixture(parts ...string) string {
 	return filepath.Join(all...)
 }
 
+func compileFile(t testing.TB, path string) (*ir.Extractor, diagnostic.List) {
+	t.Helper()
+	extractor, diagnostics, err := CompileFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return extractor, diagnostics
+}
+
+func validateFile(t testing.TB, path string) diagnostic.List {
+	t.Helper()
+	diagnostics, err := ValidateFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return diagnostics
+}
+
 func compileText(t *testing.T, content string) (*ir.Extractor, []string) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "extractor.kdl")
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	extractor, diagnostics := CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	codes := make([]string, len(diagnostics))
 	for i := range diagnostics {
 		codes[i] = diagnostics[i].Code
@@ -34,7 +52,7 @@ func compileText(t *testing.T, content string) (*ir.Extractor, []string) {
 }
 
 func TestCompileBasicHTTP(t *testing.T) {
-	got, diags := CompileFile(fixture("valid", "basic-http.kdl"))
+	got, diags := compileFile(t, fixture("valid", "basic-http.kdl"))
 	if diags.HasErrors() {
 		t.Fatalf("unexpected diagnostics: %#v", diags)
 	}
@@ -57,7 +75,10 @@ func TestCompileSourceRetainsVirtualDisplayPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, diagnostics := CompileSource(context.Background(), "<stdin>", source, nil)
+	got, diagnostics, err := CompileSource(context.Background(), "<stdin>", source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if diagnostics.HasErrors() || got == nil {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -67,7 +88,7 @@ func TestCompileSourceRetainsVirtualDisplayPath(t *testing.T) {
 }
 
 func TestCompileAllowsIndependentDocumentVersion(t *testing.T) {
-	got, diags := CompileFile(fixture("valid", "document-version-advance.kdl"))
+	got, diags := compileFile(t, fixture("valid", "document-version-advance.kdl"))
 	if diags.HasErrors() || got == nil {
 		t.Fatalf("compile diagnostics = %#v", diags)
 	}
@@ -77,7 +98,7 @@ func TestCompileAllowsIndependentDocumentVersion(t *testing.T) {
 }
 
 func TestCompileRaceDetailMatchesGolden(t *testing.T) {
-	got, diags := CompileFile(fixture("valid", "race-detail.kdl"))
+	got, diags := compileFile(t, fixture("valid", "race-detail.kdl"))
 	if diags.HasErrors() {
 		t.Fatalf("unexpected diagnostics: %#v", diags)
 	}
@@ -115,7 +136,7 @@ func TestInvalidFixtures(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			diags := ValidateFile(tt.path)
+			diags := validateFile(t, tt.path)
 			if !diags.HasErrors() {
 				t.Fatalf("expected an error, got %#v", diags)
 			}
@@ -144,7 +165,7 @@ func TestVersionFixturesHaveExactDiagnostics(t *testing.T) {
 	}
 	for path, want := range expected {
 		t.Run(path, func(t *testing.T) {
-			got := ValidateFile(fixture("invalid", path))
+			got := validateFile(t, fixture("invalid", path))
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("diagnostics = %#v, want %#v", got, want)
 			}
@@ -153,7 +174,7 @@ func TestVersionFixturesHaveExactDiagnostics(t *testing.T) {
 }
 
 func TestCompileInitializesIRArrays(t *testing.T) {
-	result, diagnostics := CompileFile(fixture("valid", "basic-http.kdl"))
+	result, diagnostics := compileFile(t, fixture("valid", "basic-http.kdl"))
 	if diagnostics.HasErrors() {
 		t.Fatalf("unexpected diagnostics: %#v", diagnostics)
 	}

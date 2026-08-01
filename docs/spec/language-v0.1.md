@@ -1,6 +1,8 @@
-# Scraping KDL Language Specification v0.1
+---
+status: working draft
+---
 
-Status: Working Draft
+# Scraping KDL Language Specification v0.1
 
 ## Scope
 
@@ -28,7 +30,7 @@ Scraping KDL v0.1 adds these restrictions:
 - user-defined input, field, collection, transform, and import alias names MUST match `[a-z][a-z0-9_]*`;
 - extractor and module names MUST match `[a-z][a-z0-9-]*`.
 
-Canonical formatting uses two-space indentation, one node per line, KDL booleans `#true/#false`, KDL null `#null`, and raw multiline strings for JavaScript.
+Canonical source layout uses two-space indentation, one node per line, KDL booleans `#true/#false`, KDL null `#null`, and raw multiline strings for JavaScript. This describes the preferred representation and the output of KDL Writing; it does not define a lossless formatter for existing source.
 
 ## Compatibility identifiers
 

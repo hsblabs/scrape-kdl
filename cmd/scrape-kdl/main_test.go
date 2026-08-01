@@ -143,6 +143,21 @@ func TestRunValidate(t *testing.T) {
 	}
 }
 
+func TestRunReportsSourceReadFailuresOutsideDiagnostics(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing.kdl")
+	code, stdout, stderr := captureRun(t, "validate", missing, "--json")
+	var failure jsonFailure
+	if code != exitProcessing || json.Unmarshal([]byte(stdout), &failure) != nil {
+		t.Fatalf("validate missing file = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	if failure.OK || failure.Error.Code != "" || !strings.Contains(failure.Error.Message, "missing.kdl") {
+		t.Fatalf("failure = %#v", failure)
+	}
+	if strings.Contains(stderr, "E_KDL_SYNTAX") {
+		t.Fatalf("operational failure rendered as syntax diagnostic: %q", stderr)
+	}
+}
+
 func TestRunCompile(t *testing.T) {
 	valid := filepath.Join("..", "..", "fixtures", "valid", "basic-http.kdl")
 	invalid := filepath.Join("..", "..", "fixtures", "invalid", "duplicate-property.kdl")

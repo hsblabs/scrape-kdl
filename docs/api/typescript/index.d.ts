@@ -26,6 +26,12 @@ export interface CompileResult {
   readonly diagnostics: readonly DiagnosticIR[];
 }
 
+export declare class SourceLoadError extends Error {
+  readonly path: string;
+  readonly fromPath: string;
+  constructor(path: string, fromPath: string, cause: unknown);
+}
+
 export interface SourceFile {
   readonly path: string;
   readonly moduleName?: string;
@@ -42,10 +48,25 @@ export interface ProgramMetadata {
   readonly capabilities: readonly string[];
 }
 
+export type FetchMode = "http" | "browser";
+export type SessionPolicy = "none" | "optional" | "required";
+
+export interface SourceDescriptor {
+  readonly fetchMode: FetchMode;
+  readonly urlTemplate: string;
+  readonly sessionPolicy: SessionPolicy;
+}
+
+export interface ProgramDescriptor {
+  readonly source: SourceDescriptor;
+}
+
 export interface Program {
   readonly metadata: ProgramMetadata;
+  readonly descriptor: ProgramDescriptor;
   readonly ir: ExtractorIR;
   extract(inputs?: Readonly<Record<string, JsonValue>>, options?: ExecutionOptions): Promise<ExtractionResult>;
+  extractSnapshot(html: string, options?: ExecutionOptions): Promise<ExtractionResult>;
 }
 
 export declare function compile(source: Source, options?: CompileOptions): Promise<CompileResult>;

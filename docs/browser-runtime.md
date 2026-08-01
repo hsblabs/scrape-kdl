@@ -18,6 +18,8 @@ External-transform availability, workflow step kinds and selectors, portable out
 
 JavaScript is disabled by default. Trusted specs must opt in with `AllowJavaScript: true`.
 
+`Program.ExtractSnapshot` and TypeScript `program.extractSnapshot` are separate from this live-browser sequence. They can evaluate an otherwise portable browser-mode program against supplied static HTML without an adapter or outbound I/O. A program containing any workflow or JavaScript field value source fails with `E_SNAPSHOT_UNSUPPORTED`; snapshot execution never pretends that static HTML reproduces browser mutation or JavaScript. See `docs/http-runtime.md` for the complete three-way execution boundary.
+
 ## Adapter boundary
 
 Adapter authors must treat every element as an opaque handle, honor operation cancellation, apply the supplied timeout, avoid returning browser-library objects as JavaScript results, and keep all mutable page operations inside an extraction-wide lease. Timeout or cancellation must not leave work running after the lease is released.

@@ -1,0 +1,5 @@
+import "modules/common.kdl" as="common"
+extractor "embedded" version="2026-07-15" language-version="2026-07-15" {
+  source "html" { fetch mode="http" url="https://example.invalid/" }
+  field "title" type="string" required=#true { select "h1"; value "text" }
+}

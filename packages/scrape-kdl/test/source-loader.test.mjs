@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { compile } from "../dist/index.js";
+import { compile, SourceLoadError } from "../dist/index.js";
 import { compileFile } from "../dist/node.js";
 import { loadSourceGraph } from "../dist/source-loader.js";
 
@@ -54,13 +54,13 @@ test("the shared import-cycle fixture matches the exact Go diagnostic", async ()
 });
 
 test("missing, duplicate, wrong-kind, and non-relative imports are rejected before execution", async () => {
-  const missing = await loadSourceGraph({
-    path: "spec/main.kdl",
-    data: `import "./missing.kdl" as="missing"\n${minimalExtractor}`,
-  });
-  assert.deepEqual(missing.diagnostics.map(({ code, message, span }) => [code, message, span.file]), [
-    ["E_KDL_SYNTAX", "read \"missing.kdl\": no source loader configured", "missing.kdl"],
-  ]);
+  await assert.rejects(
+    loadSourceGraph({
+      path: "spec/main.kdl",
+      data: `import "./missing.kdl" as="missing"\n${minimalExtractor}`,
+    }),
+    (error) => error instanceof SourceLoadError && error.path === "missing.kdl",
+  );
 
   let remoteLoads = 0;
   const remote = await loadSourceGraph({
@@ -102,6 +102,17 @@ test("loader cancellation propagates as an AbortError instead of a source diagno
   await assert.rejects(pending, { name: "AbortError", message: "stopped" });
 });
 
+test("loader failures reject with the original cause", async () => {
+  const sentinel = new Error("sentinel loader error");
+  await assert.rejects(
+    compile(
+      { path: "main.kdl", data: `import "./failed.kdl" as="failed"\n${minimalExtractor}` },
+      { loader: { async load() { throw sentinel; } } },
+    ),
+    (error) => error instanceof SourceLoadError && error.cause === sentinel,
+  );
+});
+
 test("invalid UTF-8 bytes match the shared stable syntax diagnostic", async () => {
   const testCase = JSON.parse(await readFile(`${root}/fixtures/parser/invalid-utf8.json`, "utf8"));
   const graph = await loadSourceGraph({ path: testCase.path, data: new Uint8Array(testCase.bytes) });
@@ -124,7 +135,7 @@ test("the Node entry point supplies explicit filesystem import loading", async (
 test("shared import cases match Go diagnostics exactly", async () => {
   const cases = JSON.parse(await readFile(`${root}/fixtures/imports/cases.json`, "utf8"));
   for (const testCase of cases) {
-    const graph = await loadSourceGraph({ path: testCase.path, data: testCase.source }, {
+    const operation = loadSourceGraph({ path: testCase.path, data: testCase.source }, {
       loader: {
         async load(path) {
           const source = testCase.files[path];
@@ -133,6 +144,11 @@ test("shared import cases match Go diagnostics exactly", async () => {
         },
       },
     });
+    if (testCase.operationalError !== undefined) {
+      await assert.rejects(operation, new RegExp(testCase.operationalError, "u"), testCase.name);
+      continue;
+    }
+    const graph = await operation;
     assert.deepEqual(graph.diagnostics, testCase.diagnostics, testCase.name);
   }
 });

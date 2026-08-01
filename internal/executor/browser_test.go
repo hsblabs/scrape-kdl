@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hsblabs/scrape-kdl/internal/compiler"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 	"github.com/hsblabs/scrape-kdl/internal/limits"
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
@@ -111,7 +110,7 @@ func (f *fakeBrowser) Attribute(_ context.Context, e BrowserElement, name string
 }
 
 func TestExecuteBrowser(t *testing.T) {
-	extractor, diags := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
+	extractor, diags := compileFile(t, "../../fixtures/valid/race-detail.kdl")
 	if diags.HasErrors() {
 		t.Fatalf("compile: %v", diags)
 	}
@@ -141,7 +140,7 @@ func TestExecuteBrowserUsesBoundedQueriesForFirstAndOne(t *testing.T) {
   field "first" type="string" required=#true { select "h1" match="first"; value "text" }
   field "one" type="string" required=#true { select "h1" match="one"; value "text" }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -155,7 +154,7 @@ func TestExecuteBrowserUsesBoundedQueriesForFirstAndOne(t *testing.T) {
 }
 
 func TestExecuteBrowserRequiresJavaScriptOptIn(t *testing.T) {
-	extractor, _ := compiler.CompileFile("../../fixtures/valid/browser-js.kdl")
+	extractor, _ := compileFile(t, "../../fixtures/valid/browser-js.kdl")
 	_, err := Execute(context.Background(), extractor, map[string]any{}, Options{Browser: &fakeBrowser{}})
 	var execution *ExecutionError
 	if !errors.As(err, &execution) || execution.Code != "E_JAVASCRIPT_DISABLED" {
@@ -173,7 +172,7 @@ func TestExecuteBrowserPreflightsExternalTransformsBeforeAcquire(t *testing.T) {
     apply "decorate"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -207,7 +206,7 @@ func TestExecuteBrowserPreflightsInputsAndSessionBeforeAcquire(t *testing.T) {
   input "id" type="int" required=#true
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -532,7 +531,7 @@ func TestExecuteBrowserPreflightsMalformedOutputBeforeAcquire(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := compileTestSpec(t, spec)
-			extractor, diagnostics := compiler.CompileFile(path)
+			extractor, diagnostics := compileFile(t, path)
 			if diagnostics.HasErrors() {
 				t.Fatalf("compile diagnostics = %#v", diagnostics)
 			}
@@ -639,7 +638,7 @@ func TestExecuteBrowserPreflightsMalformedWorkflowBeforeAcquire(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := compileTestSpec(t, spec)
-			extractor, diagnostics := compiler.CompileFile(path)
+			extractor, diagnostics := compileFile(t, path)
 			if diagnostics.HasErrors() {
 				t.Fatalf("compile diagnostics = %#v", diagnostics)
 			}
@@ -699,7 +698,7 @@ func (f *leasedFakeBrowser) Acquire(context.Context) (func(), error) {
 }
 
 func TestExecuteBrowserUsesAdapterLease(t *testing.T) {
-	extractor, diags := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
+	extractor, diags := compileFile(t, "../../fixtures/valid/race-detail.kdl")
 	if diags.HasErrors() {
 		t.Fatalf("compile: %v", diags)
 	}
@@ -714,7 +713,7 @@ func TestExecuteBrowserUsesAdapterLease(t *testing.T) {
 }
 
 func TestExecuteBrowserReleasesLeaseOnNavigationFailure(t *testing.T) {
-	extractor, diags := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
+	extractor, diags := compileFile(t, "../../fixtures/valid/race-detail.kdl")
 	if diags.HasErrors() {
 		t.Fatalf("compile: %v", diags)
 	}
@@ -762,7 +761,7 @@ func TestExecuteBrowserRejectsNilLeaseRelease(t *testing.T) {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -806,7 +805,7 @@ func TestExecuteBrowserReleasesLeaseAfterPostNavigationFailures(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := compileTestSpec(t, tt.source)
-			extractor, diagnostics := compiler.CompileFile(path)
+			extractor, diagnostics := compileFile(t, path)
 			if diagnostics.HasErrors() {
 				t.Fatalf("compile diagnostics = %#v", diagnostics)
 			}
@@ -929,7 +928,7 @@ func (f *readFailureBrowser) Attribute(context.Context, BrowserElement, string) 
 }
 
 func TestExecuteBrowserAcquireFailure(t *testing.T) {
-	extractor, diags := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
+	extractor, diags := compileFile(t, "../../fixtures/valid/race-detail.kdl")
 	if diags.HasErrors() {
 		t.Fatalf("compile: %v", diags)
 	}
@@ -945,7 +944,7 @@ func TestExecuteBrowserAcquireFailure(t *testing.T) {
 }
 
 func TestExecuteBrowserRejectsNonJSONJavaScriptResult(t *testing.T) {
-	extractor, diags := compiler.CompileFile("../../fixtures/valid/browser-js.kdl")
+	extractor, diags := compileFile(t, "../../fixtures/valid/browser-js.kdl")
 	if diags.HasErrors() {
 		t.Fatalf("compile: %v", diags)
 	}
@@ -964,7 +963,7 @@ func TestExecuteBrowserValidatesJSONNumberResult(t *testing.T) {
     evaluate-js "() => 1" scope="document" returns="unknown"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1029,7 +1028,7 @@ func TestExecuteBrowserValidatesDeclaredJavaScriptReturnType(t *testing.T) {
     evaluate-js "() => null" scope="document" returns="`+tt.returns+`"
   }
 }`)
-			extractor, diagnostics := compiler.CompileFile(path)
+			extractor, diagnostics := compileFile(t, path)
 			if diagnostics.HasErrors() {
 				t.Fatalf("compile diagnostics = %#v", diagnostics)
 			}
@@ -1073,7 +1072,7 @@ func TestExecuteBrowserMissingAndFieldRecovery(t *testing.T) {
     on-error "default"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1100,7 +1099,7 @@ func TestExecuteBrowserNormalizesNumericFieldDefaults(t *testing.T) {
     evaluate-js "bad" scope="document" returns="string"; apply "parse-int" as="int"; on-error "default"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1128,7 +1127,7 @@ func TestExecuteBrowserRequiredMissingIsNotRecovered(t *testing.T) {
     value "text"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1148,7 +1147,7 @@ func TestExecuteBrowserWrapsInvalidRecoveryDefault(t *testing.T) {
     on-error "default"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1175,7 +1174,7 @@ func TestExecuteBrowserCollectionRowRecovery(t *testing.T) {
     }
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1225,7 +1224,7 @@ func TestExecuteBrowserCollectionCardinality(t *testing.T) {
   source "html" { fetch mode="browser" url="https://example.invalid/" }
   `+tt.collection+`
 }`)
-			extractor, diagnostics := compiler.CompileFile(path)
+			extractor, diagnostics := compileFile(t, path)
 			if diagnostics.HasErrors() {
 				t.Fatalf("compile diagnostics = %#v", diagnostics)
 			}
@@ -1258,7 +1257,7 @@ func TestExecuteBrowserValueSourceReads(t *testing.T) {
     `+tt.valueSource+`
   }
 }`)
-			extractor, diagnostics := compiler.CompileFile(path)
+			extractor, diagnostics := compileFile(t, path)
 			if diagnostics.HasErrors() {
 				t.Fatalf("compile diagnostics = %#v", diagnostics)
 			}
@@ -1295,7 +1294,7 @@ func TestExecuteBrowserValueSourceFailures(t *testing.T) {
     `+tt.valueSource+`
   }
 }`)
-			extractor, diagnostics := compiler.CompileFile(path)
+			extractor, diagnostics := compileFile(t, path)
 			if diagnostics.HasErrors() {
 				t.Fatalf("compile diagnostics = %#v", diagnostics)
 			}
@@ -1318,7 +1317,7 @@ func TestExecuteBrowserRecoversQueryFailure(t *testing.T) {
     on-error "warn"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1338,7 +1337,7 @@ func TestExecuteBrowserCollectionQueryFailure(t *testing.T) {
     field "value" type="string" required=#true { select ".value"; value "text" }
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1352,7 +1351,7 @@ func TestExecuteBrowserCollectionQueryFailure(t *testing.T) {
 }
 
 func TestExecuteBrowserURLPolicyRejectsBeforeAcquireOrNavigate(t *testing.T) {
-	extractor, diagnostics := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
+	extractor, diagnostics := compileFile(t, "../../fixtures/valid/race-detail.kdl")
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -1380,7 +1379,7 @@ func (f *timeoutWorkflowBrowser) WaitFor(context.Context, string, string, time.D
 }
 
 func TestExecuteBrowserWorkflowTimeoutUsesStableCode(t *testing.T) {
-	extractor, diagnostics := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
+	extractor, diagnostics := compileFile(t, "../../fixtures/valid/race-detail.kdl")
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -1408,7 +1407,7 @@ func TestExecuteBrowserWorkflowOperations(t *testing.T) {
   }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1458,7 +1457,7 @@ func TestExecuteBrowserWorkflowOperationFailures(t *testing.T) {
   }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
-				extractor, diagnostics := compiler.CompileFile(path)
+				extractor, diagnostics := compileFile(t, path)
 				if diagnostics.HasErrors() {
 					t.Fatalf("compile diagnostics = %#v", diagnostics)
 				}
@@ -1480,7 +1479,7 @@ func (f *canceledWorkflowBrowser) WaitFor(ctx context.Context, _ string, _ strin
 }
 
 func TestExecuteBrowserWorkflowPreservesParentCancellation(t *testing.T) {
-	extractor, diagnostics := compiler.CompileFile("../../fixtures/valid/race-detail.kdl")
+	extractor, diagnostics := compileFile(t, "../../fixtures/valid/race-detail.kdl")
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}

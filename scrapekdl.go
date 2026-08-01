@@ -72,49 +72,60 @@ type CompileOptions struct {
 }
 
 // Compile validates and compiles an in-memory source into an immutable Program.
-func Compile(ctx context.Context, source Source, options CompileOptions) (*Program, Diagnostics) {
+// Document findings are returned as Diagnostics; cancellation and source-loading
+// failures are returned as an error that preserves the original cause.
+func Compile(ctx context.Context, source Source, options CompileOptions) (*Program, Diagnostics, error) {
 	if ctx == nil {
 		panic("scrapekdl: nil context")
 	}
 	if source.Path == "" {
-		return nil, Diagnostics{{Code: "E_KDL_SYNTAX", Severity: "error", Message: "source path must not be empty"}}
+		return nil, nil, errors.New("scrapekdl: source path must not be empty")
 	}
-	extractor, internalDiagnostics := compiler.CompileSource(ctx, source.Path, source.Data, compiler.SourceLoader(options.Loader))
+	extractor, internalDiagnostics, err := compiler.CompileSource(ctx, source.Path, source.Data, compiler.SourceLoader(options.Loader))
+	if err != nil {
+		return nil, nil, err
+	}
 	return newProgram(extractor, internalDiagnostics)
 }
 
-// Validate returns diagnostics without retaining the compiled Program.
-func Validate(ctx context.Context, source Source, options CompileOptions) Diagnostics {
-	_, diagnostics := Compile(ctx, source, options)
-	return diagnostics
+// Validate returns diagnostics without retaining the compiled Program and
+// returns operational failures separately.
+func Validate(ctx context.Context, source Source, options CompileOptions) (Diagnostics, error) {
+	_, diagnostics, err := Compile(ctx, source, options)
+	return diagnostics, err
 }
 
 // CompileFile compiles a KDL file and resolves imports from the filesystem.
-func CompileFile(ctx context.Context, path string) (*Program, Diagnostics) {
+// Filesystem and cancellation failures are returned separately from Diagnostics.
+func CompileFile(ctx context.Context, path string) (*Program, Diagnostics, error) {
 	if ctx == nil {
 		panic("scrapekdl: nil context")
 	}
-	extractor, internalDiagnostics := compiler.CompileFileContext(ctx, path)
+	extractor, internalDiagnostics, err := compiler.CompileFileContext(ctx, path)
+	if err != nil {
+		return nil, nil, err
+	}
 	return newProgram(extractor, internalDiagnostics)
 }
 
-func newProgram(extractor *ir.Extractor, internalDiagnostics diagnostic.List) (*Program, Diagnostics) {
+func newProgram(extractor *ir.Extractor, internalDiagnostics diagnostic.List) (*Program, Diagnostics, error) {
 	diagnostics := convertDiagnostics(internalDiagnostics)
 	if extractor == nil || diagnostics.HasErrors() {
-		return nil, diagnostics
+		return nil, diagnostics, nil
 	}
 	prepared, err := executor.Prepare(extractor)
 	if err != nil {
 		diagnostics = append(diagnostics, Diagnostic{Code: "E_IR_INVALID", Severity: "error", Message: err.Error()})
-		return nil, diagnostics
+		return nil, diagnostics, nil
 	}
-	return &Program{extractor: extractor, prepared: prepared}, diagnostics
+	return &Program{extractor: extractor, prepared: prepared}, diagnostics, nil
 }
 
-// ValidateFile validates a KDL file and its imports.
-func ValidateFile(ctx context.Context, path string) Diagnostics {
-	_, diagnostics := CompileFile(ctx, path)
-	return diagnostics
+// ValidateFile validates a KDL file and its imports and returns operational
+// failures separately.
+func ValidateFile(ctx context.Context, path string) (Diagnostics, error) {
+	_, diagnostics, err := CompileFile(ctx, path)
+	return diagnostics, err
 }
 
 // Name returns the extractor name.
@@ -316,6 +327,16 @@ func (program *Program) Extract(ctx context.Context, inputs map[string]any, opti
 // ExtractHTML executes an HTTP-mode Program against already-decoded HTML.
 func (program *Program) ExtractHTML(ctx context.Context, html string, options Options) (*Result, error) {
 	result, err := program.prepared.ExecuteHTML(ctx, html, convertOptions(options))
+	if err != nil {
+		return nil, convertExecutionError(err)
+	}
+	return convertResult(result), nil
+}
+
+// ExtractSnapshot executes the portable subset of an HTTP- or browser-mode
+// Program against already-decoded HTML without acquisition or browser activity.
+func (program *Program) ExtractSnapshot(ctx context.Context, html string, options Options) (*Result, error) {
+	result, err := program.prepared.ExecuteSnapshot(ctx, html, convertOptions(options))
 	if err != nil {
 		return nil, convertExecutionError(err)
 	}

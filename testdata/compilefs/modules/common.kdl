@@ -1,0 +1,2 @@
+import "nested/types.kdl" as="types"
+module "common" version="2026-07-15" language-version="2026-07-15" {}

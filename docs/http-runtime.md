@@ -17,6 +17,14 @@ compiler validation
 
 Selector parsing, external-transform availability, browser-only value sources, and fetch mode are checked before an HTTP request is sent.
 
+## Three execution boundaries
+
+- `Program.Extract` follows the compiled source mode. It performs HTTP acquisition for `mode="http"` and delegates live browser acquisition to an adapter for `mode="browser"`.
+- `Program.ExtractHTML` is the original Go-only saved-HTML entry point and accepts only HTTP-mode programs.
+- `Program.ExtractSnapshot` and TypeScript `program.extractSnapshot` accept either source mode and perform no acquisition. They execute portable output extraction against the supplied, already-decoded HTML.
+
+Offline snapshot execution is a whole-program capability derived when the immutable program is prepared. A program with any browser workflow or JavaScript field value source fails with `E_SNAPSHOT_UNSUPPORTED`; these operations are never ignored. Eligible snapshots keep selector, transform, external-transform, recovery, warning, partial-result, and cancellation semantics. They do not resolve URL inputs, invoke URL policy, use session state, send HTTP requests, acquire a browser lease, or execute JavaScript.
+
 ## HTTP behavior
 
 - method: GET;
@@ -82,4 +90,4 @@ A collection with `on-row-error="skip"` drops only rows containing an unrecovere
 
 ## Offline HTML cancellation
 
-`Program.ExtractHTML` checks its context before in-memory HTML parsing and before each output member and collection row. Cancellation at these runtime-managed boundaries returns `E_EXECUTION_CANCELED`, preserves `context.Canceled` or `context.DeadlineExceeded` as the cause, and is not recoverable through field or row error policies. One in-progress parser call is not interrupted; cancellation is observed at the next boundary after it returns.
+`Program.ExtractHTML` and `Program.ExtractSnapshot` check their context before in-memory HTML parsing and before each output member and collection row. Cancellation at these runtime-managed boundaries returns `E_EXECUTION_CANCELED`, preserves `context.Canceled` or `context.DeadlineExceeded` as the cause, and is not recoverable through field or row error policies. One in-progress parser call is not interrupted; cancellation is observed at the next boundary after it returns. TypeScript observes the equivalent `AbortSignal` boundaries.

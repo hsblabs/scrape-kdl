@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/hsblabs/scrape-kdl/internal/compiler"
+	"github.com/hsblabs/scrape-kdl/internal/diagnostic"
 	"github.com/hsblabs/scrape-kdl/internal/ir"
 	"github.com/hsblabs/scrape-kdl/internal/typesys"
 )
@@ -29,6 +30,15 @@ func compileTestSpec(t *testing.T, source string) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+func compileFile(t testing.TB, path string) (*ir.Extractor, diagnostic.List) {
+	t.Helper()
+	extractor, diagnostics, err := compiler.CompileFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return extractor, diagnostics
 }
 
 func TestExecuteHTTP(t *testing.T) {
@@ -100,7 +110,7 @@ func TestExecuteHTTP(t *testing.T) {
   }
 }`, server.URL+`/item/{id}`)
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		diagnostics.WriteText(os.Stderr)
 		t.Fatal("compile failed")
@@ -150,7 +160,7 @@ func TestExecuteFieldWarningAndExternalTransform(t *testing.T) {
   }
 }`
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -181,7 +191,7 @@ func TestExecuteHTMLCollectionMaximumStopsAtFirstOverflow(t *testing.T) {
     }
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -214,7 +224,7 @@ func TestExecuteHTMLCancellationBoundaries(t *testing.T) {
     select ".second"; value "text"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -253,7 +263,7 @@ func TestExecuteHTMLFieldRecoveryPolicies(t *testing.T) {
     select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "warn"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -276,7 +286,7 @@ func TestExecuteHTMLFieldRecoveryFail(t *testing.T) {
     select ".bad"; value "text"; apply "parse-int" as="u8"; on-error "fail"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -294,7 +304,7 @@ func TestExecuteHTMLRequiredMissingIsNotRecovered(t *testing.T) {
     select ".missing" match="first"; value "text"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -315,7 +325,7 @@ func TestExecuteHTMLNormalizesNumericFieldDefaults(t *testing.T) {
     select ".bad"; value "text"; apply "parse-int" as="int"; on-error "default"
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -357,7 +367,7 @@ func TestExecuteNormalizesNumericTransformLiterals(t *testing.T) {
     apply "coalesce" value=3
   }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -393,7 +403,7 @@ func TestExecuteRejectsMissingExternalBeforeFetch(t *testing.T) {
   }
 }`, server.URL)
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		diagnostics.WriteText(os.Stderr)
 		t.Fatal("compile failed")
@@ -436,7 +446,7 @@ func TestSessionNoneIsIgnored(t *testing.T) {
   }
 }`, server.URL)
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -451,7 +461,7 @@ func TestExecuteHTTPSessionConstructionIsDeterministic(t *testing.T) {
   source "html" { fetch mode="http" url="https://example.invalid/"; session policy="optional" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -510,7 +520,7 @@ func TestRequiredInputFailsBeforeFetch(t *testing.T) {
   }
 }`, server.URL+`/{id}`)
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -536,7 +546,7 @@ func TestResponseBodyLimit(t *testing.T) {
   }
 }`, server.URL)
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -560,7 +570,7 @@ func TestCustomCharsetDecoder(t *testing.T) {
   }
 }`, server.URL)
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -591,7 +601,7 @@ func TestExecuteURLPolicyRejectsBeforeFetch(t *testing.T) {
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`, server.URL)
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -1146,7 +1156,7 @@ func TestExecuteHTTPPreflightRejectsBeforeTransport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := compileTestSpec(t, spec)
-			extractor, diagnostics := compiler.CompileFile(path)
+			extractor, diagnostics := compileFile(t, path)
 			if diagnostics.HasErrors() {
 				t.Fatalf("compile diagnostics = %#v", diagnostics)
 			}
@@ -1265,7 +1275,7 @@ func TestExecuteURLPolicyChecksRedirects(t *testing.T) {
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`, server.URL+"/start")
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -1296,7 +1306,7 @@ func TestExecuteHTTPTimeoutUsesStableCode(t *testing.T) {
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`, server.URL)
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}
@@ -1349,7 +1359,7 @@ func compileHTTPRuntimeSpec(t *testing.T, target string) *ir.Extractor {
   source "html" { fetch mode="http" url=%q }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`, target))
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1526,7 +1536,7 @@ func TestExecuteHTTPSessionHeadersFollowRedirectSecurityRules(t *testing.T) {
   }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
-			extractor, diagnostics := compiler.CompileFile(path)
+			extractor, diagnostics := compileFile(t, path)
 			if diagnostics.HasErrors() {
 				t.Fatalf("compile diagnostics = %#v", diagnostics)
 			}
@@ -1586,7 +1596,7 @@ func TestExecuteHTTPCookieJarAppliesRedirectScope(t *testing.T) {
   source "html" { fetch mode="http" url="https://example.invalid/start" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1639,7 +1649,7 @@ func TestExecuteHTTPClientJarPersistsResponseCookies(t *testing.T) {
   source "html" { fetch mode="http" url="https://example.invalid/start" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1702,7 +1712,7 @@ func TestExecuteHTTPCustomRedirectCanStripSessionHeaders(t *testing.T) {
   source "html" { fetch mode="http" url="https://example.invalid/start"; session policy="optional" }
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatalf("compile diagnostics = %#v", diagnostics)
 	}
@@ -1733,7 +1743,7 @@ func TestExecuteHTTPPreservesParentCancellation(t *testing.T) {
   field "title" type="string" required=#true { select "h1"; value "text" }
 }`
 	path := compileTestSpec(t, spec)
-	extractor, diagnostics := compiler.CompileFile(path)
+	extractor, diagnostics := compileFile(t, path)
 	if diagnostics.HasErrors() {
 		t.Fatal("compile failed")
 	}

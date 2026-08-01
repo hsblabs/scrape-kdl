@@ -22,4 +22,5 @@ func main() {
 		fmt.Printf("updated: %s\n", path)
 	}
 	fmt.Printf("examples: %d checked\n", report.Examples)
+	fmt.Printf("documentation snippets: %d checked\n", report.DocumentationSnippets)
 }

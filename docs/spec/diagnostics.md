@@ -33,7 +33,7 @@ Runtime warnings MUST be ordered by actual extraction execution order.
 
 ## Errors
 
-- `E_KDL_SYNTAX`: base KDL parse failure.
+- `E_KDL_SYNTAX`: base KDL parse failure, including invalid UTF-8; filesystem, cancellation, deadline, and injected-loader failures are operational errors and do not use this code.
 - `E_DOCUMENT_ROOT`: invalid number or kind of root nodes.
 - `E_DOCUMENT_VERSION_REQUIRED`: extractor or module root lacks `version`.
 - `E_DOCUMENT_VERSION_INVALID`: document `version` is not a real calendar date in exact `YYYY-MM-DD` form.
@@ -114,6 +114,7 @@ The following codes are emitted by an interpreter or browser adapter after stati
 - `E_HTML_DECODE`: response decoding failed.
 - `E_HTML_PARSE`: HTML parsing failed.
 - `E_BROWSER_MODE_REQUIRED`: browser execution was requested for a non-browser source.
+- `E_SNAPSHOT_UNSUPPORTED`: offline snapshot execution was requested for a program whose workflow or JavaScript output cannot be reproduced from supplied static HTML.
 - `E_BROWSER_ACQUIRE`: browser adapter lease acquisition failed.
 - `E_BROWSER_NAVIGATE`: navigation failed.
 - `E_BROWSER_WORKFLOW`: a workflow operation failed.
