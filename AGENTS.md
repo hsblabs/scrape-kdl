@@ -162,6 +162,12 @@ For release-affecting work:
 make release-check
 ```
 
+Before a public Go tag exists, determine whether its version is unused only
+from exact Git tags and GitHub Releases. Never query `proxy.golang.org`, or run
+`go list`, `go get`, or `go mod download` for that future version: a negative
+answer can be cached. The first public-proxy request for each module must occur
+after its tag is published.
+
 Update golden files only after reviewing the semantic difference. Never regenerate them solely to make tests green.
 
 ## Definition of done

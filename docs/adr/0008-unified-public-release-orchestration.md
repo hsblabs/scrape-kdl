@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-08-01T14:49:32+09:00
+updated: 2026-08-01T16:52:07+09:00
 decision-makers:
   - project owner
 agent: OpenAI Codex (GPT-5)
@@ -55,6 +56,14 @@ checksums from an exact Git revision. Release preparation uses it to update
 same interface in check mode. Release-facing source and documentation changes
 must be committed before calculating these checksums.
 
+Before a module tag exists, release preparation determines whether the version
+is unused only from exact Git tags and GitHub Releases. It must not query the
+public Go proxy for the future version: the proxy can cache a pre-tag negative
+answer and delay visibility after publication. The orchestrator makes the first
+public-proxy request only after it has created or verified the corresponding
+annotated tag. The bounded post-tag retry remains a propagation check, not a
+substitute for this ordering.
+
 Publication is resumable but never overwriting. A retry skips a tag, Release,
 or package only after proving that it matches the requested source or local
 artifact. A mismatch fails closed. Tags are never moved, npm versions are never
@@ -75,6 +84,7 @@ access contracts.
   inputs exposed to those permissions.
 - Repository administrators must configure the `release-publish` Environment,
   update both npm trusted publishers to the unified workflow and Environment,
-  and let the GitHub Actions app create only the protected release tags.
+  and leave release-tag creation unrestricted while protecting update,
+  deletion, and non-fast-forward changes.
 - Rollback cannot delete immutable public versions. Recovery completes the
   matching release or publishes a new prerelease or patch version.

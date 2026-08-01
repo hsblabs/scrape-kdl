@@ -33,6 +33,9 @@ All notable implementation changes are recorded here. Formal releases will use S
 - Unified public core, npm, Playwright, and go-rod publication behind one
   protected, resumable workflow while retaining the required distinct Go module
   tags.
+- Prevented release preflight from querying future Go versions through the
+  public proxy before their tags exist, avoiding cached negative responses
+  without extending the bounded post-tag wait.
 - Added v1 migration notes, draft release notes, an explicit maintenance window, post-publication verification, and immutable-version recovery procedures.
 - Standardized the Go, TypeScript, and CLI default HTTP User-Agent as `scrape-kdl/1.0`.
 
