@@ -222,6 +222,10 @@
         font-size: 0.9rem;
       }
 
+      footer p:last-child {
+        margin-bottom: 0;
+      }
+
       @media (max-width: 760px) {
         .shell {
           width: min(calc(100% - 2rem), var(--max-width));
@@ -390,8 +394,13 @@
       </section>
 
       <footer>
-        Scraping KDL is open source under the repository's published license.
-        <a href="https://github.com/hsblabs/scrape-kdl">Source, issues, and contribution guide</a>.
+        <p>
+          Scraping KDL is open source under the repository's published license.
+          <a href="https://github.com/hsblabs/scrape-kdl">Source, issues, and contribution guide</a>.
+        </p>
+        <p class="copyright">
+          © 2026 <a href="https://hsb.horse">hsb.horse</a>
+        </p>
       </footer>
     </main>
   </body>
