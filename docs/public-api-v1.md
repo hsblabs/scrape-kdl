@@ -139,5 +139,6 @@ These are surface differences only. They do not permit different accepted KDL, d
 The published v1 contract is frozen. A public API correction must update this
 document, the relevant authoring or core declaration snapshot, both independent
 consumer checks, `CHANGELOG.md`, and `docs/migrating-to-v1.md`. Compatible
-additions and breaking changes follow Semantic Versioning independently for the
-Go modules and npm packages.
+additions and breaking changes are evaluated independently under Semantic
+Versioning for the Go modules and npm packages, while the public release train
+continues to assign both ecosystems one shared version.

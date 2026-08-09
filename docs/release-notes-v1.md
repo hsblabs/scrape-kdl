@@ -55,7 +55,7 @@ This is the first supported public contract. Applications using an untagged deve
 The protected unified publication workflow completed successfully in
 [run 31308137799](https://github.com/hsblabs/scrape-kdl/actions/runs/31308137799).
 The core and go-rod GitHub Releases, both public Go modules, both npm packages,
-release checksums and supported CLI archives, and the specification site were
-then checked independently. The authoritative procedure and immutable-version
-recovery rules remain in `docs/releasing.md`; the first-24-hour observation
-continues on issue #18.
+release checksums and supported CLI archives, and the dated specification
+endpoints were then checked independently. The stable Pages redeploy and
+first-24-hour observation continue on issue #18. The authoritative procedure
+and immutable-version recovery rules remain in `docs/releasing.md`.

@@ -8,7 +8,9 @@ All notable implementation changes are recorded here. Formal releases will use S
   0009 without changing the RC3 language, IR, API, runtime, diagnostic, or
   security contracts. The protected unified workflow and independent
   post-publication checks passed for both Go modules, both npm packages, both
-  GitHub Releases, release checksums, supported CLI archives, and Pages.
+  GitHub Releases, release checksums, supported CLI archives, and the dated
+  specification endpoints. The stable Pages redeploy remains tracked in issue
+  #18.
 - Added bounded Go and TypeScript authoring APIs with an explicit-version
   built-in catalog and deterministic KDL writing. Catalog arguments expose
   finite allowed values and numeric bounds, and TypeScript `float(value)`

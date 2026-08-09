@@ -74,6 +74,7 @@ The former `--header` and `--cookie` flags were removed at the v0.5 contract bou
 ## Compatibility window
 
 The help, stream, JSON, exit-status, signal, and secret-input contracts are
-frozen for v1. Changes follow Semantic Versioning and require black-box tests,
-compatibility notes, and an update to `docs/migrating-to-v1.md` when consumers
-must act.
+frozen for v1. Changes follow Semantic Versioning and require black-box tests
+and compatibility notes. A future major CLI change requires a migration guide
+for that target major; `docs/migrating-to-v1.md` remains the guide from the
+untagged working draft to v1.
