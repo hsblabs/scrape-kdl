@@ -42,8 +42,9 @@ The reviewed preparation landed in PR #72 at
 published stable `v1.0.0` on 2026-08-09. Immediate independent checks passed
 for the immutable tags, Releases, both Go modules, both npm packages, clean
 consumers, signatures and provenance, checksums, supported CLI archives, and
-the dated specification endpoints. Issue #18 records the continuing
-first-24-hour observation.
+the dated specification endpoints. The stable release record was deployed to
+Pages from `main` and verified live. Issue #18 records the workflow evidence
+and continuing first-24-hour observation.
 
 ## Rollback and recovery
 
