@@ -2,9 +2,11 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Current published candidate: `v1.0.0-rc.3`. The development surface requires a
-new candidate before stable `v1.0.0`; see `docs/release-readiness.md` for the
-owner and time gates.
+Current stable release: `v1.0.0` (publication prepared; not published yet).
+The project owner explicitly overrode the 14-day candidate gate for the
+2026-08-09 publication. Pre- and post-publication verification remain pending;
+see `docs/release-readiness.md` and
+`docs/adr/0009-stable-v1-owner-gate-override.md`.
 The normative specification documents use the v0.1 document series and the initial compatibility identifiers `language-version="2026-07-15"` and `irVersion: "2026-07-15"`.
 
 ```text
@@ -53,20 +55,20 @@ See [`docs/authoring.md`](docs/authoring.md) for the bounded Go and TypeScript
 Authoring Document, explicit-version built-in catalog, and deterministic KDL
 writer.
 
-## Public release candidate install
+## Stable release install
 
-After `v1.0.0-rc.3` is published and its post-publication checks pass:
+After `v1.0.0` is published and its post-publication checks pass:
 
 ```bash
-go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.0-rc.3
-go install github.com/hsblabs/scrape-kdl/adapters/rod/cmd/scrape-kdl-rod@v1.0.0-rc.3
+go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.0
+go install github.com/hsblabs/scrape-kdl/adapters/rod/cmd/scrape-kdl-rod@v1.0.0
 npm install \
-  @hsblabs/scrape-kdl@1.0.0-rc.3 \
-  @hsblabs/scrape-kdl-playwright@1.0.0-rc.3
+  @hsblabs/scrape-kdl@1.0.0 \
+  @hsblabs/scrape-kdl-playwright@1.0.0
 ```
 
 The same version is available as Linux and macOS CLI archives for amd64 and
-arm64 from the core and go-rod GitHub prereleases. Verify every downloaded
+arm64 from the core and go-rod GitHub Releases. Verify every downloaded
 archive against its accompanying `checksums.txt`.
 
 For source development:
@@ -206,7 +208,7 @@ result, err := program.Extract(ctx, inputs, scrapekdl.Options{
 The go-rod implementation is a separate module:
 
 ```bash
-go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0-rc.3
+go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0
 ```
 
 An adapter wrapping one mutable page can implement `BrowserAdapterLease`. The runtime acquires it for the complete extraction, preventing navigation, workflow, and reads from interleaving across concurrent calls. The go-rod adapter implements this automatically.

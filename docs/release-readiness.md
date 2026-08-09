@@ -1,6 +1,6 @@
 ---
 updated: 2026-08-09
-status: public release candidate active
+status: stable publication prepared; owner override approved
 ---
 
 # v1 release readiness
@@ -9,6 +9,9 @@ This file records verified release state and the remaining dependency order. It
 does not authorize creating or pushing a tag, publishing a package or Release,
 deploying Pages, or changing external configuration. Every publication step
 still requires explicit project-owner approval immediately before it runs.
+The owner override recorded in [`ADR 0009`](adr/0009-stable-v1-owner-gate-override.md)
+approves bypassing the 14-day candidate gate for this release only; it does
+not publish `v1.0.0` or claim increased technical safety.
 
 ## Qualified `v1.0.0-rc.3` candidate
 
@@ -71,6 +74,26 @@ and does not reset the RC3 qualification period. PR #70 integrated the source
 changes on 2026-08-09, and the RC1 through RC3 Release bodies now link to the Go
 migration guidance.
 
+## Stable `v1.0.0` preparation (not published)
+
+On 2026-08-09, the project owner explicitly approved the ADR 0009 override of
+the 14-day candidate gate. This is an owner-direction exception only; it does
+not convert the RC qualification record into a technical safety claim.
+
+Stable publication is prepared but has not occurred. The remaining checks are:
+
+- Pre-publication: run the release plan and complete gate from the exact
+  reviewed commit, verify version and tag availability plus release controls,
+  inspect stable archives and checksums, and execute the protected publication
+  workflow.
+- Post-publication: verify both Go modules, both npm packages, GitHub Releases,
+  Pages, clean consumers, provenance and signatures, checksums, native
+  archives, and the first-24-hour monitoring record on issue #18.
+
+Existing `rc.1`, `rc.2`, and `rc.3` tags, Releases, and package versions remain
+immutable. If stable artifacts have a problem, leave those candidates
+unchanged and publish `v1.0.1` from a reviewed fix or revert.
+
 ## Remaining dependency order for issue #18
 
 | ID | Work | Blocked by | Status |
@@ -79,12 +102,12 @@ migration guidance.
 | V1-02 | Pass required remote CI and supported-target release gates on the integrated commit | V1-01 | Completed; all 14 required checks passed |
 | V1-03 | Obtain explicit owner approval and publish a new core, npm, and go-rod candidate in documented dependency order | V1-02 | Completed with `v1.0.0-rc.3` |
 | V1-04 | Verify the new candidate through GitHub Releases, Go proxies, npm, Pages, clean consumers, checksums, provenance, and native archives | V1-03 | Completed at `2026-08-01T08:01:28Z` |
-| V1-05 | Complete at least 14 consecutive days with no unresolved release blocker | V1-04 | In progress; earliest completion `2026-08-15T08:01:28Z` |
-| V1-06 | Verify the unified Environment, npm trusted publishers, and tag rulesets, then obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | External controls verified 2026-08-09; owner gate pending |
-| V1-07 | Run the unified publication once, independently verify every stable distribution surface, then close issue #18 | V1-06 | Pending |
+| V1-05 | Complete at least 14 consecutive days with no unresolved release blocker | V1-04 | Overridden by explicit project-owner direction on 2026-08-09 for this release only |
+| V1-06 | Verify the unified Environment, npm trusted publishers, and tag rulesets, then obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | External controls verified 2026-08-09; owner override approved; pre-publication checks pending |
+| V1-07 | Run the unified publication once, independently verify every stable distribution surface, then close issue #18 | V1-06 | Prepared; publication and post-publication verification pending |
 
-Issue #18 remains open during V1-05. A release blocker resets the consecutive
-14-day period after the blocker is resolved and the candidate is requalified.
+Issue #18 remains open through V1-07. A release blocker still stops publication
+or requires a reviewed `v1.0.1` recovery if stable artifacts already exist.
 
 The exact publication commands, dependency order, post-publication checks, and
 immutable-version recovery rules are in [`docs/releasing.md`](releasing.md).

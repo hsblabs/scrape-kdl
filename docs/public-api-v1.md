@@ -1,10 +1,16 @@
 ---
-status: frozen v1 release-candidate contract
+status: frozen v1 stable-publication contract; not published
 ---
 
 # Go and TypeScript public API contract
 
 Before stable publication, a public-surface change is accepted only to resolve a release blocker and must include tests, compatibility notes, and a migration update. Semantic behavior remains governed by the dated language and IR specifications.
+
+Stable-publication preparation was approved on 2026-08-09 under the explicit
+project-owner gate override recorded in [`ADR 0009`](adr/0009-stable-v1-owner-gate-override.md).
+This is an owner-direction exception, not a claim of increased technical
+safety; `v1.0.0` remains unpublished pending pre- and post-publication
+verification.
 
 ## Shared capability surface
 
