@@ -7,6 +7,8 @@ source_revision="${3:?source revision is required}"
 artifact_dir="${4:?artifact directory is required}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
+migration_notes="Go API migration guidance: https://hsblabs.github.io/scrape-kdl/migrating-to-v1.md#go-api"
+
 "$root/scripts/validate-public-release-tag.sh" "$kind" "$tag"
 source_commit="$(git -C "$root" rev-parse "$source_revision^{commit}")"
 if [[ ! -d "$artifact_dir" ]]; then
@@ -75,6 +77,7 @@ if ! gh release view "$tag" >/dev/null 2>&1; then
     gh release create "$tag" "${artifacts[@]}" \
       --verify-tag \
       --generate-notes \
+      --notes "$migration_notes" \
       --title "$tag" \
       --prerelease \
       --latest=false
@@ -82,6 +85,7 @@ if ! gh release view "$tag" >/dev/null 2>&1; then
     gh release create "$tag" "${artifacts[@]}" \
       --verify-tag \
       --generate-notes \
+      --notes "$migration_notes" \
       --title "$tag"
   fi
 fi

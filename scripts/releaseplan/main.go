@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -22,6 +23,13 @@ const (
 	coreModulePath = "github.com/hsblabs/scrape-kdl"
 	rodModulePath  = "adapters/rod/go.mod"
 	rodSumPath     = "adapters/rod/go.sum"
+)
+
+var (
+	releaseExampleVersionPattern = regexp.MustCompile(`(?:v)?[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?`)
+	currentReleaseLinePattern    = regexp.MustCompile(`^\s*Current (?:published candidate|stable release):`)
+	goInstallLinePattern         = regexp.MustCompile(`^\s*go (?:install|get)\b`)
+	npmInstallLinePattern        = regexp.MustCompile(`^\s*npm install\b`)
 )
 
 type moduleSums struct {
@@ -49,6 +57,9 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if err := checkReadmeVersion(root, version, revision); err != nil {
+		return err
+	}
 	if mode == "prepare" {
 		if err := requireCleanCoreTree(root, revision); err != nil {
 			return err
@@ -70,6 +81,36 @@ func run(args []string, stdout io.Writer) error {
 	}
 
 	fmt.Fprintf(stdout, "release plan: core=%s adapter=adapters/rod/%s revision=%s\n", version, version, revision)
+	return nil
+}
+
+func checkReadmeVersion(root, version, revision string) error {
+	data, err := gitFile(root, revision, "README.md")
+	if err != nil {
+		return err
+	}
+	return compareReadmeVersion(data, version)
+}
+
+func compareReadmeVersion(data []byte, version string) error {
+	want := "v" + strings.TrimPrefix(version, "v")
+	npmContinuation := false
+	for _, line := range strings.Split(string(data), "\n") {
+		npmLine := npmContinuation || npmInstallLinePattern.MatchString(line)
+		if currentReleaseLinePattern.MatchString(line) || goInstallLinePattern.MatchString(line) || npmLine {
+			for _, found := range releaseExampleVersionPattern.FindAllString(line, -1) {
+				found = "v" + strings.TrimPrefix(found, "v")
+				if found != want {
+					return fmt.Errorf("README.md contains release version %s; want %s", found, want)
+				}
+			}
+		}
+		if npmLine {
+			npmContinuation = strings.HasSuffix(strings.TrimSpace(line), `\`)
+		} else {
+			npmContinuation = false
+		}
+	}
 	return nil
 }
 
