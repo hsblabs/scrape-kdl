@@ -16,7 +16,10 @@ Document, language, and Validated IR compatibility identifiers are separate from
 
 Stable diagnostic codes are part of the language tooling contract. Their message text may improve without a major language-version change, but code meaning must not silently change.
 
-The CLI contract candidate began at v0.5 and is frozen for v1. Before stable publication, changes to commands, help, streams, JSON envelopes, exit status classes, signals, or secret input are accepted only for release blockers and require black-box tests, compatibility notes, and a migration update. These behaviors receive v1 Semantic Versioning guarantees at publication.
+The CLI contract candidate began at v0.5 and was frozen at v1.0.0. Changes to
+commands, help, streams, JSON envelopes, exit status classes, signals, or secret
+input follow v1 Semantic Versioning and require black-box tests, compatibility
+notes, and a migration update when consumers must act.
 
 Public core, npm, Playwright, and go-rod releases use the same version and are
 published by one orchestrator. Go still requires separate `vX.Y.Z` and

@@ -1,9 +1,11 @@
 ---
-status: stable publication prepared; not published
+status: stable published and verified
 published-candidate: v1.0.0-rc.3
 published-candidate-date: 2026-08-01
 next-candidate-required: false
 stable-preparation-date: 2026-08-09
+stable-version: v1.0.0
+stable-publication-date: 2026-08-09
 ---
 
 # scrape-kdl v1.0.0 release notes
@@ -12,7 +14,7 @@ stable-preparation-date: 2026-08-09
 approved preparation and publication under the one-release waiting-period
 exception recorded in [`ADR 0009`](adr/0009-stable-v1-owner-gate-override.md).
 This does not claim increased technical safety or waive verification. Stable
-`v1.0.0` is prepared but not published.
+`v1.0.0` was published and independently verified on 2026-08-09.
 
 ## Highlights
 
@@ -48,8 +50,12 @@ This is the first supported public contract. Applications using an untagged deve
   authoring extension are outside the v1 scope. The included authoring API is a
   bounded semantic model, not an editor framework or lossless formatter.
 
-## Publication checklist
+## Publication record
 
-The authoritative checklist and dependency order are in `docs/releasing.md`
-and issue #18. Replace this status with the release date and verified
-registry/module links only after stable publication succeeds.
+The protected unified publication workflow completed successfully in
+[run 31308137799](https://github.com/hsblabs/scrape-kdl/actions/runs/31308137799).
+The core and go-rod GitHub Releases, both public Go modules, both npm packages,
+release checksums and supported CLI archives, and the dated specification
+endpoints were then checked independently. The stable Pages redeploy and
+first-24-hour observation continue on issue #18. The authoritative procedure
+and immutable-version recovery rules remain in `docs/releasing.md`.

@@ -1,19 +1,18 @@
 ---
-status: frozen v1 stable-publication contract; not published
+status: published frozen v1 contract
 ---
 
 # Go and TypeScript public API contract
 
-Before stable publication, a public-surface change is accepted only to resolve
-a release blocker and must include tests, compatibility notes, and a migration
-update. Semantic behavior remains governed by the dated language and IR
-specifications.
+The `v1.0.0` public surface is frozen. Compatible additions and fixes follow
+Semantic Versioning and must include tests and compatibility notes. Semantic
+behavior remains governed by the dated language and IR specifications.
 
 Stable-publication preparation was approved on 2026-08-09 under the explicit
 project-owner gate override recorded in
 [`ADR 0009`](adr/0009-stable-v1-owner-gate-override.md). This is an
-owner-direction exception, not a claim of increased technical safety;
-`v1.0.0` remains unpublished pending pre- and post-publication verification.
+owner-direction exception, not a claim of increased technical safety. Stable
+`v1.0.0` was published and independently verified on 2026-08-09.
 
 ## Shared capability surface
 
@@ -137,9 +136,9 @@ These are surface differences only. They do not permit different accepted KDL, d
 
 ## Compatibility process
 
-The v1 candidate is frozen. Before stable publication, a release-blocking
-public API correction must update this document, the relevant authoring or core
-declaration snapshot, both independent consumer checks, `CHANGELOG.md`, and
-`docs/migrating-to-v1.md`. After v1.0.0, compatible additions and breaking
-changes follow Semantic Versioning independently for the Go modules and npm
-packages.
+The published v1 contract is frozen. A public API correction must update this
+document, the relevant authoring or core declaration snapshot, both independent
+consumer checks, `CHANGELOG.md`, and `docs/migrating-to-v1.md`. Compatible
+additions and breaking changes are evaluated independently under Semantic
+Versioning for the Go modules and npm packages, while the public release train
+continues to assign both ecosystems one shared version.

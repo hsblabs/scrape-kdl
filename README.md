@@ -2,8 +2,8 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Current stable release target: `v1.0.0`. Install it only after publication and
-post-publication verification complete. See `docs/release-readiness.md` and
+Current stable release: `v1.0.0`, published and independently verified on
+2026-08-09. See `docs/release-readiness.md` and
 `docs/adr/0009-stable-v1-owner-gate-override.md` for the release record.
 The normative specification documents use the v0.1 document series and the initial compatibility identifiers `language-version="2026-07-15"` and `irVersion: "2026-07-15"`.
 
@@ -55,7 +55,7 @@ writer.
 
 ## Stable release install
 
-After `v1.0.0` is published and its post-publication checks pass:
+Install `v1.0.0`:
 
 ```bash
 go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.0
@@ -205,7 +205,7 @@ result, err := program.Extract(ctx, inputs, scrapekdl.Options{
 
 The go-rod implementation is a separate module:
 
-After stable `v1.0.0` publication:
+For stable `v1.0.0`:
 
 ```bash
 go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0
@@ -223,8 +223,8 @@ See `SECURITY.md` and `docs/security-model.md`.
 
 ## Supported platforms
 
-- Linux: supported; amd64 and arm64 release artifacts will be provided after an approved release.
-- macOS: supported; amd64 and arm64 release artifacts will be provided after an approved release.
+- Linux: supported; amd64 and arm64 release artifacts are available from the GitHub Releases.
+- macOS: supported; amd64 and arm64 release artifacts are available from the GitHub Releases.
 - Windows: explicitly unsupported. No CI coverage, release artifact, compatibility guarantee, or Windows-specific bug support is provided. Incidental compilation does not make Windows supported.
 
 ## Compatibility and known limits
