@@ -1,17 +1,18 @@
 ---
-status: stable release
+status: stable publication prepared; not published
 published-candidate: v1.0.0-rc.3
 published-candidate-date: 2026-08-01
 next-candidate-required: false
-release-date: 2026-08-09
+stable-preparation-date: 2026-08-09
 ---
 
 # scrape-kdl v1.0.0 release notes
 
-Stable `v1.0.0` freezes the contracts qualified in `v1.0.0-rc.3`. The project
-owner approved publication on 2026-08-09 under the one-release waiting-period
+`v1.0.0-rc.3` is public and qualified. On 2026-08-09, the project owner
+approved preparation and publication under the one-release waiting-period
 exception recorded in [`ADR 0009`](adr/0009-stable-v1-owner-gate-override.md).
-The exception does not claim increased technical safety or waive verification.
+This does not claim increased technical safety or waive verification. Stable
+`v1.0.0` is prepared but not published.
 
 ## Highlights
 
@@ -47,7 +48,8 @@ This is the first supported public contract. Applications using an untagged deve
   authoring extension are outside the v1 scope. The included authoring API is a
   bounded semantic model, not an editor framework or lossless formatter.
 
-## Release verification
+## Publication checklist
 
-The authoritative checklist and distribution evidence are in
-`docs/releasing.md`, `docs/release-readiness.md`, and issue #18.
+The authoritative checklist and dependency order are in `docs/releasing.md`
+and issue #18. Replace this status with the release date and verified
+registry/module links only after stable publication succeeds.

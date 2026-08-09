@@ -1,6 +1,6 @@
 ---
 title: Authoring API
-status: v1 stable contract
+status: v1 stable-publication prepared; not published
 ---
 
 # Authoring API
@@ -20,6 +20,11 @@ Authoring Document
   -> Validated IR
   -> execution
 ```
+
+Stable-publication preparation for `v1.0.0` was approved on 2026-08-09 under
+the owner gate override recorded in
+[`ADR 0009`](adr/0009-stable-v1-owner-gate-override.md); the package remains
+unpublished pending release verification.
 
 An Authoring Document is not a syntax tree or mutable IR. Writing does not prove
 that selectors, types, transforms, and output relationships are semantically
