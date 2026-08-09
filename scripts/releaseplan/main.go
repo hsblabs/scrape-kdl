@@ -25,7 +25,12 @@ const (
 	rodSumPath     = "adapters/rod/go.sum"
 )
 
-var releaseCandidateVersionPattern = regexp.MustCompile(`(?:v)?[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+`)
+var (
+	releaseExampleVersionPattern = regexp.MustCompile(`(?:v)?[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?`)
+	currentReleaseLinePattern    = regexp.MustCompile(`^\s*Current (?:published candidate|stable release):`)
+	goInstallLinePattern         = regexp.MustCompile(`^\s*go (?:install|get)\b`)
+	npmInstallLinePattern        = regexp.MustCompile(`^\s*npm install\b`)
+)
 
 type moduleSums struct {
 	zip   string
@@ -88,10 +93,22 @@ func checkReadmeVersion(root, version, revision string) error {
 }
 
 func compareReadmeVersion(data []byte, version string) error {
-	for _, found := range releaseCandidateVersionPattern.FindAllString(string(data), -1) {
-		found = "v" + strings.TrimPrefix(found, "v")
-		if found != version {
-			return fmt.Errorf("README.md contains release candidate %s; want %s", found, version)
+	want := "v" + strings.TrimPrefix(version, "v")
+	npmContinuation := false
+	for _, line := range strings.Split(string(data), "\n") {
+		npmLine := npmContinuation || npmInstallLinePattern.MatchString(line)
+		if currentReleaseLinePattern.MatchString(line) || goInstallLinePattern.MatchString(line) || npmLine {
+			for _, found := range releaseExampleVersionPattern.FindAllString(line, -1) {
+				found = "v" + strings.TrimPrefix(found, "v")
+				if found != want {
+					return fmt.Errorf("README.md contains release version %s; want %s", found, want)
+				}
+			}
+		}
+		if npmLine {
+			npmContinuation = strings.HasSuffix(strings.TrimSpace(line), `\`)
+		} else {
+			npmContinuation = false
 		}
 	}
 	return nil
