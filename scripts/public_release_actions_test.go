@@ -225,7 +225,7 @@ case "$command:$operation" in
       fi
     done
     touch "$GH_STATE/release"
-    echo create >>"$GH_STATE/log"
+    echo "create $*" >>"$GH_STATE/log"
     ;;
   release:upload)
     cp "$4" "$assets/"
@@ -276,6 +276,16 @@ esac
 	}
 	if log := readFile(t, filepath.Join(state, "log")); strings.Count(log, "create") != 1 {
 		t.Fatalf("GitHub Release create count is not one:\n%s", log)
+	}
+	log := readFile(t, filepath.Join(state, "log"))
+	for _, expected := range []string{
+		"--generate-notes",
+		"--notes",
+		"https://hsblabs.github.io/scrape-kdl/migrating-to-v1.md#go-api",
+	} {
+		if !strings.Contains(log, expected) {
+			t.Errorf("GitHub Release create arguments are missing %q:\n%s", expected, log)
+		}
 	}
 	remoteTag := strings.TrimSpace(runTestGit(t, testRoot, "ls-remote", "--tags", "origin", "refs/tags/v1.2.3^{}"))
 	if remoteTag == "" {

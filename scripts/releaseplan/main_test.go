@@ -103,6 +103,26 @@ func TestRunRejectsUnknownMode(t *testing.T) {
 	}
 }
 
+func TestCheckReadmeVersionRejectsStaleReleaseCandidate(t *testing.T) {
+	readme := []byte("Current published candidate: `v1.0.0-rc.1`.\n" +
+		"go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.0-rc.1\n" +
+		"npm install @hsblabs/scrape-kdl@1.0.0-rc.1\n")
+
+	err := compareReadmeVersion(readme, "v1.0.0-rc.3")
+	if err == nil || !strings.Contains(err.Error(), "v1.0.0-rc.1") {
+		t.Fatalf("compareReadmeVersion() error = %v", err)
+	}
+}
+
+func TestCheckReadmeVersionAcceptsMatchingReleaseCandidate(t *testing.T) {
+	readme := []byte("Current published candidate: `v1.0.0-rc.3`.\n" +
+		"go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.0-rc.3\n" + "npm install @hsblabs/scrape-kdl@1.0.0-rc.3\n")
+
+	if err := compareReadmeVersion(readme, "v1.0.0-rc.3"); err != nil {
+		t.Fatalf("compareReadmeVersion() error = %v", err)
+	}
+}
+
 func testRepository(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()

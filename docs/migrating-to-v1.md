@@ -21,7 +21,7 @@ There was no supported public release before v1. This guide is for applications 
 - Use `CompileFS` or `ValidateFS` for specifications stored in `embed.FS` or another application-owned `fs.FS`; import names remain slash-separated `io/fs` paths.
 - Use `Program.Descriptor()` when a Go host only needs validated fetch mode, raw URL template, and session policy; avoid decoding `IRJSON` for those acquisition settings.
 - Use `Program.ExtractSnapshot` to evaluate saved HTML against the exact compiled HTTP- or browser-mode program. Do not rewrite browser sources to HTTP mode; programs with workflow or JavaScript requirements now fail explicitly with `E_SNAPSHOT_UNSUPPORTED`.
-- Use `Result.Decode(&destination)` instead of consumer-owned `map[string]any` assertions. Decoding is strict: missing required fields, nullability mismatches, unknown fields, sign changes, and numeric overflow return errors.
+- Prefer `Result.Decode(&destination)` for fixed, strict result schemas instead of consumer-owned `map[string]any` assertions. Decoding is strict: missing required fields, nullability mismatches, unknown fields, sign changes, and numeric overflow return errors. Keep intentional dynamic projections application-owned for partial results, warnings, page-specific mappers, or staged migrations.
 - Treat `Program.Version()` as a string rather than an integer.
 - Use the exported supported-language and supported-IR registries instead of comparing version dates.
 - Keep browser libraries in adapter modules; the core Go module does not depend on go-rod.

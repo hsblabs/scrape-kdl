@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -23,6 +24,8 @@ const (
 	rodModulePath  = "adapters/rod/go.mod"
 	rodSumPath     = "adapters/rod/go.sum"
 )
+
+var releaseCandidateVersionPattern = regexp.MustCompile(`(?:v)?[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+`)
 
 type moduleSums struct {
 	zip   string
@@ -49,6 +52,9 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if err := checkReadmeVersion(root, version, revision); err != nil {
+		return err
+	}
 	if mode == "prepare" {
 		if err := requireCleanCoreTree(root, revision); err != nil {
 			return err
@@ -70,6 +76,24 @@ func run(args []string, stdout io.Writer) error {
 	}
 
 	fmt.Fprintf(stdout, "release plan: core=%s adapter=adapters/rod/%s revision=%s\n", version, version, revision)
+	return nil
+}
+
+func checkReadmeVersion(root, version, revision string) error {
+	data, err := gitFile(root, revision, "README.md")
+	if err != nil {
+		return err
+	}
+	return compareReadmeVersion(data, version)
+}
+
+func compareReadmeVersion(data []byte, version string) error {
+	for _, found := range releaseCandidateVersionPattern.FindAllString(string(data), -1) {
+		found = "v" + strings.TrimPrefix(found, "v")
+		if found != version {
+			return fmt.Errorf("README.md contains release candidate %s; want %s", found, version)
+		}
+	}
 	return nil
 }
 
