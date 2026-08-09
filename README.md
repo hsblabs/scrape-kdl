@@ -2,11 +2,9 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Current stable release: `v1.0.0` (publication prepared; not published yet).
-The project owner explicitly overrode the 14-day candidate gate for the
-2026-08-09 publication. Pre- and post-publication verification remain pending;
-see `docs/release-readiness.md` and
-`docs/adr/0009-stable-v1-owner-gate-override.md`.
+Current stable release target: `v1.0.0`. Install it only after publication and
+post-publication verification complete. See `docs/release-readiness.md` and
+`docs/adr/0009-stable-v1-owner-gate-override.md` for the release record.
 The normative specification documents use the v0.1 document series and the initial compatibility identifiers `language-version="2026-07-15"` and `irVersion: "2026-07-15"`.
 
 ```text
@@ -206,6 +204,8 @@ result, err := program.Extract(ctx, inputs, scrapekdl.Options{
 ```
 
 The go-rod implementation is a separate module:
+
+After stable `v1.0.0` publication:
 
 ```bash
 go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0

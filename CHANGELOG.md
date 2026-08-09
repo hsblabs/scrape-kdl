@@ -4,10 +4,9 @@ All notable implementation changes are recorded here. Formal releases will use S
 
 ## 1.0.0 — 2026-08-09
 
-- Prepared stable `v1.0.0` publication for 2026-08-09 under an explicit
-  project-owner override of the 14-day candidate gate. This is an owner-
-  direction exception; publication and pre- and post-publication verification
-  remain pending.
+- Released stable `v1.0.0` under the project-owner exception recorded in
+  ADR 0009 without changing the RC3 language, IR, API, runtime, diagnostic, or
+  security contracts.
 - Added bounded Go and TypeScript authoring APIs with an explicit-version
   built-in catalog and deterministic KDL writing. Catalog arguments expose
   finite allowed values and numeric bounds, and TypeScript `float(value)`

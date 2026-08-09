@@ -27,7 +27,7 @@ const (
 
 var (
 	releaseExampleVersionPattern = regexp.MustCompile(`(?:v)?[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?`)
-	currentReleaseLinePattern    = regexp.MustCompile(`^\s*Current (?:published candidate|stable release):`)
+	currentReleaseLinePattern    = regexp.MustCompile(`^\s*Current (?:published candidate|stable release(?: target)?):`)
 	goInstallLinePattern         = regexp.MustCompile(`^\s*go (?:install|get)\b`)
 	npmInstallLinePattern        = regexp.MustCompile(`^\s*npm install\b`)
 )

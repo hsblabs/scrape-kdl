@@ -9,10 +9,6 @@ This file records verified release state and the remaining dependency order. It
 does not authorize creating or pushing a tag, publishing a package or Release,
 deploying Pages, or changing external configuration. Every publication step
 still requires explicit project-owner approval immediately before it runs.
-The owner override recorded in [`ADR 0009`](adr/0009-stable-v1-owner-gate-override.md)
-approves bypassing the 14-day candidate gate for this release only; it does
-not publish `v1.0.0` or claim increased technical safety.
-
 ## Qualified `v1.0.0-rc.3` candidate
 
 The third public candidate was published and independently qualified on

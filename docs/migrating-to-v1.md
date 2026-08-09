@@ -2,6 +2,11 @@
 
 There was no supported public release before v1. This guide is for applications that tested or vendored an untagged development revision.
 
+Consumers already using `v1.0.0-rc.3` do not need a language, IR, or API
+migration. After stable publication, update the Go modules and npm packages to
+`v1.0.0`. Consumers on earlier candidates should apply the relevant changes
+below first.
+
 ## KDL documents and Validated IR
 
 - Replace integer document versions such as `version=1` with a quoted document revision such as `version="2026-07-15"`.

@@ -157,6 +157,16 @@ func TestCheckReadmeVersionRejectsReleaseCandidateForStable(t *testing.T) {
 	}
 }
 
+func TestCheckReadmeVersionAcceptsStableTarget(t *testing.T) {
+	readme := []byte("Current stable release target: `v1.0.0`.\n" +
+		"go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.0\n" +
+		"npm install @hsblabs/scrape-kdl@1.0.0\n")
+
+	if err := compareReadmeVersion(readme, "v1.0.0"); err != nil {
+		t.Fatalf("compareReadmeVersion() error = %v", err)
+	}
+}
+
 func TestCheckReadmeVersionIgnoresFutureStableProse(t *testing.T) {
 	readme := []byte("Current published candidate: `v1.0.0-rc.3`.\n" +
 		"The development surface requires a new candidate before stable `v1.0.0`.\n")
