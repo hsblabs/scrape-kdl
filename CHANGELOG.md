@@ -9,8 +9,8 @@ All notable implementation changes are recorded here. Formal releases will use S
   security contracts. The protected unified workflow and independent
   post-publication checks passed for both Go modules, both npm packages, both
   GitHub Releases, release checksums, supported CLI archives, and the dated
-  specification endpoints. The stable Pages redeploy remains tracked in issue
-  #18.
+  specification endpoints. The stable release record was then deployed to
+  Pages from `main` and verified live.
 - Added bounded Go and TypeScript authoring APIs with an explicit-version
   built-in catalog and deterministic KDL writing. Catalog arguments expose
   finite allowed values and numeric bounds, and TypeScript `float(value)`

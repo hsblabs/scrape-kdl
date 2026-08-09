@@ -95,7 +95,7 @@ Independent verification produced this record:
 | go-rod GitHub Release | Published non-draft, non-prerelease with four Linux/macOS CLI archives and checksums |
 | go-rod Go module | `github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0` resolves through the public proxy; clean contract test and CLI install passed |
 | Release archives | SHA-256 checks passed for all six core payloads and four go-rod payloads; core extraction and go-rod version smokes passed on Linux and macOS, amd64 and arm64 |
-| Specification site | Landing page, `llms.txt`, and the dated IR schema returned HTTP 200; the schema used `application/json` |
+| Specification site | Stable record deployed from `main` and verified live; landing page, `llms.txt`, release record, and dated IR schema returned HTTP 200 |
 | Release controls | Protected Environment approval and both immutable release-tag rulesets remained in force |
 
 Both npm packages retain `next=1.0.0-rc.3`; only `latest` moved to stable.
@@ -123,7 +123,7 @@ unchanged and publish `v1.0.1` from a reviewed fix or revert.
 | V1-04 | Verify the new candidate through GitHub Releases, Go proxies, npm, Pages, clean consumers, checksums, provenance, and native archives | V1-03 | Completed at `2026-08-01T08:01:28Z` |
 | V1-05 | Complete at least 14 consecutive days with no unresolved release blocker | V1-04 | Overridden by explicit project-owner direction on 2026-08-09 for this release only |
 | V1-06 | Verify the unified Environment, npm trusted publishers, and tag rulesets, then obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | Completed 2026-08-09; owner override and protected publication approval recorded |
-| V1-07 | Run the unified publication once, independently verify every stable distribution surface, then close issue #18 | V1-06 | Publication and immediate independent verification completed 2026-08-09; stable Pages redeploy and first-24-hour observation remain before closing |
+| V1-07 | Run the unified publication once, independently verify every stable distribution surface, then close issue #18 | V1-06 | Publication, independent immediate verification, and stable Pages redeploy completed 2026-08-09; first-24-hour observation remains before closing |
 
 If a stable defect is found, publish a reviewed `v1.0.1`; do not move, delete,
 replace, or reuse the immutable `v1.0.0` tags, Releases, modules, packages, or

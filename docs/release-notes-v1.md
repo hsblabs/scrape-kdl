@@ -56,6 +56,7 @@ The protected unified publication workflow completed successfully in
 [run 31308137799](https://github.com/hsblabs/scrape-kdl/actions/runs/31308137799).
 The core and go-rod GitHub Releases, both public Go modules, both npm packages,
 release checksums and supported CLI archives, and the dated specification
-endpoints were then checked independently. The stable Pages redeploy and
+endpoints were then checked independently. The stable release record was
+deployed to Pages from `main` and verified live. The workflow evidence and
 first-24-hour observation continue on issue #18. The authoritative procedure
 and immutable-version recovery rules remain in `docs/releasing.md`.
