@@ -2,8 +2,12 @@
 
 All notable implementation changes are recorded here. Formal releases will use Semantic Versioning.
 
-## 1.0.0 — Unreleased
+## 1.0.0 — 2026-08-09
 
+- Prepared stable `v1.0.0` under the project-owner exception recorded in ADR
+  0009 without changing the RC3 language, IR, API, runtime, diagnostic, or
+  security contracts. Publication and post-publication verification remain
+  pending.
 - Added bounded Go and TypeScript authoring APIs with an explicit-version
   built-in catalog and deterministic KDL writing. Catalog arguments expose
   finite allowed values and numeric bounds, and TypeScript `float(value)`

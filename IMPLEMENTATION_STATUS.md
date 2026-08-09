@@ -64,6 +64,7 @@ Implemented:
 - CI, browser E2E, and release workflows;
 - a single protected, resumable public release orchestrator for core, npm, and
   go-rod publication;
+- stable `v1.0.0` publication preparation and its owner-gate exception record;
 - Apache-2.0 licensing;
 - security, contribution, support, compatibility, and versioning policies;
 - release archive generation and checksum script;

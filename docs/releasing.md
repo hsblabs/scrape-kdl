@@ -272,7 +272,11 @@ The Go module rules still require distinct `vX.Y.Z` and
 `adapters/rod/vX.Y.Z` tag names. Their version, commit, workflow run, and owner
 approval are shared.
 
-Stable `v1.0.0` additionally requires at least 14 consecutive days with no unresolved release blocker after the public release candidate and a separate project-owner approval.
+Stable `v1.0.0` additionally requires at least 14 consecutive days with no
+unresolved release blocker after the public release candidate and a separate
+project-owner approval. ADR 0009 records a one-release owner-directed exception
+to that waiting period for `v1.0.0`; every other preparation, approval,
+publication, verification, and immutable-version rule remains required.
 
 ## Post-publication checks
 

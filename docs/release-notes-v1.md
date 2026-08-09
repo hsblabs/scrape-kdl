@@ -1,16 +1,18 @@
 ---
-status: draft stable release notes
+status: stable publication prepared; not published
 published-candidate: v1.0.0-rc.3
 published-candidate-date: 2026-08-01
 next-candidate-required: false
+stable-preparation-date: 2026-08-09
 ---
 
 # scrape-kdl v1.0.0 release notes
 
-`v1.0.0-rc.3` is public and qualified. Its conservative 14-day blocker-free
-period can complete no earlier than `2026-08-15T08:01:28Z`. Stable publication
-still requires the separate project-owner approval and verification recorded in
-issue #18.
+`v1.0.0-rc.3` is public and qualified. On 2026-08-09, the project owner
+approved preparation and publication under the one-release waiting-period
+exception recorded in [`ADR 0009`](adr/0009-stable-v1-owner-gate-override.md).
+This does not claim increased technical safety or waive verification. Stable
+`v1.0.0` is prepared but not published.
 
 ## Highlights
 
@@ -48,4 +50,6 @@ This is the first supported public contract. Applications using an untagged deve
 
 ## Publication checklist
 
-The authoritative checklist and dependency order are in `docs/releasing.md` and issue #18. Replace this status with the release date and verified registry/module links only after stable publication succeeds.
+The authoritative checklist and dependency order are in `docs/releasing.md`
+and issue #18. Replace this status with the release date and verified
+registry/module links only after stable publication succeeds.
