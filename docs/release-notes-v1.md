@@ -1,15 +1,16 @@
 ---
 status: draft stable release notes
-published-candidate: v1.0.0-rc.1
-published-candidate-date: 2026-07-30
-next-candidate-required: true
+published-candidate: v1.0.0-rc.3
+published-candidate-date: 2026-08-01
+next-candidate-required: false
 ---
 
 # scrape-kdl v1.0.0 release notes
 
-`v1.0.0-rc.1` is public. The post-candidate API and documentation changes in
-issues #43, #45, and #54 through #59 require a new release candidate and a fresh
-14-day blocker-free period before these notes can become stable release notes.
+`v1.0.0-rc.3` is public and qualified. Its conservative 14-day blocker-free
+period can complete no earlier than `2026-08-15T08:01:28Z`. Stable publication
+still requires the separate project-owner approval and verification recorded in
+issue #18.
 
 ## Highlights
 

@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-01
+updated: 2026-08-09
 status: public release candidate active
 ---
 
@@ -10,49 +10,44 @@ does not authorize creating or pushing a tag, publishing a package or Release,
 deploying Pages, or changing external configuration. Every publication step
 still requires explicit project-owner approval immediately before it runs.
 
-## Qualified `v1.0.0-rc.2` candidate
+## Qualified `v1.0.0-rc.3` candidate
 
-The second public candidate was published and qualified on 2026-08-01 UTC. It
-contains the issue implementations integrated by
-[#60](https://github.com/hsblabs/scrape-kdl/pull/60), the npm release repairs in
-[#61](https://github.com/hsblabs/scrape-kdl/pull/61) and
-[#62](https://github.com/hsblabs/scrape-kdl/pull/62), and the go-rod dependency
-update in [#63](https://github.com/hsblabs/scrape-kdl/pull/63).
+The third public candidate was published and independently qualified on
+2026-08-01 UTC. It retains the frozen runtime and API contracts from RC2 and
+uses the unified, resumable public release workflow completed by
+[#65](https://github.com/hsblabs/scrape-kdl/pull/65) and
+[#67](https://github.com/hsblabs/scrape-kdl/pull/67).
 
 | Surface | Verified state |
 |---|---|
 | Repository | Public, with the specification site as its homepage |
 | Specification site | Dated IR schema returned HTTP 200 with `application/json` on 2026-08-01 |
-| Core Git tag | Annotated `v1.0.0-rc.2`, peeled commit `396e1be5d34d57764e503b63dd9d8f7b45aa2131` |
-| Core GitHub Release | Published prerelease with four Linux/macOS CLI archives, two npm archives, and checksums; workflow run `30684012908` passed |
-| Core Go module | `github.com/hsblabs/scrape-kdl@v1.0.0-rc.2` resolves through the module proxy |
-| Core npm package | `@hsblabs/scrape-kdl@1.0.0-rc.2` resolves with registry integrity, signatures, and provenance |
-| Playwright npm package | `@hsblabs/scrape-kdl-playwright@1.0.0-rc.2` resolves with registry integrity, signatures, and provenance |
-| npm publication | Workflow run `30685139043` passed; both packages have `next=1.0.0-rc.2` and retain `latest=1.0.0-rc.1` |
-| go-rod Git tag | Annotated `adapters/rod/v1.0.0-rc.2`, peeled commit `c850bc67162eed3d63f34922e2aac58c37f11d52` |
-| go-rod GitHub Release | Published prerelease with four Linux/macOS CLI archives and checksums; workflow run `30685417102` passed |
-| go-rod Go module | `github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0-rc.2` resolves through the module proxy and a clean `go install` |
-| Release controls | Legacy `github-release` and `npm-publish` Environments exist; both release-tag rulesets are active. The unified `release-publish` migration remains pending |
+| Core Git tag | Annotated `v1.0.0-rc.3`, peeled commit `01d046087474ecab11210630b9382c005a7f1e75` |
+| Core GitHub Release | Published prerelease with four Linux/macOS CLI archives, two npm archives, and checksums; unified workflow run `30689019694` passed |
+| Core Go module | `github.com/hsblabs/scrape-kdl@v1.0.0-rc.3` resolves through the module proxy |
+| Core npm package | `@hsblabs/scrape-kdl@1.0.0-rc.3` resolves with registry integrity, signatures, and provenance |
+| Playwright npm package | `@hsblabs/scrape-kdl-playwright@1.0.0-rc.3` resolves with registry integrity, signatures, and provenance |
+| npm publication | Unified workflow run `30689019694` passed; both packages have `next=1.0.0-rc.3` and retain `latest=1.0.0-rc.1` |
+| go-rod Git tag | Annotated `adapters/rod/v1.0.0-rc.3`, peeled commit `01d046087474ecab11210630b9382c005a7f1e75` |
+| go-rod GitHub Release | Published prerelease with four Linux/macOS CLI archives and checksums; unified workflow run `30689019694` passed |
+| go-rod Go module | `github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0-rc.3` resolves through the module proxy and a clean `go install` |
+| Release controls | `release-publish` is restricted to `main`, requires owner review, and disables administrator bypass; both release-tag rulesets are active |
 
-The immutable `rc.1` and `rc.2` versions remain published. Stable publication
-must publish new `v1.0.0` artifacts and move npm `latest` to `1.0.0`; it must not
-move, replace, or reuse either candidate tag or package version.
+The immutable `rc.1`, `rc.2`, and `rc.3` versions remain published. Stable
+publication must publish new `v1.0.0` artifacts and move npm `latest` to
+`1.0.0`; it must not move, replace, or reuse a candidate tag or package version.
 
 ## Candidate verification
 
-- All 14 required PR checks passed after each release repair and on the go-rod
-  dependency update. The matrix covers Linux and macOS core tests, the race
-  suite, four package targets, go-rod contract and real-dependency tests,
-  Playwright Chromium, and CodeQL for Go, TypeScript, and Actions.
-- The core tag workflow reran `make release-check`; the adapter tag workflow
-  passed real-dependency tests, vet, browser E2E, and all four release builds.
+- Unified workflow run `30689019694` passed the release plan, complete release
+  gate, inspected bundle build, sequential core/npm/go-rod publication, and
+  post-tag Go proxy checks.
 - SHA-256 verification passed for all six core Release archives and all four
   go-rod Release archives.
-- A clean npm consumer installed both `1.0.0-rc.2` packages. The command
-  `npm audit signatures` verified all eight installed registry signatures and
-  five attestations, including both hsblabs packages.
-- A clean `go install` resolved the public go-rod module. Both Go module paths
-  resolve at `v1.0.0-rc.2` through the public module proxy.
+- A clean npm consumer installed both `1.0.0-rc.3` packages. Registry signatures
+  and provenance attestations were verified, including both hsblabs packages.
+- Clean Go consumers, both CLI `go install` commands, and both Go module paths
+  resolved `v1.0.0-rc.3` through the public module proxy.
 - The core and go-rod release binaries executed successfully for
   `darwin/arm64`, `darwin/amd64`, `linux/arm64`, and `linux/amd64`. The
   `darwin/amd64` smoke used Rosetta, and the Linux smokes used matching-platform
@@ -61,15 +56,20 @@ move, replace, or reuse either candidate tag or package version.
 - The published core CLI executed the documented static-HTML basic extraction
   without warnings or partial output.
 - The dated specification schema returned HTTP 200 as JSON after publication.
-- Recovery from the two npm publication failures preserved immutable versions:
-  run `30684358577` failed before publishing, while run `30684908771` published
-  only the core package before an immediate registry read returned 404. The
-  idempotent retry skipped the published core, published Playwright, and passed.
+- Local `make release-check` and `make verify` passed after publication.
 
-The candidate qualification period began at `2026-08-01T05:22:31Z`. Assuming
-no unresolved release blocker interrupts it, the 14-day gate can complete no
-earlier than `2026-08-15T05:22:31Z`. Stable publication still requires a new,
-explicit project-owner approval after that time.
+The independent RC3 verification record completed at `2026-08-01T08:01:28Z`.
+The candidate qualification period is measured conservatively from that time.
+Assuming no unresolved release blocker interrupts it, the 14-day gate can
+complete no earlier than `2026-08-15T08:01:28Z`. Stable publication still
+requires a new, explicit project-owner approval after that time.
+
+Issue #69 corrected release documentation and validation without changing a Go
+or TypeScript API, language or IR contract, runtime behavior, diagnostics, or a
+security default. It is therefore a non-blocking release-guidance correction
+and does not reset the RC3 qualification period. PR #70 integrated the source
+changes on 2026-08-09, and the RC1 through RC3 Release bodies now link to the Go
+migration guidance.
 
 ## Remaining dependency order for issue #18
 
@@ -77,10 +77,10 @@ explicit project-owner approval after that time.
 |---|---|---|---|
 | V1-01 | Review and integrate the post-candidate issue commits | none | Completed by #60 |
 | V1-02 | Pass required remote CI and supported-target release gates on the integrated commit | V1-01 | Completed; all 14 required checks passed |
-| V1-03 | Obtain explicit owner approval and publish a new core, npm, and go-rod candidate in documented dependency order | V1-02 | Completed with `v1.0.0-rc.2` |
-| V1-04 | Verify the new candidate through GitHub Releases, Go proxies, npm, Pages, clean consumers, checksums, provenance, and native archives | V1-03 | Completed at `2026-08-01T05:22:31Z` |
-| V1-05 | Complete at least 14 consecutive days with no unresolved release blocker | V1-04 | In progress; earliest completion `2026-08-15T05:22:31Z` |
-| V1-06 | Migrate the unified Environment, npm trusted publishers, and tag-rule bypass, then obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | Owner and configuration gate |
+| V1-03 | Obtain explicit owner approval and publish a new core, npm, and go-rod candidate in documented dependency order | V1-02 | Completed with `v1.0.0-rc.3` |
+| V1-04 | Verify the new candidate through GitHub Releases, Go proxies, npm, Pages, clean consumers, checksums, provenance, and native archives | V1-03 | Completed at `2026-08-01T08:01:28Z` |
+| V1-05 | Complete at least 14 consecutive days with no unresolved release blocker | V1-04 | In progress; earliest completion `2026-08-15T08:01:28Z` |
+| V1-06 | Verify the unified Environment, npm trusted publishers, and tag rulesets, then obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | External controls verified 2026-08-09; owner gate pending |
 | V1-07 | Run the unified publication once, independently verify every stable distribution surface, then close issue #18 | V1-06 | Pending |
 
 Issue #18 remains open during V1-05. A release blocker resets the consecutive
