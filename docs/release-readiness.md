@@ -1,6 +1,6 @@
 ---
 updated: 2026-08-09
-status: stable publication prepared; owner override approved
+status: stable v1.0.0 published and verified
 ---
 
 # v1 release readiness
@@ -33,8 +33,9 @@ uses the unified, resumable public release workflow completed by
 | Release controls | `release-publish` is restricted to `main`, requires owner review, and disables administrator bypass; both release-tag rulesets are active |
 
 The immutable `rc.1`, `rc.2`, and `rc.3` versions remain published. Stable
-publication must publish new `v1.0.0` artifacts and move npm `latest` to
-`1.0.0`; it must not move, replace, or reuse a candidate tag or package version.
+publication therefore created new `v1.0.0` artifacts and moved npm `latest` to
+`1.0.0` without moving, replacing, or reusing a candidate tag or package
+version.
 
 ## Candidate verification
 
@@ -59,9 +60,10 @@ publication must publish new `v1.0.0` artifacts and move npm `latest` to
 
 The independent RC3 verification record completed at `2026-08-01T08:01:28Z`.
 The candidate qualification period is measured conservatively from that time.
-Assuming no unresolved release blocker interrupts it, the 14-day gate can
-complete no earlier than `2026-08-15T08:01:28Z`. Stable publication still
-requires a new, explicit project-owner approval after that time.
+Assuming no unresolved release blocker interrupts it, the 14-day gate would
+complete no earlier than `2026-08-15T08:01:28Z`. ADR 0009 records the project
+owner's later one-release exception and explicit approval to publish before
+that time.
 
 Issue #69 corrected release documentation and validation without changing a Go
 or TypeScript API, language or IR contract, runtime behavior, diagnostics, or a
@@ -70,27 +72,48 @@ and does not reset the RC3 qualification period. PR #70 integrated the source
 changes on 2026-08-09, and the RC1 through RC3 Release bodies now link to the Go
 migration guidance.
 
-## Stable `v1.0.0` preparation (not published)
+## Stable `v1.0.0` publication
 
 On 2026-08-09, the project owner explicitly approved the ADR 0009 override of
 the 14-day candidate gate. This is an owner-direction exception only; it does
 not convert the RC qualification record into a technical safety claim.
 
-Stable publication is prepared but has not occurred. The remaining checks are:
+The reviewed preparation landed in PR #72 at
+`4204e3660eafe9a6129312d98b4c041e70124f9f`. Protected unified workflow
+[run 31308137799](https://github.com/hsblabs/scrape-kdl/actions/runs/31308137799)
+then published the stable release and completed its post-tag Go proxy checks.
+Independent verification produced this record:
 
-- Pre-publication: run the release plan and complete gate from the exact
-  reviewed commit, verify version and tag availability plus release controls,
-  inspect stable archives and checksums, and execute the protected publication
-  workflow.
-- Post-publication: verify both Go modules, both npm packages, GitHub Releases,
-  Pages, clean consumers, provenance and signatures, checksums, native
-  archives, and the first-24-hour monitoring record on issue #18.
+| Surface | Verified stable state |
+|---|---|
+| Core Git tag | Annotated `v1.0.0`, peeled commit `4204e3660eafe9a6129312d98b4c041e70124f9f` |
+| Core GitHub Release | Published non-draft, non-prerelease with four Linux/macOS CLI archives, two npm archives, and checksums |
+| Core Go module | `github.com/hsblabs/scrape-kdl@v1.0.0` resolves through the public proxy; clean compile, snapshot extraction, and CLI install passed |
+| Core npm package | `@hsblabs/scrape-kdl@1.0.0` resolves with `latest=1.0.0`; clean compile, validation, extraction, signatures, and SLSA provenance passed |
+| Playwright npm package | `@hsblabs/scrape-kdl-playwright@1.0.0` resolves with `latest=1.0.0`; clean adapter lease smoke, signatures, and SLSA provenance passed |
+| go-rod Git tag | Annotated `adapters/rod/v1.0.0`, peeled commit `4204e3660eafe9a6129312d98b4c041e70124f9f` |
+| go-rod GitHub Release | Published non-draft, non-prerelease with four Linux/macOS CLI archives and checksums |
+| go-rod Go module | `github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0` resolves through the public proxy; clean contract test and CLI install passed |
+| Release archives | SHA-256 checks passed for all six core payloads and four go-rod payloads; core extraction and go-rod version smokes passed on Linux and macOS, amd64 and arm64 |
+| Specification site | Landing page, `llms.txt`, and the dated IR schema returned HTTP 200; the schema used `application/json` |
+| Release controls | Protected Environment approval and both immutable release-tag rulesets remained in force |
+
+Both npm packages retain `next=1.0.0-rc.3`; only `latest` moved to stable.
+The first-24-hour observation continues on issue #18 and does not change the
+already published immutable artifacts.
+
+A broader `go test ./...` from the public core module zip passes every consumer
+package and fails only repository-internal `scripts` tests whose checkout-only
+shell permissions, nested go-rod module, or documentation inputs are absent
+from module zips. This does not affect the public APIs, CLIs, adapters, or clean
+consumer checks and is tracked as non-blocking release hygiene in
+[#73](https://github.com/hsblabs/scrape-kdl/issues/73).
 
 Existing `rc.1`, `rc.2`, and `rc.3` tags, Releases, and package versions remain
 immutable. If stable artifacts have a problem, leave those candidates
 unchanged and publish `v1.0.1` from a reviewed fix or revert.
 
-## Remaining dependency order for issue #18
+## Completion order for issue #18
 
 | ID | Work | Blocked by | Status |
 |---|---|---|---|
@@ -99,11 +122,12 @@ unchanged and publish `v1.0.1` from a reviewed fix or revert.
 | V1-03 | Obtain explicit owner approval and publish a new core, npm, and go-rod candidate in documented dependency order | V1-02 | Completed with `v1.0.0-rc.3` |
 | V1-04 | Verify the new candidate through GitHub Releases, Go proxies, npm, Pages, clean consumers, checksums, provenance, and native archives | V1-03 | Completed at `2026-08-01T08:01:28Z` |
 | V1-05 | Complete at least 14 consecutive days with no unresolved release blocker | V1-04 | Overridden by explicit project-owner direction on 2026-08-09 for this release only |
-| V1-06 | Verify the unified Environment, npm trusted publishers, and tag rulesets, then obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | External controls verified 2026-08-09; owner override approved; pre-publication checks pending |
-| V1-07 | Run the unified publication once, independently verify every stable distribution surface, then close issue #18 | V1-06 | Prepared; publication and post-publication verification pending |
+| V1-06 | Verify the unified Environment, npm trusted publishers, and tag rulesets, then obtain separate explicit owner approval for stable `v1.0.0` | V1-05 | Completed 2026-08-09; owner override and protected publication approval recorded |
+| V1-07 | Run the unified publication once, independently verify every stable distribution surface, then close issue #18 | V1-06 | Publication and immediate independent verification completed 2026-08-09; stable Pages redeploy and first-24-hour observation remain before closing |
 
-Issue #18 remains open through V1-07. A release blocker still stops publication
-or requires a reviewed `v1.0.1` recovery if stable artifacts already exist.
+If a stable defect is found, publish a reviewed `v1.0.1`; do not move, delete,
+replace, or reuse the immutable `v1.0.0` tags, Releases, modules, packages, or
+assets.
 
 The exact publication commands, dependency order, post-publication checks, and
 immutable-version recovery rules are in [`docs/releasing.md`](releasing.md).

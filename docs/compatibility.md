@@ -34,7 +34,7 @@ The former identifiers are not accepted as aliases because doing so would obscur
 
 ## Working-draft contract decisions frozen for v1
 
-These decisions close previously ambiguous working-draft behavior and are frozen for the v1 candidate:
+These decisions close previously ambiguous working-draft behavior and are frozen for v1:
 
 - explicit `-h` and `--help` on every subcommand print help to standard output and exit with status 0; malformed or incomplete arguments still exit with status 2;
 - `--session-file PATH` and `--session-file -` are the supported secret-input paths; direct `--header` and `--cookie` values were removed at the v0.5 CLI boundary with migration guidance in `docs/cli.md`;
@@ -46,7 +46,10 @@ These decisions close previously ambiguous working-draft behavior and are frozen
 
 These changes may affect scripts built against an untagged working draft; the complete migration is in `docs/migrating-to-v1.md`. After a release, patch versions remain backward compatible within their minor version under `docs/versioning.md`.
 
-The frozen v1 CLI contract defines help, standard streams, one-document `--json` envelopes, explicit `-` streams, exit statuses 0/1/2/130/143, non-interactive behavior, and signal cancellation. Before stable publication, only release-blocking corrections are accepted.
+The frozen v1 CLI contract defines help, standard streams, one-document `--json`
+envelopes, explicit `-` streams, exit statuses 0/1/2/130/143, non-interactive
+behavior, and signal cancellation. Changes follow the Semantic Versioning policy
+in `docs/versioning.md`.
 
 The HTTP reference runtime uses pinned `golang.org/x/net/html` WHATWG document tree construction after charset decoding. The portable guarantee and explicit exclusions are recorded in `docs/html-compatibility.md`; browser mode continues to operate on the browser's mutable live DOM.
 

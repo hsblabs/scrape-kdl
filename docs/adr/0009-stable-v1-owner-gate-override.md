@@ -21,10 +21,11 @@ overrode that time gate.
 For this stable release only, the 14-day candidate gate is approved as an
 owner-direction exception. The reason is the owner's explicit direction only;
 this decision does not claim that the system is technically safer or that the
-elapsed qualification period is unnecessary. The release is prepared, not
-published, and the existing RC versions remain immutable.
+elapsed qualification period is unnecessary. At the time this decision is
+recorded, the release is prepared but not published, and the existing RC
+versions remain immutable.
 
-## Remaining verification
+## Required verification
 
 - Pre-publication: run the release plan and complete gate from the exact
   reviewed commit, verify version and tag availability plus release controls,
@@ -32,6 +33,17 @@ published, and the existing RC versions remain immutable.
 - Post-publication: verify Go modules, npm packages, GitHub Releases, Pages,
   clean consumers, provenance and signatures, checksums, native archives, and
   the first-24-hour monitoring record on issue #18.
+
+## Outcome
+
+The reviewed preparation landed in PR #72 at
+`4204e3660eafe9a6129312d98b4c041e70124f9f`. Protected workflow
+[run 31308137799](https://github.com/hsblabs/scrape-kdl/actions/runs/31308137799)
+published stable `v1.0.0` on 2026-08-09. Immediate independent checks passed
+for the immutable tags, Releases, both Go modules, both npm packages, clean
+consumers, signatures and provenance, checksums, supported CLI archives, and
+the dated specification endpoints. Issue #18 records the continuing
+first-24-hour observation.
 
 ## Rollback and recovery
 
