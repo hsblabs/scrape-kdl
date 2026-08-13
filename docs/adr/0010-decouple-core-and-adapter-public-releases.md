@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-08-13T12:45:00+09:00
+updated: 2026-08-13T14:19:28+09:00
 decision-makers:
   - project owner
 agent: OpenAI Codex (GPT-5)
@@ -24,30 +25,49 @@ not share a failure boundary.
 ## Decision
 
 Keep one manually dispatched, protected `release.yml` workflow and one
-`release-publish` approval, but divide its publish job into two ordered phases:
+`release-publish` approval job. Split the workflow into job-level failure
+boundaries:
 
-1. Publish or verify the core annotated tag and GitHub Release, then publish or
-   verify `@hsblabs/scrape-kdl` immediately through npm trusted publishing.
-2. Wait for the core Go module to resolve through `proxy.golang.org` for up to
-   30 minutes, then wait until 30 minutes have elapsed since the core GitHub
-   Release was published. Only after both conditions publish or verify the
-   Playwright npm package and the go-rod tag, Release, and module.
+```text
+prepare
+  -> authorize-release
+       -> publish-core
+            -> publish-core-npm -> publish-playwright-npm
+            -> await-core-go -> verify-and-build-rod -> publish-rod -> await-rod-go
+```
+
+`publish-core` creates or verifies the core annotated tag and GitHub Release.
+`publish-core-npm` and `await-core-go` then run on independent dependency
+paths. The Playwright npm package depends only on the core npm publication.
+The go-rod path depends only on the public core Go proxy, and
+`verify-and-build-rod` uses a fresh runner to download the published core,
+verify/tidy/test/vet the adapter, and build its archives.
+
+Remove the fixed adapter release delay. Public Go proxy waits use 180
+ten-second attempts, and the proxy check starts only after the corresponding
+annotated tag exists. The preparation job remains the one full browser-E2E
+gate; publication jobs do not rerun that flaky external-process test.
 
 The npm publisher accepts an explicit `core` or `playwright` selection and
-remains resumable and integrity-checking. Public Go proxy waits use 180 ten-
-second attempts. A failed adapter phase can be rerun after the core phase has
-already completed; matching core tags, Releases, assets, and npm versions are
-verified and skipped.
+remains resumable and integrity-checking. A failed branch can be rerun without
+repeating successful jobs; matching tags, Releases, assets, and npm versions
+are verified and skipped.
 
 ## Consequences
 
-- A delayed Go proxy no longer prevents the core npm package from publishing.
-- Playwright and go-rod are released at least 30 minutes after the core
-  GitHub Release, and never before the core Go module is publicly resolvable.
-- The protected publish runner remains occupied during the release window, but
-  the workflow keeps one approval and one caller-visible release command.
-- The adapter phase may fail independently after the core phase succeeds;
-  recovery reruns the same immutable version and fails closed on mismatches.
-- The core GitHub Release still carries the inspected Playwright archive as
-  part of the complete release bundle; registry publication is delayed until
-  the adapter phase.
+- A delayed Go proxy no longer prevents the core npm package or Playwright npm
+  branch from progressing.
+- Playwright is published after the core npm package; go-rod is published only
+  after the core Go module is publicly resolvable. Neither path uses a fixed
+  sleep.
+- The workflow keeps one approval and one caller-visible release command. The
+  `release-publish` Environment is attached to `authorize-release`; dependent
+  write jobs do not inherit an Environment claim. npm trusted publishers must
+  therefore leave their optional Environment field empty and rely on the
+  workflow's protected approval plus job-level permissions.
+- Each job is a retry checkpoint. A proxy failure reruns only the go-rod chain,
+  while an npm failure reruns only the affected npm branch. Recovery uses the
+  same immutable version and fails closed on mismatches.
+- Core artifacts, including the inspected Playwright archive, are retained as
+  workflow artifacts for 14 days so a downstream job can be retried without
+  rebuilding the release gate.

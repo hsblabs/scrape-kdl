@@ -38,9 +38,11 @@ access are injected only into inspected staging archives.
 |---|---|---|
 | Requested | Version, confirmation, visibility, branch, and source are valid | Build and inspect artifacts |
 | Prepared | Complete release gate passed; core/npm bundle matches the source | Enter protected publication |
-| Core published | Annotated core tag points to the source; GitHub assets match | Wait for public Go resolution |
-| Core visible | Public proxy resolves the exact core module | Publish npm archives |
-| npm published | Both exact archives, versions, and selected dist-tag match | Verify and build go-rod |
+| Core published | Annotated core tag points to the source; GitHub assets match | Publish core npm and await public Go resolution in parallel |
+| Core visible | Public proxy resolves the exact core module | Verify and build go-rod |
+| Core npm published | Core archive, version, integrity, and selected dist-tag match | Publish Playwright npm |
+| Playwright npm published | Playwright archive, version, integrity, and selected dist-tag match | Finish npm branch |
+| go-rod built | Clean-consumer verification passed and archives match the source | Publish go-rod |
 | go-rod published | Annotated adapter tag points to the source; assets match | Wait for public Go resolution |
 | Verified | Both Go modules and npm packages resolve and artifacts match | Finish successfully |
 
@@ -49,8 +51,12 @@ same version is legal only from the same source and with the same artifacts.
 
 ## Failure and security rules
 
-- No repository or registry write occurs before the protected publish job.
-- Only the publish job receives `contents: write` and `id-token: write`.
+- No repository or registry write occurs before the protected authorization
+  job and its dependent publication jobs.
+- The protected approval job receives no write permission. Each publication job
+  receives only the permission it needs: GitHub Release jobs use
+  `contents: write`, npm jobs use `id-token: write`, and wait/verification jobs
+  are read-only.
 - The workflow refuses private-channel versions and non-public repositories.
 - Existing tags must be annotated and peel to the dispatched source commit.
 - Existing GitHub Release assets must byte-match locally inspected artifacts;
@@ -73,8 +79,10 @@ workflow is first used, an administrator must:
 1. create `release-publish` with required reviewers, no administrator bypass,
    and default-branch-only deployment; allow self-review when a single owner
    must dispatch and approve the release, otherwise prevent it;
-2. change both npm trusted publishers to workflow `release.yml`, Environment
-   `release-publish`, and allowed action `npm publish`;
+2. change both npm trusted publishers to workflow `release.yml`, leave the
+   optional Environment field empty, and allow the `npm publish` action. The
+   single `release-publish` approval is enforced by the separate
+   `authorize-release` job; dependent jobs do not inherit an Environment claim;
 3. leave creation unrestricted for `v*.*.*` and
    `adapters/rod/v*.*.*`, while retaining update, deletion, and
    non-fast-forward protection plus an audited release-owner emergency bypass;

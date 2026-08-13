@@ -50,10 +50,12 @@ used:
    single owner must dispatch and approve a release, allow self-review;
    otherwise prevent it. Do not add an npm publication token.
 2. Configure both npm packages with the GitHub Actions trusted publisher
-   `hsblabs/scrape-kdl`, workflow filename `release.yml`, Environment
-   `release-publish`, and allowed action `npm publish`. After verifying OIDC
-   publication, retain the package setting that requires 2FA and disallows
-   tokens.
+   `hsblabs/scrape-kdl`, workflow filename `release.yml`, and allowed action
+   `npm publish`. Leave the trusted-publisher Environment field empty: the
+   workflow uses `authorize-release` for its single protected approval, and
+   dependent publication jobs do not inherit an Environment claim. After
+   verifying OIDC publication, retain the package setting that requires 2FA
+   and disallows tokens.
 3. Keep active tag rulesets for `v*.*.*` and `adapters/rod/v*.*.*`. Leave tag
    creation unrestricted so the protected workflow can create annotated tags,
    but restrict update, deletion, and non-fast-forward changes. Release owners
@@ -82,18 +84,28 @@ The release and Pages workflows require separate typed confirmations.
 `release-publish` approval remains the primary protection against accidental
 core, npm, and go-rod publication.
 
-The publish job requires Node.js 26, npm 11.5.1 or later, a GitHub-hosted
-runner, and `id-token: write`. It never reads `NPM_TOKEN`: the preparation job
-has no OIDC or write permission, and only the protected publish job can request
-short-lived credentials. Trusted publishing automatically emits provenance.
+The npm publication jobs require Node.js 26, npm 11.5.1 or later, a
+GitHub-hosted runner, and `id-token: write`. They never read `NPM_TOKEN`: the
+preparation, proxy-wait, and verification jobs have no OIDC or write
+permission, and each public write job receives only the permission it needs.
+Trusted publishing automatically emits provenance.
 
-The protected publish job has two phases. It publishes the core GitHub Release
-and `@hsblabs/scrape-kdl` first. It then waits for the core Go module to resolve
-through `proxy.golang.org` and for a 30-minute adapter release window measured
-from the core Release publication before publishing
-`@hsblabs/scrape-kdl-playwright` and go-rod. This keeps proxy propagation from
-blocking the useful core npm release and gives adapter consumers a stable core
-to consume.
+The protected workflow is split into independent checkpoints:
+
+```text
+prepare
+  -> authorize-release
+       -> publish-core
+            -> publish-core-npm -> publish-playwright-npm
+            -> await-core-go -> verify-and-build-rod -> publish-rod -> await-rod-go
+```
+
+`publish-core-npm` depends only on the core GitHub Release. The go-rod path
+depends only on `await-core-go`, which polls `proxy.golang.org` after the core
+tag exists. There is no fixed adapter delay. The preparation gate runs the
+full browser E2E once; the post-publication adapter gate uses a fresh runner to
+download the public core, run `go mod verify`, `go mod tidy -diff`, `go test`,
+and `go vet`, then builds the adapter archives.
 
 ## Release candidate and stable sequence
 
@@ -126,12 +138,12 @@ releases:
    ```
 
 6. Approve the single `release-publish` deployment. The workflow creates or
-   verifies the core annotated tag and Release, publishes and verifies the core
-   npm archive, waits for core proxy visibility, and enforces the 30-minute
-   adapter window. It then publishes and verifies the Playwright npm archive,
-   tests go-rod against the published core, creates or verifies the adapter tag
-   and Release, and waits for adapter proxy visibility. Prereleases use npm
-   `next`; stable releases use `latest`.
+   verifies the core annotated tag and Release, then independently publishes
+   the core npm package and waits for core proxy visibility. After the core npm
+   package is verified, it publishes the Playwright npm package. After the core
+   Go module is verified, it runs the clean-consumer go-rod check, builds and
+   publishes the adapter Release, and waits for adapter proxy visibility.
+   Prereleases use npm `next`; stable releases use `latest`.
 7. Run every independent post-publication check below and record the results on
    issue #18.
 
@@ -169,10 +181,12 @@ Go module tags and versions observed by a module proxy are immutable. npm consum
 - Failed stable npm release: deprecate the affected npm version with a useful message and publish a patch.
 - Failed stable Go, adapter, or CLI release: publish a patch from a reviewed revert or fix; do not replace tag assets with different bytes.
 - Security incident: stop the remaining publication sequence, open a private security advisory, rotate any affected credentials, and publish coordinated patched versions.
-- Partial publication: rerun `release.yml` for the same version and source. The
-  orchestrator verifies and skips matching core tags, Release assets, and npm
-  versions, then resumes the adapter phase after the proxy and timing gates.
-  Any mismatch fails closed.
+- Partial publication: use the run UI to rerun the failed job and its skipped
+  dependents. A failed `await-core-go` resumes only the go-rod chain; a failed
+  core npm job resumes only the npm chain. Successful core tags, Releases, npm
+  versions, and proxy checks are not rerun. If a new run is required, use the
+  same version and source commit; the idempotent publishers verify matching
+  state and fail closed on mismatches.
 
 ## Supported release targets
 
