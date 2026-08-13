@@ -24,8 +24,6 @@ env:
   RELEASE_TAG: v${{ inputs.version }}
   ROD_TAG: adapters/rod/v${{ inputs.version }}
   DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-  GO_MODULE_WAIT_ATTEMPTS: 180
-  GO_MODULE_WAIT_INTERVAL_SECONDS: 10
 
 jobs:
   prepare:
@@ -147,24 +145,6 @@ jobs:
       - name: Publish core npm package through OIDC
         run: ./scripts/publish-npm-release.sh "$RELEASE_VERSION" dist/core core
 
-  await-core-go:
-    needs: [publish-core, authorize-release]
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.26.5"
-          cache: false
-      - name: Wait for public core Go module
-        run: ./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl "$RELEASE_TAG"
-
   publish-playwright-npm:
     needs: [publish-core-npm, authorize-release]
     environment: release-publish
@@ -190,7 +170,7 @@ jobs:
         run: ./scripts/publish-npm-release.sh "$RELEASE_VERSION" dist/core playwright
 
   verify-and-build-rod:
-    needs: [await-core-go, authorize-release]
+    needs: [publish-core, authorize-release]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -206,14 +186,8 @@ jobs:
           cache: false
       - name: Reverify go-rod release plan
         run: make check-public-release-plan VERSION="$RELEASE_TAG" REVISION="$GITHUB_SHA"
-      - name: Verify go-rod against the published core
-        working-directory: adapters/rod
-        run: |
-          GOWORK=off GOTOOLCHAIN=local go mod download
-          GOWORK=off GOTOOLCHAIN=local go mod verify
-          GOWORK=off GOTOOLCHAIN=local go mod tidy -diff
-          GOWORK=off GOTOOLCHAIN=local go test ./...
-          GOWORK=off GOTOOLCHAIN=local go vet ./...
+      - name: Verify go-rod against the same-commit local core
+        run: ./scripts/verify-rod.sh
       - name: Build go-rod release archives
         run: ./scripts/build-rod-release.sh "$ROD_TAG" dist/rod
 
@@ -250,21 +224,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/publish-github-release.sh rod "$ROD_TAG" "$GITHUB_SHA" dist/rod
-
-  await-rod-go:
-    needs: [publish-rod, authorize-release]
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.26.5"
-          cache: false
-      - name: Wait for public go-rod module
-        run: ./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl/adapters/rod "$RELEASE_TAG"

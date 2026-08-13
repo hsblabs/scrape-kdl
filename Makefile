@@ -119,7 +119,7 @@ release-plan:
 	cd scripts/releaseplan && GOWORK=off GOTOOLCHAIN=local go test ./...
 
 release-publish-contract:
-	bash -n scripts/wait-public-go-module.sh scripts/publish-npm-release.sh scripts/publish-github-release.sh
+	bash -n scripts/publish-npm-release.sh scripts/publish-github-release.sh
 	node --test scripts/npm-archive-integrity.test.mjs
 
 release-check:

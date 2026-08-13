@@ -26,14 +26,16 @@ func TestPublicReleaseWorkflowKeepsPublicChannelSeparate(t *testing.T) {
 				"id-token: write",
 				"./scripts/publish-github-release.sh core",
 				"./scripts/publish-npm-release.sh",
+				"./scripts/verify-rod.sh",
 				"./scripts/publish-github-release.sh rod",
-				"./scripts/wait-public-go-module.sh",
 			},
 			forbid: []string{
 				"--access restricted",
 				"NPM_TOKEN",
 				"tags: [\"v*.*.*\"]",
 				"tags: [\"adapters/rod/v*.*.*\"]",
+				"wait-public-go-module.sh",
+				"GOPROXY=https://proxy.golang.org",
 			},
 		},
 	}
@@ -111,43 +113,6 @@ func TestPublicReleaseHasNoObsoletePublicationWorkflows(t *testing.T) {
 	}
 }
 
-func TestPublicReleasePublishesGoTagsBeforeProxyLookup(t *testing.T) {
-	root := repositoryRoot(t)
-	content := readFile(t, filepath.Join(root, ".github/workflows/release.yml"))
-	tests := []struct {
-		name    string
-		publish string
-		lookup  string
-	}{
-		{
-			name:    "core",
-			publish: `./scripts/publish-github-release.sh core "$RELEASE_TAG"`,
-			lookup:  `./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl "$RELEASE_TAG"`,
-		},
-		{
-			name:    "go-rod",
-			publish: `./scripts/publish-github-release.sh rod "$ROD_TAG"`,
-			lookup:  `./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl/adapters/rod "$RELEASE_TAG"`,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			publishIndex := strings.Index(content, test.publish)
-			lookupIndex := strings.Index(content, test.lookup)
-			if publishIndex < 0 {
-				t.Fatalf("release workflow is missing tag publication %q", test.publish)
-			}
-			if lookupIndex < 0 {
-				t.Fatalf("release workflow is missing proxy lookup %q", test.lookup)
-			}
-			if publishIndex >= lookupIndex {
-				t.Fatalf("%s proxy lookup occurs before tag publication", test.name)
-			}
-		})
-	}
-}
-
 func TestPublicReleaseSeparatesCoreAndAdapterPublication(t *testing.T) {
 	root := repositoryRoot(t)
 	content := readFile(t, filepath.Join(root, ".github/workflows/release.yml"))
@@ -157,14 +122,10 @@ func TestPublicReleaseSeparatesCoreAndAdapterPublication(t *testing.T) {
 		"  authorize-release:\n    needs: prepare\n    environment: release-publish",
 		"  publish-core:\n    needs: [prepare, authorize-release]",
 		"  publish-core-npm:\n    needs: [publish-core, authorize-release]",
-		"  await-core-go:\n    needs: [publish-core, authorize-release]",
 		"  publish-playwright-npm:\n    needs: [publish-core-npm, authorize-release]",
-		"  verify-and-build-rod:\n    needs: [await-core-go, authorize-release]",
+		"  verify-and-build-rod:\n    needs: [publish-core, authorize-release]",
+		"./scripts/verify-rod.sh",
 		"  publish-rod:\n    needs: [verify-and-build-rod, authorize-release]",
-		"  await-rod-go:\n    needs: [publish-rod, authorize-release]",
-		"GO_MODULE_WAIT_ATTEMPTS: 180",
-		"GO_MODULE_WAIT_INTERVAL_SECONDS: 10",
-		"GOWORK=off GOTOOLCHAIN=local go mod download",
 		"sha256sum -c checksums.txt",
 	} {
 		if !strings.Contains(content, required) {
@@ -176,6 +137,12 @@ func TestPublicReleaseSeparatesCoreAndAdapterPublication(t *testing.T) {
 		"Wait for adapter release window",
 		"go test -tags=e2e -timeout=15m ./...",
 		"default branch advanced after release preparation",
+		"await-core-go:",
+		"await-rod-go:",
+		"wait-public-go-module.sh",
+		"GOPROXY=https://proxy.golang.org",
+		"GO_MODULE_WAIT_ATTEMPTS",
+		"GO_MODULE_WAIT_INTERVAL_SECONDS",
 	} {
 		if strings.Contains(content, forbidden) {
 			t.Errorf("release workflow contains removed behavior %q", forbidden)
