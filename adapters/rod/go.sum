@@ -1,6 +1,6 @@
 github.com/go-rod/rod v0.116.2 h1:A5t2Ky2A+5eD/ZJQr1EfsQSe5rms5Xof/qj296e+ZqA=
 github.com/go-rod/rod v0.116.2/go.mod h1:H+CMO9SCNc2TJ2WfrG+pKhITz57uGNYU43qYHh438Mg=
-github.com/hsblabs/scrape-kdl v1.0.3 h1:uIyvn/r+yYBUVqfLQOf4StLPNwUroaFs3iyJEcx5WZM=
+github.com/hsblabs/scrape-kdl v1.0.3 h1:09sTOVMo36PN8d027jfC0FbLzKSG3QL4ri/4yzY7veE=
 github.com/hsblabs/scrape-kdl v1.0.3/go.mod h1:Rsv3al3wMAkpgsLrOWKc9qOju1Tw1uhyqIl/JVKac2o=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 h1:1EYB5IzjZawrrnELUi78f9fPu57HuXjmddZPjrls/28=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.3/go.mod h1:JXeL+ps8p7/KNMjDQk3TCwPpBy0wYklyWTfbkIzdIFU=
