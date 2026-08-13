@@ -71,7 +71,8 @@ export async function checkNpmPackages({ releaseVersion, outputDirectory, publis
     assert.equal(packageJSON.name, "@hsblabs/scrape-kdl");
     assert.equal(packageJSON.license, "Apache-2.0");
     assert.equal(packageJSON.type, "module");
-    assert.equal(packageJSON.engines.node, ">=26");
+    assert.equal(packageJSON.engines.node, ">=22");
+    assert.equal(packageJSON.engines.bun, ">=1.3");
     assert.equal(packageJSON.version, releaseVersion ?? developmentVersion);
     assert.equal(packageJSON.publishConfig?.access, publishAccess);
     if (releaseVersion !== undefined) assert.equal(packageJSON.scripts, undefined);
@@ -99,7 +100,7 @@ export async function checkNpmPackages({ releaseVersion, outputDirectory, publis
     const adapterJSON = JSON.parse(await readFile(join(adapterRoot, "package.json"), "utf8"));
     assert.equal(adapterJSON.name, "@hsblabs/scrape-kdl-playwright");
     assert.equal(adapterJSON.private, undefined, "adapter package must be publishable");
-    assert.equal(adapterJSON.engines.node, ">=26");
+    assert.equal(adapterJSON.engines.node, ">=22");
     assert.equal(adapterJSON.version, releaseVersion ?? developmentVersion);
     assert.equal(adapterJSON.publishConfig?.access, publishAccess);
     if (releaseVersion !== undefined) assert.equal(adapterJSON.scripts, undefined);

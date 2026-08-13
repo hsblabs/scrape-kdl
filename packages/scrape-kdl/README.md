@@ -1,6 +1,6 @@
 # @hsblabs/scrape-kdl
 
-ESM-only TypeScript implementation of the dated Scraping KDL contract for Node.js 26 and later.
+ESM-only TypeScript implementation of the dated Scraping KDL contract for Node.js 22 or later and Bun 1.3 or later.
 
 ```ts
 import { compile, validate } from "@hsblabs/scrape-kdl";

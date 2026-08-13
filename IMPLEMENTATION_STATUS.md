@@ -84,13 +84,13 @@ Implemented:
 
 - section-complete conformance coverage inventory for the language, built-in, selector, and diagnostic contracts;
 - exact dated-version grammar and shared Go/TypeScript diagnostic fixtures;
-- a Node.js 26 npm workspace containing the complete independent TypeScript compiler and runtime;
+- a Node.js 22 npm workspace containing the complete independent TypeScript compiler and runtime, with Bun 1.3 compatibility for the core package;
 - canonical Go/TypeScript IR equality for the representative static HTTP fixture;
 - a machine-readable fixture manifest, dated result schema, focused suite selection, Go runner, and exact Go/TypeScript comparator;
 - CI rejection of unregistered fixtures, missing expected artifacts, schema drift, and unapproved implementation differences;
 - ESM-only npm workspace boundaries for `@hsblabs/scrape-kdl` and the reserved `@hsblabs/scrape-kdl-playwright` adapter package;
 - the approved TypeScript root and Node.js entry points, full readonly IR declarations, and direct package consumer typechecking;
-- Node.js 26 typecheck, formatting, source lint, tests, coverage thresholds, package-content inspection, and packed clean-consumer smoke gates on Linux and macOS;
+- Node.js 22 typecheck, formatting, source lint, tests, coverage thresholds, package-content inspection, and packed clean-consumer smoke gates on Linux and macOS;
 - the complete documented TypeScript KDL subset with exact UTF-8 byte spans, stable invalid-UTF-8 rejection, and shared Go/TypeScript parser cases and fuzz seeds;
 - injectable lexical import loading for extractor and module documents, including exact shared diagnostics for missing sources, aliases, remote paths, wrong kinds, import order, and cycles;
 - explicit filesystem import loading only through the TypeScript Node.js entry point;

@@ -2,6 +2,14 @@
 
 All notable implementation changes are recorded here. Formal releases will use Semantic Versioning.
 
+## 1.0.1 — 2026-08-13
+
+- Lowered the minimum Node.js version for the TypeScript packages to 22.
+- Declared Bun 1.3 or later for the core TypeScript package and validated it
+  with a Bun import/compile smoke check.
+- Updated the compatibility matrix, package metadata, release checks, and CI
+  targets to match the supported runtimes.
+
 ## 1.0.0 — 2026-08-09
 
 - Published stable `v1.0.0` under the project-owner exception recorded in ADR

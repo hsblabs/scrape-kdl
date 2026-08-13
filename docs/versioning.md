@@ -28,7 +28,7 @@ release commit. The adapter's `go.mod` must depend on that exact core version
 and must not contain a local `replace` directive. Private operational releases
 retain their separately approved workflows.
 
-The npm packages are ESM-only and require Node.js 26 or later. Package versions do not select a language or IR contract; the supported opaque identifiers are exposed separately by the package API. Before publication, workspace manifests use `0.0.0-development`, and packed artifacts must contain no `workspace:`, `file:`, or local-path dependency.
+The npm packages are ESM-only and require Node.js 22 or later. The core package also supports Bun 1.3 or later; the Playwright adapter is validated on Node.js. Package versions do not select a language or IR contract; the supported opaque identifiers are exposed separately by the package API. Before publication, workspace manifests use `0.0.0-development`, and packed artifacts must contain no `workspace:`, `file:`, or local-path dependency.
 
 Private operational versions use `X.Y.Z-private.N`, where `N` starts at 1 and
 increases for every replacement. npm publishes these versions with restricted

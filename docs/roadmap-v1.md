@@ -56,7 +56,7 @@ The TypeScript implementation is distributed as ESM-only npm packages in an npm-
   built-in catalog, and deterministic KDL writer;
 - `@hsblabs/scrape-kdl-playwright` contains the official Playwright adapter.
 
-The complete TypeScript pipeline targets Node.js 26 or later.
+The complete TypeScript pipeline targets Node.js 22 or later. The core package also supports Bun 1.3 or later.
 A compiler or runtime bundled for direct execution in a web browser is outside the v1 scope.
 
 Go and TypeScript MUST expose the same language semantics, Validated IR, diagnostics, extraction behavior, and extension capabilities.
@@ -289,7 +289,7 @@ An ambiguity discovered by later parity work requires a new dated version when r
 - complete HTML differential testing and the scheduled upstream conformance suite;
 - establish performance, resource-limit, fuzzing, and security regression gates;
 - validate Go and TypeScript use from independent example applications;
-- publish the draft Go, Node.js 26+, operating-system, architecture, browser, and adapter support matrix used by release-candidate CI;
+- publish the draft Go, Node.js 22+, Bun 1.3+, operating-system, architecture, browser, and adapter support matrix used by release-candidate CI;
 - establish evidence-based performance regression gates against measured baselines without introducing an absolute speed SLA.
 
 ### v1.0.0-rc.N: release candidate
@@ -324,7 +324,7 @@ A new third-party runtime dependency outside these approved choices requires pro
 The support matrix is:
 
 - Linux and macOS are supported; Windows remains out of scope;
-- Node.js 26 is the minimum supported Node.js version;
+- Node.js 22 is the minimum supported Node.js version;
 - Chromium is supported for browser execution;
 - Firefox and WebKit through Playwright are best effort;
 - v1 has no absolute performance SLA, but measured regressions against checked-in or recorded baselines may block a release;

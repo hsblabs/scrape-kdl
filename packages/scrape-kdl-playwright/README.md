@@ -1,6 +1,6 @@
 # @hsblabs/scrape-kdl-playwright
 
-Official Playwright adapter for `@hsblabs/scrape-kdl`. It requires Node.js 26 or later and pins Playwright 1.61.1. Chromium is supported; Firefox and WebKit are exercised as non-blocking best-effort targets.
+Official Playwright adapter for `@hsblabs/scrape-kdl`. It requires Node.js 22 or later and pins Playwright 1.61.1. Chromium is supported; Firefox and WebKit are exercised as non-blocking best-effort targets.
 
 Release artifacts use the exact matching core candidate and are installed
 together in a clean consumer before publication. Use the repository's

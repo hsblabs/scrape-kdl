@@ -26,7 +26,7 @@ Any change to those observable contracts requires an approved new language date 
 
 ## TypeScript compiler parity
 
-`packages/scrape-kdl` is the future `@hsblabs/scrape-kdl` package boundary and requires Node.js 26 or later.
+`packages/scrape-kdl` is the `@hsblabs/scrape-kdl` package boundary and requires Node.js 22 or later. The core package also supports Bun 1.3 or later.
 The package contains the complete documented KDL subset parser, injectable import graph, semantic validator, type checker, capability and reference resolver, and dated IR lowerer. Shared parser and import cases require exact Go/TypeScript acceptance, diagnostics, UTF-8 byte spans, and ordering. The release-blocking TypeScript compiler suite runs every shared valid and invalid language fixture without network access, Go invocation, or subprocess execution.
 
 For valid fixtures with golden IR, TypeScript output is compared canonically against the same frozen-schema artifact as Go. For invalid fixtures, code, severity, message, span, path, and ordering must match exactly. Compiler errors never return executable IR, and the cross-language check is part of the pull-request verification gate.
