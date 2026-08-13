@@ -2,6 +2,11 @@
 
 All notable implementation changes are recorded here. Formal releases will use Semantic Versioning.
 
+## 1.0.2 — 2026-08-13
+
+- Updated `github.com/santhosh-tekuri/jsonschema/v6` from `v6.0.2` to `v6.0.3`.
+- Added Go Reference and npm package badges to the README.
+
 ## 1.0.1 — 2026-08-13
 
 - Lowered the minimum Node.js version for the TypeScript packages to 22.
