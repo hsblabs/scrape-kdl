@@ -3,7 +3,8 @@
 | Area | Minimum | CI target |
 |---|---:|---:|
 | Go | 1.26 | 1.26.x |
-| Node.js | 26 | 26.x |
+| Node.js | 22 | 22.x (minimum compatibility gate) |
+| Bun (core TypeScript package) | 1.3 | 1.3.x (smoke-tested) |
 | TypeScript package format | ESM-only | npm pack and clean Node.js consumer |
 | TypeScript HTML parser | parse5 8.0.1 | 8.0.1 |
 | TypeScript regular expressions | re2js 2.8.6 (RE2-compatible) | 2.8.6 |
@@ -15,7 +16,7 @@
 | Playwright adapter | Playwright 1.61.1 | Chromium (blocking); Firefox and WebKit (best effort) |
 | Operating system | Linux or macOS | Linux and macOS |
 
-The executable source for this table is [`support-matrix.json`](./support-matrix.json). Pull-request CI cross-builds all four supported OS/architecture package targets and runs the native Go, Node.js, and clean-consumer gates on Linux and macOS.
+The executable source for this table is [`support-matrix.json`](./support-matrix.json). Pull-request CI cross-builds all four supported OS/architecture package targets and runs the native Go, Node.js, and clean-consumer gates on Linux and macOS. Bun support applies to the core TypeScript package; the Playwright adapter remains validated as a Node.js package.
 
 The Go and TypeScript core packages intentionally have no browser-library dependency. The TypeScript core pins the roadmap-approved `parse5` dependency for WHATWG HTML tree construction and `re2js` for RE2-compatible, linear-time regular expressions; transitive dependencies are lockfile-pinned. Browser integrations are separate modules or packages. The official TypeScript adapter pins Playwright 1.61.1. Chromium is the supported v1 browser target; scheduled Firefox and WebKit results remain best effort and do not block v1.
 

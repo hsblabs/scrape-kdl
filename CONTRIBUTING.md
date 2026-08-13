@@ -5,7 +5,7 @@ Contributions are accepted through GitHub issues and pull requests.
 ## Development requirements
 
 - Go 1.26 or later
-- Node.js 26 or later and npm for TypeScript contract checks
+- Node.js 22 or later and npm for TypeScript contract checks
 - GNU Make or compatible shell commands
 - Chromium only for go-rod E2E tests
 

@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "sideEffects": false,
   "engines": {
-    "node": ">=26"
+    "node": ">=22"
   },
   "files": [
     "dist/",

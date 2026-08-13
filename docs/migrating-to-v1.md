@@ -35,7 +35,7 @@ earlier candidates should apply the relevant changes below first.
 
 ## TypeScript API
 
-- Use Node.js 26 or later and ESM imports.
+- Use Node.js 22 or later and ESM imports. The core package also supports Bun 1.3 or later.
 - Import filesystem-free APIs from `@hsblabs/scrape-kdl` and filesystem helpers from `@hsblabs/scrape-kdl/node`.
 - Install `@hsblabs/scrape-kdl-playwright` separately when Playwright browser execution is required.
 - Treat the exported IR structures as readonly wire-contract declarations.

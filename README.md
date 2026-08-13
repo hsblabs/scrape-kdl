@@ -2,8 +2,8 @@
 
 `scrape-kdl` is a Go reference implementation for declaring HTML extraction in KDL, validating it into a language-neutral IR, and executing it through HTTP or a live browser adapter.
 
-Current stable release: `v1.0.0`, published and independently verified on
-2026-08-09. See `docs/release-readiness.md` and
+Current stable release target: `v1.0.1`. Install it only after publication and
+post-publication verification complete. See `docs/release-readiness.md` and
 `docs/adr/0009-stable-v1-owner-gate-override.md` for the release record.
 The normative specification documents use the v0.1 document series and the initial compatibility identifiers `language-version="2026-07-15"` and `irVersion: "2026-07-15"`.
 
@@ -55,14 +55,14 @@ writer.
 
 ## Stable release install
 
-Install `v1.0.0`:
+Install `v1.0.1`:
 
 ```bash
-go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.0
-go install github.com/hsblabs/scrape-kdl/adapters/rod/cmd/scrape-kdl-rod@v1.0.0
+go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.1
+go install github.com/hsblabs/scrape-kdl/adapters/rod/cmd/scrape-kdl-rod@v1.0.1
 npm install \
-  @hsblabs/scrape-kdl@1.0.0 \
-  @hsblabs/scrape-kdl-playwright@1.0.0
+  @hsblabs/scrape-kdl@1.0.1 \
+  @hsblabs/scrape-kdl-playwright@1.0.1
 ```
 
 The same version is available as Linux and macOS CLI archives for amd64 and
@@ -185,7 +185,7 @@ The public API includes:
 
 See `docs/public-api-v1.md` for the shared Go/TypeScript capability contract and intentional idiomatic differences.
 
-The `@hsblabs/scrape-kdl` workspace is an ESM-only, publishable package scaffold for Node.js 26 and later.
+The `@hsblabs/scrape-kdl` core package is ESM-only and supports Node.js 22 or later and Bun 1.3 or later.
 Its root entry point exposes the approved compiler, diagnostic, IR, runtime, browser-adapter, and extension types; `@hsblabs/scrape-kdl/authoring` exposes bounded semantic authoring and KDL writing; `@hsblabs/scrape-kdl/node` contains filesystem conveniences.
 The package independently compiles `fixtures/valid/basic-http.kdl`, matches the Go golden IR and canonical JSON, and matches the shared dated-version diagnostic fixture without invoking Go.
 The complete documented KDL parser, injectable import graph, semantic validator, type checker, capability resolver, dated IR lowerer, HTTP/offline-snapshot runtime, and browser-library-neutral runtime run behind this boundary. Shared Go/TypeScript gates compare diagnostics, canonical IR, extraction results, warnings, and partial state; the HTTP runtime uses the pinned `parse5` WHATWG tree builder.
@@ -205,10 +205,10 @@ result, err := program.Extract(ctx, inputs, scrapekdl.Options{
 
 The go-rod implementation is a separate module:
 
-For stable `v1.0.0`:
+For stable `v1.0.1`:
 
 ```bash
-go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.0
+go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.1
 ```
 
 An adapter wrapping one mutable page can implement `BrowserAdapterLease`. The runtime acquires it for the complete extraction, preventing navigation, workflow, and reads from interleaving across concurrent calls. The go-rod adapter implements this automatically.
@@ -231,8 +231,9 @@ See `SECURITY.md` and `docs/security-model.md`.
 
 - Supported operating systems: Linux and macOS only. Windows is out of scope.
 - Minimum Go version: 1.26.
-- Minimum Node.js version: 26 for the TypeScript packages.
-- CI targets Go 1.26 and Node.js 26 on Linux and macOS.
+- Minimum Node.js version: 22 for the TypeScript packages.
+- The core TypeScript package also supports Bun 1.3 or later; the Playwright adapter is validated on Node.js.
+- CI targets Go 1.26 and Node.js 22 on Linux and macOS.
 - The language is built on the KDL 2 data model but the reference parser intentionally supports the subset defined by the Scraping KDL v0.1 specification document series.
 - The Go HTTP runtime uses pinned `golang.org/x/net/html` WHATWG tree construction and is checked against the versioned portable HTML compatibility manifest.
 - Browser mode uses the browser's live DOM and does not serialize/re-associate static nodes.
@@ -305,6 +306,7 @@ make release-check
 - `docs/release-readiness.md`
 - `docs/migrating-to-v1.md`
 - `docs/release-notes-v1.md`
+- `docs/release-notes-v1.0.1.md`
 
 ## License
 
