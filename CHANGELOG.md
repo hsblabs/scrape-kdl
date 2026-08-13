@@ -2,6 +2,12 @@
 
 All notable implementation changes are recorded here. Formal releases will use Semantic Versioning.
 
+## 1.0.3 — 2026-08-13
+
+- Split public release publication into independently retryable GitHub Actions
+  jobs and synchronized go-rod release metadata for clean public-module
+  verification.
+
 ## 1.0.2 — 2026-08-13
 
 - Updated `github.com/santhosh-tekuri/jsonschema/v6` from `v6.0.2` to `v6.0.3`.
