@@ -2,6 +2,15 @@
 
 All notable implementation changes are recorded here. Formal releases will use Semantic Versioning.
 
+## 1.0.4 — 2026-08-13
+
+- Reorganized the README around installation, quick starts, runtime choices,
+  compatibility, and links to the detailed documentation.
+- Removed the fixed Go Proxy wait from the public release workflow. The
+  go-rod verification and archive build now use the same-commit core through a
+  temporary local module replacement, while Go Proxy propagation remains an
+  external post-publication check.
+
 ## 1.0.3 — 2026-08-13
 
 - Split public release publication into independently retryable GitHub Actions

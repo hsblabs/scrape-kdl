@@ -44,11 +44,16 @@ func TestBuildRodReleaseArchive(t *testing.T) {
 	root := repositoryRoot(t)
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "bin")
+	goLog := filepath.Join(tmp, "go.log")
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	fakeGo := `#!/bin/sh
 set -eu
+printf '%s\n' "$*" >> "$GO_LOG"
+if [ "${1-}" = mod ] && [ "${2-}" = edit ]; then
+  exit 0
+fi
 output=
 while [ "$#" -gt 0 ]; do
   if [ "$1" = -o ]; then
@@ -74,11 +79,19 @@ printf 'fake rod binary' > "$output"
 	command.Dir = root
 	command.Env = append(os.Environ(),
 		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"GO_LOG="+goLog,
 		"GITHUB_SHA=test-commit",
 		"SCRAPE_KDL_RELEASE_TARGETS=linux/amd64",
 	)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build-rod-release.sh failed: %v\n%s", err, output)
+	}
+	log := readFile(t, goLog)
+	if !strings.Contains(log, "mod edit -modfile=") {
+		t.Fatalf("build-rod-release.sh did not prepare a temporary modfile:\n%s", log)
+	}
+	if !strings.Contains(log, "build -modfile=") {
+		t.Fatalf("build-rod-release.sh did not build with a temporary modfile:\n%s", log)
 	}
 	archive := filepath.Join(tmp, "dist", "scrape-kdl-rod_0.9.0-private.1_linux_amd64.tar.gz")
 	assertArchiveContains(t, archive, "scrape-kdl-rod", "LICENSE", "NOTICE", "README.md")

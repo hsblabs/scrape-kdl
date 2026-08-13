@@ -8,7 +8,15 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 
 out_abs="$("$root/scripts/resolve-release-output.sh" "$root" "$out")"
 build_dir="$(mktemp -d "${out_abs}.tmp.XXXXXX")"
-trap 'rm -rf "$build_dir"' EXIT
+workspace="$(mktemp -d)"
+modfile="$workspace/rod.mod"
+trap 'rm -rf "$build_dir" "$workspace"' EXIT
+cp "$root/adapters/rod/go.mod" "$modfile"
+if [[ -f "$root/adapters/rod/go.sum" ]]; then
+  cp "$root/adapters/rod/go.sum" "$workspace/rod.sum"
+fi
+GOWORK=off GOTOOLCHAIN=local go mod edit -modfile="$modfile" \
+  -replace "github.com/hsblabs/scrape-kdl=$root"
 
 commit="${GITHUB_SHA:-$(git -C "$root" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)}"
 date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -30,7 +38,8 @@ for target in $targets; do
     stage="$(mktemp -d)"
     trap 'rm -rf "$stage"' EXIT
     cd "$root/adapters/rod"
-    CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build \
+    GOWORK=off GOTOOLCHAIN=local CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build \
+      -modfile="$modfile" \
       -trimpath \
       -ldflags "$ldflags" \
       -o "$stage/scrape-kdl-rod" \

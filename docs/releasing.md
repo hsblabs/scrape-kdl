@@ -85,7 +85,7 @@ core, npm, and go-rod publication.
 The npm publication jobs require Node.js 26, npm 11.5.1 or later, a
 GitHub-hosted runner, `id-token: write`, and the `release-publish` Environment
 so the trusted-publisher OIDC claim matches the npm configuration. They never
-read `NPM_TOKEN`: the preparation, proxy-wait, and verification jobs have no
+read `NPM_TOKEN`: the preparation and verification jobs have no
 OIDC or write permission, and each public write job receives only the
 permission it needs. Trusted publishing automatically emits provenance.
 
@@ -96,17 +96,19 @@ prepare
   -> authorize-release
        -> publish-core
             -> publish-core-npm -> publish-playwright-npm
-            -> await-core-go -> verify-and-build-rod -> publish-rod -> await-rod-go
+            -> verify-and-build-rod -> publish-rod
 ```
 
 `publish-core-npm` depends only on the core GitHub Release. The go-rod path
-depends only on `await-core-go`, which polls `proxy.golang.org` after the core
-tag exists. There is no fixed adapter delay. The preparation gate runs the
-full browser E2E once; the post-publication adapter gate uses a fresh runner to
-download the public core, run `go mod verify`, `go mod tidy -diff`, `go test`,
-and `go vet`, then builds the adapter archives. The initial approval job
-protects GitHub writes; the two npm jobs also reference the Environment
-directly to preserve the npm trusted-publisher claim.
+depends only on the core GitHub Release. The preparation gate runs the full
+browser E2E once; the post-publication adapter gate uses a fresh runner and
+the existing temporary-modfile verification to test the same-commit local
+core. The archive builder uses the same local replace, then publishes the
+adapter archives. The release workflow does not wait for Go Proxy visibility;
+Go Proxy propagation is eventually consistent and is not a publication failure
+boundary. The initial approval job protects GitHub writes; the two npm jobs
+also reference the Environment directly to preserve the npm trusted-publisher
+claim.
 
 ## Release candidate and stable sequence
 
@@ -124,9 +126,8 @@ releases:
 4. Confirm that both Go versions are unused from the exact Git tags and GitHub
    Releases only. Before the corresponding tag exists, do not query
    `proxy.golang.org` and do not run `go list`, `go get`, or `go mod download`
-   for the future version. The public proxy can cache that negative answer for
-   up to 30 minutes; its first request must follow tag publication. See the
-   [official Go module proxy FAQ](https://proxy.golang.org/).
+   for the future version. The public Go proxy is eventually consistent and
+   is not part of the publication transaction.
 5. After the separate project-owner approval, dispatch the workflow from
    `main`:
 
@@ -140,11 +141,11 @@ releases:
 
 6. Approve the single `release-publish` deployment. The workflow creates or
    verifies the core annotated tag and Release, then independently publishes
-   the core npm package and waits for core proxy visibility. After the core npm
-   package is verified, it publishes the Playwright npm package. After the core
-   Go module is verified, it runs the clean-consumer go-rod check, builds and
-   publishes the adapter Release, and waits for adapter proxy visibility.
-   Prereleases use npm `next`; stable releases use `latest`.
+   the core npm package and, after that package is verified, the Playwright npm
+   package. In parallel with the npm path, it verifies go-rod against the
+   same-commit local core, builds the adapter archives, and publishes the
+   adapter Release without waiting for Go Proxy visibility. Prereleases use npm
+   `next`; stable releases use `latest`.
 7. Run every independent post-publication check below and record the results on
    issue #18.
 
@@ -172,7 +173,9 @@ ax https://hsblabs.github.io/scrape-kdl/ir/2026-07-15/schema.json
 
 Also verify npm provenance, install the Go and npm modules into new consumer projects, run `npm audit signatures`, execute the documented basic example, download every CLI archive, verify `checksums.txt`, and run the native archive on Linux amd64, Linux arm64, macOS amd64, and macOS arm64.
 
-For the first 24 hours, monitor GitHub Actions, GitHub security advisories, npm package metadata, Go proxy resolution, installation issues, and reports of diagnostic, IR, HTTP, browser, or CLI contract regressions.
+For the first 24 hours, monitor GitHub Actions, GitHub security advisories, npm
+package metadata, installation issues, and reports of diagnostic, IR, HTTP,
+browser, or CLI contract regressions.
 
 ## Rollback and recovery
 
@@ -183,11 +186,12 @@ Go module tags and versions observed by a module proxy are immutable. npm consum
 - Failed stable Go, adapter, or CLI release: publish a patch from a reviewed revert or fix; do not replace tag assets with different bytes.
 - Security incident: stop the remaining publication sequence, open a private security advisory, rotate any affected credentials, and publish coordinated patched versions.
 - Partial publication: use the run UI to rerun the failed job and its skipped
-  dependents. A failed `await-core-go` resumes only the go-rod chain; a failed
-  core npm job resumes only the npm chain. Successful core tags, Releases, npm
-  versions, and proxy checks are not rerun. If a new run is required, use the
-  same version and source commit; the idempotent publishers verify matching
-  state and fail closed on mismatches.
+  dependents. A failed core npm job resumes only the npm chain; a failed
+  go-rod verification or publication resumes only the adapter chain.
+  Successful core tags, Releases, npm versions, and adapter artifacts are not
+  republished. If a new run is required, use the same version and source
+  commit; the idempotent publishers verify matching state and fail closed on
+  mismatches.
 
 ## Supported release targets
 

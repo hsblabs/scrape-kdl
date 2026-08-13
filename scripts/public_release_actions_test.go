@@ -10,43 +10,6 @@ import (
 	"testing"
 )
 
-func TestWaitPublicGoModuleRetriesUntilTheProxyResolves(t *testing.T) {
-	root := repositoryRoot(t)
-	bin := t.TempDir()
-	countFile := filepath.Join(t.TempDir(), "count")
-	writeExecutable(t, filepath.Join(bin, "go"), `#!/bin/sh
-count=0
-if test -f "$COUNT_FILE"; then
-  count="$(sed -n '1p' "$COUNT_FILE")"
-fi
-count=$((count + 1))
-printf '%s\n' "$count" >"$COUNT_FILE"
-if test "$count" -lt 2; then
-  echo unavailable >&2
-  exit 1
-fi
-printf '{"Path":"github.com/hsblabs/scrape-kdl","Version":"v1.2.3"}\n'
-`)
-
-	command := exec.Command("bash", filepath.Join(root, "scripts", "wait-public-go-module.sh"), coreModulePathForTest, "v1.2.3")
-	command.Env = append(os.Environ(),
-		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
-		"COUNT_FILE="+countFile,
-		"GO_MODULE_WAIT_ATTEMPTS=2",
-		"GO_MODULE_WAIT_INTERVAL_SECONDS=0",
-	)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("wait-public-go-module.sh: %v\n%s", err, output)
-	}
-	if !strings.Contains(string(output), `"Version":"v1.2.3"`) {
-		t.Fatalf("unexpected output: %s", output)
-	}
-	if count := strings.TrimSpace(readFile(t, countFile)); count != "2" {
-		t.Fatalf("attempt count = %s; want 2", count)
-	}
-}
-
 func TestPublishNpmReleaseVerifiesExistingArchivesWithoutRepublishing(t *testing.T) {
 	root := repositoryRoot(t)
 	artifacts := t.TempDir()
@@ -342,14 +305,6 @@ func TestPublicReleaseActionsFailClosed(t *testing.T) {
 			},
 			forbid: []string{"NPM_TOKEN", "--access public", "npm dist-tag add"},
 		},
-		{
-			path: "scripts/wait-public-go-module.sh",
-			required: []string{
-				"GOPROXY=https://proxy.golang.org",
-				"GOSUMDB=sum.golang.org",
-				"timed out waiting for",
-			},
-		},
 	}
 
 	for _, test := range tests {
@@ -366,8 +321,6 @@ func TestPublicReleaseActionsFailClosed(t *testing.T) {
 		}
 	}
 }
-
-const coreModulePathForTest = "github.com/hsblabs/scrape-kdl"
 
 func npmIntegrity(data []byte) string {
 	digest := sha512.Sum512(data)
