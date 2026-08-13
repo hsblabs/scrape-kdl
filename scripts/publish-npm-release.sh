@@ -3,9 +3,18 @@ set -euo pipefail
 
 version="${1:?npm version without a leading v is required}"
 artifact_dir="${2:?npm artifact directory is required}"
+selection="${3:-all}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 attempts="${NPM_WAIT_ATTEMPTS:-12}"
 interval="${NPM_WAIT_INTERVAL_SECONDS:-5}"
+
+case "$selection" in
+  all|core|playwright) ;;
+  *)
+    echo "invalid npm release selection: $selection (want all, core, or playwright)" >&2
+    exit 2
+    ;;
+esac
 
 "$root/scripts/validate-public-release-tag.sh" core "v$version"
 if [[ ! "$attempts" =~ ^[1-9][0-9]*$ ]]; then
@@ -88,9 +97,13 @@ publish_package() {
   wait_for_npm_value "$package" "dist-tags.$dist_tag" "$version"
 }
 
-publish_package \
-  @hsblabs/scrape-kdl \
-  "$artifact_dir/hsblabs-scrape-kdl-$version.tgz"
-publish_package \
-  @hsblabs/scrape-kdl-playwright \
-  "$artifact_dir/hsblabs-scrape-kdl-playwright-$version.tgz"
+if [[ "$selection" == "all" || "$selection" == "core" ]]; then
+  publish_package \
+    @hsblabs/scrape-kdl \
+    "$artifact_dir/hsblabs-scrape-kdl-$version.tgz"
+fi
+if [[ "$selection" == "all" || "$selection" == "playwright" ]]; then
+  publish_package \
+    @hsblabs/scrape-kdl-playwright \
+    "$artifact_dir/hsblabs-scrape-kdl-playwright-$version.tgz"
+fi

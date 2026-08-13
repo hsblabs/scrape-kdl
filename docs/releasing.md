@@ -230,6 +230,14 @@ runner, and `id-token: write`. It never reads `NPM_TOKEN`: the preparation job
 has no OIDC or write permission, and only the protected publish job can request
 short-lived credentials. Trusted publishing automatically emits provenance.
 
+The protected publish job has two phases. It publishes the core GitHub Release
+and `@hsblabs/scrape-kdl` first. It then waits for the core Go module to resolve
+through `proxy.golang.org` and for a 30-minute adapter release window measured
+from the core Release publication before publishing
+`@hsblabs/scrape-kdl-playwright` and go-rod. This keeps proxy propagation from
+blocking the useful core npm release and gives adapter consumers a stable core
+to consume.
+
 ## Release candidate and stable sequence
 
 Use one preparation PR and one publication run for release candidates and stable
@@ -260,11 +268,13 @@ releases:
      -f confirmation=PUBLISH_RELEASE
    ```
 
-6. Approve the single `release-publish` deployment. The workflow creates both
-   annotated Go tags at the same commit, waits for core proxy visibility,
-   publishes and verifies both npm archives, tests go-rod against the published
-   core, creates the adapter tag and Release, and waits for adapter proxy
-   visibility. Prereleases use npm `next`; stable releases use `latest`.
+6. Approve the single `release-publish` deployment. The workflow creates or
+   verifies the core annotated tag and Release, publishes and verifies the core
+   npm archive, waits for core proxy visibility, and enforces the 30-minute
+   adapter window. It then publishes and verifies the Playwright npm archive,
+   tests go-rod against the published core, creates or verifies the adapter tag
+   and Release, and waits for adapter proxy visibility. Prereleases use npm
+   `next`; stable releases use `latest`.
 7. Run every independent post-publication check below and record the results on
    issue #18.
 
@@ -306,8 +316,9 @@ Go module tags and versions observed by a module proxy are immutable. npm consum
 - Failed stable Go, adapter, or CLI release: publish a patch from a reviewed revert or fix; do not replace tag assets with different bytes.
 - Security incident: stop the remaining publication sequence, open a private security advisory, rotate any affected credentials, and publish coordinated patched versions.
 - Partial publication: rerun `release.yml` for the same version and source. The
-  orchestrator verifies and skips matching tags, Release assets, and npm
-  versions, then resumes at the first missing state. Any mismatch fails closed.
+  orchestrator verifies and skips matching core tags, Release assets, and npm
+  versions, then resumes the adapter phase after the proxy and timing gates.
+  Any mismatch fails closed.
 
 ## Supported release targets
 

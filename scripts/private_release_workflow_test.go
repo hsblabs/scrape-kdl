@@ -188,6 +188,30 @@ func TestPublicReleasePublishesGoTagsBeforeProxyLookup(t *testing.T) {
 	}
 }
 
+func TestPublicReleaseSeparatesCoreAndAdapterPublication(t *testing.T) {
+	root := repositoryRoot(t)
+	content := readFile(t, filepath.Join(root, ".github/workflows/release.yml"))
+	coreNpmIndex := strings.Index(content, `./scripts/publish-npm-release.sh "$RELEASE_VERSION" dist/core core`)
+	coreProxyIndex := strings.Index(content, `./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl "$RELEASE_TAG"`)
+	delayIndex := strings.Index(content, "- name: Wait for adapter release window")
+	playwrightNpmIndex := strings.Index(content, `./scripts/publish-npm-release.sh "$RELEASE_VERSION" dist/core playwright`)
+	if coreNpmIndex < 0 || coreProxyIndex < 0 || delayIndex < 0 || playwrightNpmIndex < 0 {
+		t.Fatal("release workflow is missing a core/adapter publication phase")
+	}
+	if !(coreNpmIndex < coreProxyIndex && coreProxyIndex < delayIndex && delayIndex < playwrightNpmIndex) {
+		t.Fatalf("release phase order is incorrect: core npm=%d core proxy=%d delay=%d playwright npm=%d", coreNpmIndex, coreProxyIndex, delayIndex, playwrightNpmIndex)
+	}
+	for _, required := range []string{
+		"GO_MODULE_WAIT_ATTEMPTS: 180",
+		"GO_MODULE_WAIT_INTERVAL_SECONDS: 10",
+		"ADAPTER_RELEASE_DELAY_SECONDS: 1800",
+	} {
+		if !strings.Contains(content, required) {
+			t.Errorf("release workflow is missing %q", required)
+		}
+	}
+}
+
 func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 	root := repositoryRoot(t)
 	tests := []struct {
