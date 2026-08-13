@@ -78,7 +78,7 @@ jobs:
     needs: prepare
     environment: release-publish
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     permissions:
       contents: write
       id-token: write
@@ -87,6 +87,9 @@ jobs:
       RELEASE_TAG: v${{ inputs.version }}
       ROD_TAG: adapters/rod/v${{ inputs.version }}
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      GO_MODULE_WAIT_ATTEMPTS: 180
+      GO_MODULE_WAIT_INTERVAL_SECONDS: 10
+      ADAPTER_RELEASE_DELAY_SECONDS: 1800
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -121,10 +124,27 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/publish-github-release.sh core "$RELEASE_TAG" "$GITHUB_SHA" dist/core
+      - name: Publish core npm package through OIDC
+        run: ./scripts/publish-npm-release.sh "$RELEASE_VERSION" dist/core core
       - name: Wait for public core Go module
         run: ./scripts/wait-public-go-module.sh github.com/hsblabs/scrape-kdl "$RELEASE_TAG"
-      - name: Publish npm packages through OIDC
-        run: ./scripts/publish-npm-release.sh "$RELEASE_VERSION" dist/core
+      - name: Wait for adapter release window
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          published_at="$(gh release view "$RELEASE_TAG" --json publishedAt --jq .publishedAt)"
+          published_epoch="$(date --date="$published_at" +%s)"
+          target_epoch=$((published_epoch + ADAPTER_RELEASE_DELAY_SECONDS))
+          now_epoch="$(date +%s)"
+          if (( target_epoch > now_epoch )); then
+            remaining=$((target_epoch - now_epoch))
+            echo "waiting ${remaining}s before adapter publication"
+            sleep "$remaining"
+          else
+            echo "adapter release window already elapsed"
+          fi
+      - name: Publish Playwright npm package through OIDC
+        run: ./scripts/publish-npm-release.sh "$RELEASE_VERSION" dist/core playwright
       - name: Reverify go-rod release plan
         run: make check-public-release-plan VERSION="$RELEASE_TAG" REVISION="$GITHUB_SHA"
       - name: Verify go-rod against the published core

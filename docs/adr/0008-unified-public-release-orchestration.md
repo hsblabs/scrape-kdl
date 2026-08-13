@@ -1,13 +1,16 @@
 ---
-status: accepted
+status: superseded
 date: 2026-08-01T14:49:32+09:00
 updated: 2026-08-01T16:52:07+09:00
+superseded-by: 0010-decouple-core-and-adapter-public-releases.md
 decision-makers:
   - project owner
 agent: OpenAI Codex (GPT-5)
 ---
 
 # ADR 0008: Publish public release surfaces through one orchestrator
+
+Superseded by [ADR 0010](0010-decouple-core-and-adapter-public-releases.md).
 
 ## Context
 

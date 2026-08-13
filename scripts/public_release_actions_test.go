@@ -118,6 +118,21 @@ esac
 	}
 }
 
+func TestPublishNpmReleaseRejectsUnknownSelection(t *testing.T) {
+	root := repositoryRoot(t)
+	command := exec.Command(
+		"bash",
+		filepath.Join(root, "scripts", "publish-npm-release.sh"),
+		"1.2.3",
+		t.TempDir(),
+		"adapter",
+	)
+	output, err := command.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "invalid npm release selection") {
+		t.Fatalf("unknown selection error = %v\n%s", err, output)
+	}
+}
+
 func TestPublishNpmReleaseRejectsExistingVersionWithoutExpectedDistTag(t *testing.T) {
 	root := repositoryRoot(t)
 	artifacts := t.TempDir()
