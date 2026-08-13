@@ -1,12 +1,15 @@
 ---
-status: accepted
+status: superseded
 date: 2026-07-24T00:31:11+09:00
+superseded-by: 0011-retire-private-publication-channel.md
 decision-makers:
   - project owner
 agent: OpenAI Codex (GPT-5)
 ---
 
 # ADR 0001: Private package distribution
+
+Superseded by [ADR 0011](0011-retire-private-publication-channel.md).
 
 ## Context
 

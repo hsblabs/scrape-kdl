@@ -7,52 +7,13 @@ import (
 	"testing"
 )
 
-func TestPrivateReleaseWorkflowsKeepPrivateAndPublicChannelsSeparate(t *testing.T) {
+func TestPublicReleaseWorkflowKeepsPublicChannelSeparate(t *testing.T) {
 	root := repositoryRoot(t)
 	tests := []struct {
 		path     string
 		required []string
 		forbid   []string
 	}{
-		{
-			path: ".github/workflows/release-private.yml",
-			required: []string{
-				"workflow_dispatch:",
-				"PUBLISH_PRIVATE_GITHUB_RELEASE",
-				`REPOSITORY_VISIBILITY" != private`,
-				"./scripts/validate-private-release-tag.sh core",
-				"make release-dist",
-				"NPM_ACCESS=restricted",
-				"gh release create",
-				"--prerelease",
-			},
-			forbid: []string{`visibility == 'public'`, "NPM_ACCESS=public"},
-		},
-		{
-			path: ".github/workflows/release-private-rod.yml",
-			required: []string{
-				"workflow_dispatch:",
-				"PUBLISH_PRIVATE_ROD_RELEASE",
-				`REPOSITORY_VISIBILITY" != private`,
-				"./scripts/validate-private-release-tag.sh rod",
-				"./scripts/build-rod-release.sh",
-				"gh release create",
-				"--prerelease",
-			},
-			forbid: []string{`visibility == 'public'`},
-		},
-		{
-			path: ".github/workflows/release-npm-private.yml",
-			required: []string{
-				"workflow_dispatch:",
-				"PUBLISH_PRIVATE_NPM",
-				`REPOSITORY_VISIBILITY" != private`,
-				"--access restricted",
-				"--tag private",
-				"id-token: write",
-			},
-			forbid: []string{"--access public", "NPM_TOKEN"},
-		},
 		{
 			path: ".github/workflows/release.yml",
 			required: []string{
@@ -105,10 +66,6 @@ func TestRodReleaseWorkflowsAttachBinaryArchives(t *testing.T) {
 		required []string
 	}{
 		{
-			path:     ".github/workflows/release-private-rod.yml",
-			required: []string{"./scripts/build-rod-release.sh", "dist/*"},
-		},
-		{
 			path: ".github/workflows/release.yml",
 			required: []string{
 				"./scripts/build-rod-release.sh",
@@ -130,11 +87,14 @@ func TestRodReleaseWorkflowsAttachBinaryArchives(t *testing.T) {
 	}
 }
 
-func TestPublicReleaseHasOneCallerVisibleWorkflow(t *testing.T) {
+func TestPublicReleaseHasNoObsoletePublicationWorkflows(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, path := range []string{
 		".github/workflows/release-npm.yml",
 		".github/workflows/release-rod.yml",
+		".github/workflows/release-npm-private.yml",
+		".github/workflows/release-private.yml",
+		".github/workflows/release-private-rod.yml",
 	} {
 		if _, err := os.Stat(filepath.Join(root, path)); !os.IsNotExist(err) {
 			t.Errorf("obsolete public workflow still exists: %s", path)
@@ -219,13 +179,6 @@ func TestNpmReleaseWorkflowsPublishLocalArchives(t *testing.T) {
 		required []string
 		forbid   []string
 	}{
-		{
-			path: ".github/workflows/release-npm-private.yml",
-			required: []string{
-				`npm publish "./dist/hsblabs-scrape-kdl-$RELEASE_VERSION.tgz"`,
-				`npm publish "./dist/hsblabs-scrape-kdl-playwright-$RELEASE_VERSION.tgz"`,
-			},
-		},
 		{
 			path: "scripts/publish-npm-release.sh",
 			required: []string{
