@@ -101,8 +101,8 @@ func TestPublicReleaseHasNoObsoletePublicationWorkflows(t *testing.T) {
 		}
 	}
 	content := readFile(t, filepath.Join(root, ".github/workflows/release.yml"))
-	if count := strings.Count(content, "environment: release-publish"); count != 1 {
-		t.Errorf("release-publish Environment count = %d; want 1", count)
+	if count := strings.Count(content, "environment: release-publish"); count != 3 {
+		t.Errorf("release-publish Environment count = %d; want 3", count)
 	}
 	for _, forbidden := range []string{"npx ", "on:\n  push:", "NPM_TOKEN"} {
 		if strings.Contains(content, forbidden) {

@@ -79,10 +79,10 @@ workflow is first used, an administrator must:
 1. create `release-publish` with required reviewers, no administrator bypass,
    and default-branch-only deployment; allow self-review when a single owner
    must dispatch and approve the release, otherwise prevent it;
-2. change both npm trusted publishers to workflow `release.yml`, leave the
-   optional Environment field empty, and allow the `npm publish` action. The
-   single `release-publish` approval is enforced by the separate
-   `authorize-release` job; dependent jobs do not inherit an Environment claim;
+2. change both npm trusted publishers to workflow `release.yml`, Environment
+   `release-publish`, and allow the `npm publish` action. The separate
+   `authorize-release` job protects the GitHub write path, while both npm jobs
+   reference the Environment directly so their OIDC claims match;
 3. leave creation unrestricted for `v*.*.*` and
    `adapters/rod/v*.*.*`, while retaining update, deletion, and
    non-fast-forward protection plus an audited release-owner emergency bypass;

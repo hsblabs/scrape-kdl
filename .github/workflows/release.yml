@@ -125,6 +125,7 @@ jobs:
 
   publish-core-npm:
     needs: [publish-core, authorize-release]
+    environment: release-publish
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -166,6 +167,7 @@ jobs:
 
   publish-playwright-npm:
     needs: [publish-core-npm, authorize-release]
+    environment: release-publish
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

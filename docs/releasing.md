@@ -50,12 +50,10 @@ used:
    single owner must dispatch and approve a release, allow self-review;
    otherwise prevent it. Do not add an npm publication token.
 2. Configure both npm packages with the GitHub Actions trusted publisher
-   `hsblabs/scrape-kdl`, workflow filename `release.yml`, and allowed action
-   `npm publish`. Leave the trusted-publisher Environment field empty: the
-   workflow uses `authorize-release` for its single protected approval, and
-   dependent publication jobs do not inherit an Environment claim. After
-   verifying OIDC publication, retain the package setting that requires 2FA
-   and disallows tokens.
+   `hsblabs/scrape-kdl`, workflow filename `release.yml`, Environment
+   `release-publish`, and allowed action `npm publish`. After verifying OIDC
+   publication, retain the package setting that requires 2FA and disallows
+   tokens.
 3. Keep active tag rulesets for `v*.*.*` and `adapters/rod/v*.*.*`. Leave tag
    creation unrestricted so the protected workflow can create annotated tags,
    but restrict update, deletion, and non-fast-forward changes. Release owners
@@ -85,10 +83,11 @@ The release and Pages workflows require separate typed confirmations.
 core, npm, and go-rod publication.
 
 The npm publication jobs require Node.js 26, npm 11.5.1 or later, a
-GitHub-hosted runner, and `id-token: write`. They never read `NPM_TOKEN`: the
-preparation, proxy-wait, and verification jobs have no OIDC or write
-permission, and each public write job receives only the permission it needs.
-Trusted publishing automatically emits provenance.
+GitHub-hosted runner, `id-token: write`, and the `release-publish` Environment
+so the trusted-publisher OIDC claim matches the npm configuration. They never
+read `NPM_TOKEN`: the preparation, proxy-wait, and verification jobs have no
+OIDC or write permission, and each public write job receives only the
+permission it needs. Trusted publishing automatically emits provenance.
 
 The protected workflow is split into independent checkpoints:
 
@@ -105,7 +104,9 @@ depends only on `await-core-go`, which polls `proxy.golang.org` after the core
 tag exists. There is no fixed adapter delay. The preparation gate runs the
 full browser E2E once; the post-publication adapter gate uses a fresh runner to
 download the public core, run `go mod verify`, `go mod tidy -diff`, `go test`,
-and `go vet`, then builds the adapter archives.
+and `go vet`, then builds the adapter archives. The initial approval job
+protects GitHub writes; the two npm jobs also reference the Environment
+directly to preserve the npm trusted-publisher claim.
 
 ## Release candidate and stable sequence
 

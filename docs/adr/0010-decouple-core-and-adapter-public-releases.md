@@ -60,11 +60,11 @@ are verified and skipped.
 - Playwright is published after the core npm package; go-rod is published only
   after the core Go module is publicly resolvable. Neither path uses a fixed
   sleep.
-- The workflow keeps one approval and one caller-visible release command. The
-  `release-publish` Environment is attached to `authorize-release`; dependent
-  write jobs do not inherit an Environment claim. npm trusted publishers must
-  therefore leave their optional Environment field empty and rely on the
-  workflow's protected approval plus job-level permissions.
+- The workflow keeps one caller-visible release command. The
+  `release-publish` Environment protects `authorize-release` and is also
+  attached to both npm publication jobs so their trusted-publisher OIDC claims
+  match the existing npm configuration. This can require additional approval
+  prompts, but avoids weakening the npm trust boundary.
 - Each job is a retry checkpoint. A proxy failure reruns only the go-rod chain,
   while an npm failure reruns only the affected npm branch. Recovery uses the
   same immutable version and fails closed on mismatches.
