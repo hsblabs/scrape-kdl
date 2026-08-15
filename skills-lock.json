@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "hsblabs-doc-authoring": {
+      "source": "hsblabs/hsblabs-docs",
+      "sourceType": "github",
+      "skillPath": "skills/hsblabs-doc-authoring/SKILL.md",
+      "computedHash": "e6146fd56508284b5a403682e546be081a90352a64392ec456070e4200591040"
+    }
+  }
+}

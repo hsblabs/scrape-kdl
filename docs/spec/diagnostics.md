@@ -9,16 +9,18 @@ Diagnostic codes and trigger conditions are normative. Human-readable messages a
   "code": "E_TRANSFORM_TYPE_MISMATCH",
   "severity": "error",
   "message": "normalize-whitespace requires string but received int",
-  "file": "race-detail.kdl",
-  "range": {
-    "start": { "line": 14, "column": 5 },
-    "end": { "line": 14, "column": 25 }
+  "span": {
+    "file": "race-detail.kdl",
+    "start": { "offset": 312, "line": 14, "column": 5 },
+    "end": { "offset": 332, "line": 14, "column": 25 }
   },
   "path": "transforms.invalid.pipeline.calls[1]"
 }
 ```
 
-Line and column numbers are 1-based. End position is exclusive.
+`span` uses the same `sourceSpan` definition as the Validated IR (`docs/ir/schema.json`). `path` is omitted when the diagnostic has no output path.
+
+Line and column numbers are 1-based. `offset` is a 0-based UTF-8 byte offset. End position is exclusive.
 
 ## Ordering
 
