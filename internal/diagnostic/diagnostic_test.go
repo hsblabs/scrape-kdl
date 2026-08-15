@@ -78,6 +78,61 @@ func TestWriteJSONSortsAndPropagatesWriterFailure(t *testing.T) {
 	}
 }
 
+func TestWriteJSONShapeMatchesNormativeSpec(t *testing.T) {
+	diagnostics := List{{
+		Code:     "E_TRANSFORM_TYPE_MISMATCH",
+		Severity: SeverityError,
+		Message:  "normalize-whitespace requires string but received int",
+		Span: source.Span{
+			File:  "race-detail.kdl",
+			Start: source.Position{Offset: 312, Line: 14, Column: 5},
+			End:   source.Position{Offset: 332, Line: 14, Column: 25},
+		},
+		Path: "transforms.invalid.pipeline.calls[1]",
+	}}
+	var output bytes.Buffer
+	if err := diagnostics.WriteJSON(&output); err != nil {
+		t.Fatal(err)
+	}
+
+	want := `[
+  {
+    "code": "E_TRANSFORM_TYPE_MISMATCH",
+    "severity": "error",
+    "message": "normalize-whitespace requires string but received int",
+    "span": {
+      "file": "race-detail.kdl",
+      "start": {
+        "offset": 312,
+        "line": 14,
+        "column": 5
+      },
+      "end": {
+        "offset": 332,
+        "line": 14,
+        "column": 25
+      }
+    },
+    "path": "transforms.invalid.pipeline.calls[1]"
+  }
+]
+`
+	if output.String() != want {
+		t.Fatalf("JSON diagnostic shape changed; docs/spec/diagnostics.md is normative.\ngot:\n%s\nwant:\n%s", output.String(), want)
+	}
+}
+
+func TestWriteJSONOmitsEmptyPath(t *testing.T) {
+	diagnostics := List{diagnosticAt("E_KDL_SYNTAX", SeverityError, "a.kdl", 1)}
+	var output bytes.Buffer
+	if err := diagnostics.WriteJSON(&output); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(output.String(), `"path"`) {
+		t.Fatalf("empty path is encoded: %s", output.String())
+	}
+}
+
 func TestWriteTextPropagatesWriterFailure(t *testing.T) {
 	wantErr := errors.New("write failed")
 	diagnostics := List{diagnosticAt("E_KDL_SYNTAX", SeverityError, "a.kdl", 1)}
