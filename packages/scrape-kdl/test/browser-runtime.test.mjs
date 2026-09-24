@@ -28,6 +28,7 @@ const browserSource = `extractor "browser" version="2026-07-15" language-version
   field "count" type="int" required=#true { evaluate-js "() => document.querySelectorAll('li').length" scope="document" returns="int" }
   collection "items" min-items=1 on-row-error="fail" {
     select "li"
+    field "href" type="string" required=#true { value "attr" name="href" }
     field "id" type="string" required=#true { select ".id" match="one"; value "attr" name="data-id" }
     field "text" type="string" required=#true { select ".label" match="one"; value "text" }
     field "dataset" type="object" required=#true { evaluate-js "(element) => ({ id: element.dataset.id })" scope="current" returns="object" }
@@ -40,7 +41,7 @@ class FakeBrowser {
   constructor() {
     this.calls = [];
     this.heading = element("heading", "  Browser Title  ", "Browser <b>Title</b>");
-    this.rows = [element("row-1"), element("row-2")];
+    this.rows = [element("row-1", "", "", { href: "/1" }), element("row-2", "", "", { href: "/2" })];
   }
   async navigate(url, options) { this.calls.push(["navigate", url, options]); }
   async waitFor(selector, state, options) { this.calls.push(["waitFor", selector, state, options]); }
@@ -79,7 +80,7 @@ test("browser runtime executes workflows, live reads, transforms, and JavaScript
   assert.deepEqual(result, {
     value: {
       title: "Browser Title", markup: "Browser <b>Title</b>", count: 2,
-      items: [{ id: "1", text: "A", dataset: { id: "1" } }, { id: "2", text: "B", dataset: { id: "2" } }],
+      items: [{ href: "/1", id: "1", text: "A", dataset: { id: "1" } }, { href: "/2", id: "2", text: "B", dataset: { id: "2" } }],
     }, warnings: [], partial: false,
   });
   assert.equal(browser.calls[0][0], "navigate");

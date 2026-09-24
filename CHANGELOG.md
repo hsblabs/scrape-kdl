@@ -2,6 +2,13 @@
 
 All notable implementation changes are recorded here. Formal releases will use Semantic Versioning.
 
+## 1.1.0 — 2026-09-24
+
+- Allowed collection fields to read the current row's text, HTML, or attribute
+  by omitting `select`. Go and TypeScript produce the same results in HTTP,
+  snapshot, and browser execution. Top-level value fields still require
+  `select`.
+
 ## 1.0.4 — 2026-08-13
 
 - Reorganized the README around installation, quick starts, runtime choices,

@@ -1078,8 +1078,14 @@ class SemanticCompiler {
       const value = values[0];
       const kind = stringArgument(value, 0);
       validateNode(this.diagnostics, value, 1, 1, kind === "attr" ? { name: "string" } : {}, `${path}.valueSource`);
-      if (selection === undefined)
-        this.add("E_SELECTOR_REQUIRED", "error", "value source requires select", value.span, `${path}.selection`);
+      if (selection === undefined && !path.includes("[]"))
+        this.add(
+          "E_SELECTOR_REQUIRED",
+          "error",
+          "top-level value source requires select",
+          value.span,
+          `${path}.selection`,
+        );
       if (kind === "text" || kind === "html") valueSource = { kind, rawType: primitive("string"), span: value.span };
       else if (kind === "attr") {
         const attribute = stringProperty(value, "name") ?? "";

@@ -104,6 +104,12 @@ func (f *fakeBrowser) HTML(_ context.Context, _ BrowserElement) (string, error) 
 }
 func (f *fakeBrowser) Attribute(_ context.Context, e BrowserElement, name string) (string, bool, error) {
 	if name == "href" {
+		switch e.(fakeElement).id {
+		case "r1":
+			return "/horse/1/", true, nil
+		case "r2":
+			return "/horse/2/", true, nil
+		}
 		return "/horse/123/", true, nil
 	}
 	return "", false, nil
@@ -131,6 +137,28 @@ func TestExecuteBrowser(t *testing.T) {
 	}
 	if !reflect.DeepEqual(browser.calls[:2], []string{"navigate:https://example.com/race/42", "wait:.race-detail:visible"}) {
 		t.Fatalf("calls=%v", browser.calls)
+	}
+}
+
+func TestBrowserCollectionFieldReadsCurrentRow(t *testing.T) {
+	path := compileTestSpec(t, `extractor "row-attribute" version="2026-07-15" language-version="2026-07-15" {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  collection "entries" {
+    select "table.entries tbody tr"
+    field "href" type="string" required=#true { value "attr" name="href" }
+  }
+}`)
+	extractor, diagnostics := compileFile(t, path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := Execute(context.Background(), extractor, nil, Options{Browser: &fakeBrowser{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []any{map[string]any{"href": "/horse/1/"}, map[string]any{"href": "/horse/2/"}}
+	if got := result.Value["entries"]; !reflect.DeepEqual(got, want) {
+		t.Fatalf("entries = %v, want %v", got, want)
 	}
 }
 

@@ -129,8 +129,8 @@ func (c *Compiler) compileField(owner *loadedDocument, n *kdl.Node, path string,
 			allowed["name"] = expectString
 		}
 		validateNode(&c.diags, v, 1, 1, allowed, path+".valueSource")
-		if field.Selection == nil {
-			c.diags.Add("E_SELECTOR_REQUIRED", diagnostic.SeverityError, "value source requires select", v.Span, path+".selection")
+		if field.Selection == nil && !strings.Contains(path, "[]") {
+			c.diags.Add("E_SELECTOR_REQUIRED", diagnostic.SeverityError, "top-level value source requires select", v.Span, path+".selection")
 		}
 		switch kind {
 		case "text":

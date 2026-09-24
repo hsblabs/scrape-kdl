@@ -70,6 +70,16 @@ func TestCompileBasicHTTP(t *testing.T) {
 	}
 }
 
+func TestTopLevelValueStillRequiresSelect(t *testing.T) {
+	_, codes := compileText(t, `extractor "top-level" version="2026-07-15" language-version="2026-07-15" {
+  source "html" { fetch mode="http" url="https://example.test/" }
+  field "href" type="string" { value "attr" name="href" }
+}`)
+	if !slices.Contains(codes, "E_SELECTOR_REQUIRED") {
+		t.Fatalf("diagnostic codes = %v, want E_SELECTOR_REQUIRED", codes)
+	}
+}
+
 func TestCompileSourceRetainsVirtualDisplayPath(t *testing.T) {
 	source, err := os.ReadFile(fixture("valid", "basic-http.kdl"))
 	if err != nil {

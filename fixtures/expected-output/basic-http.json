@@ -2,12 +2,15 @@
   "value": {
     "items": [
       {
+        "href": "/1",
         "value": 1
       },
       {
+        "href": "/2",
         "value": 2
       },
       {
+        "href": "/3",
         "value": 3
       }
     ],

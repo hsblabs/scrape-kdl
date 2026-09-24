@@ -342,10 +342,10 @@ const memory = await compile({ path: "extractor.kdl", data: source });
 assert.equal(memory.program.metadata.name, "basic-http");
 assert.deepEqual(await memory.program.extract({ id: "package-smoke" }, {
   fetch: async () => new Response(
-    "<!doctype html><html><body><h1> Package Smoke </h1><ul class=items><li><span class=value>1</span></li></ul></body></html>",
+    "<!doctype html><html><body><h1> Package Smoke </h1><ul class=items><li><a href=/1><span class=value>1</span></a></li></ul></body></html>",
     { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },
   ),
-}), { value: { title: "Package Smoke", items: [{ value: 1 }] }, warnings: [], partial: false });
+}), { value: { title: "Package Smoke", items: [{ href: "/1", value: 1 }] }, warnings: [], partial: false });
 assert.deepEqual(await validate({ path: "extractor.kdl", data: source }), []);
 const imported = await compile({
   path: "spec/extractor.kdl",

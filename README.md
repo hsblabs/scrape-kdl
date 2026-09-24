@@ -38,20 +38,20 @@ the core package.
 - Official adapters for Playwright and go-rod.
 - CLI, Go API, TypeScript API, and bounded authoring APIs.
 
-## Install v1.0.4
+## Install v1.1.0
 
 ### Go CLI and go-rod CLI
 
 ```bash
-go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.0.4
-go install github.com/hsblabs/scrape-kdl/adapters/rod/cmd/scrape-kdl-rod@v1.0.4
+go install github.com/hsblabs/scrape-kdl/cmd/scrape-kdl@v1.1.0
+go install github.com/hsblabs/scrape-kdl/adapters/rod/cmd/scrape-kdl-rod@v1.1.0
 ```
 
 ### Go modules
 
 ```bash
-go get github.com/hsblabs/scrape-kdl@v1.0.4
-go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.4
+go get github.com/hsblabs/scrape-kdl@v1.1.0
+go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.1.0
 ```
 
 The core module and the go-rod adapter are separate Go modules. The adapter
@@ -60,7 +60,7 @@ depends on the core module but the core module never imports a browser library.
 ### TypeScript and Bun
 
 ```bash
-npm install @hsblabs/scrape-kdl@1.0.4 @hsblabs/scrape-kdl-playwright@1.0.4
+npm install @hsblabs/scrape-kdl@1.1.0 @hsblabs/scrape-kdl-playwright@1.1.0
 ```
 
 The core package is ESM-only and supports Node.js 22 or later and Bun 1.3 or
@@ -184,7 +184,7 @@ available from `@hsblabs/scrape-kdl/authoring`.
 With Bun, install the core package with:
 
 ```bash
-bun add @hsblabs/scrape-kdl@1.0.4
+bun add @hsblabs/scrape-kdl@1.1.0
 ```
 
 ## Browser mode
@@ -195,7 +195,7 @@ disabled unless the host explicitly enables it for a trusted specification.
 ### Playwright
 
 ```bash
-npm install @hsblabs/scrape-kdl-playwright@1.0.4 playwright
+npm install @hsblabs/scrape-kdl-playwright@1.1.0 playwright
 npx playwright install chromium
 ```
 
@@ -220,7 +220,7 @@ try {
 ### go-rod
 
 ```bash
-go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.0.4
+go get github.com/hsblabs/scrape-kdl/adapters/rod@v1.1.0
 ```
 
 See [`docs/browser-runtime.md`](docs/browser-runtime.md),

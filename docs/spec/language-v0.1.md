@@ -326,7 +326,9 @@ select ".horse-name a" match="one"
 
 Default: `one`.
 
-A `select` child is REQUIRED for `value` sources.
+A `select` child is REQUIRED for top-level `value` sources. Inside a collection row,
+omitting `select` reads the current row element for `value "text"`, `value "html"`,
+and `value "attr"`. An explicit `select` searches descendants of the row as before.
 
 For `evaluate-js`:
 
