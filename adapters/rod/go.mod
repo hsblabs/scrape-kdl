@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/go-rod/rod v0.116.2
-	github.com/hsblabs/scrape-kdl v1.0.4
+	github.com/hsblabs/scrape-kdl v1.1.0
 )
 
 require (
