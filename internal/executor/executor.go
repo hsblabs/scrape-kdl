@@ -359,7 +359,7 @@ func preflightOutputStructure(root ir.OutputObject) error {
 					if !typesys.Equal(source.RawType, typesys.Primitive("string")) {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "text value-source rawType must be string", Path: typed.ID}
 					}
-					if typed.Selection == nil {
+					if typed.Selection == nil && !strings.Contains(path, "[]") {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
 					}
 				case ir.HTMLValueSource:
@@ -369,7 +369,7 @@ func preflightOutputStructure(root ir.OutputObject) error {
 					if !typesys.Equal(source.RawType, typesys.Primitive("string")) {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "HTML value-source rawType must be string", Path: typed.ID}
 					}
-					if typed.Selection == nil {
+					if typed.Selection == nil && !strings.Contains(path, "[]") {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
 					}
 				case ir.AttributeValueSource:
@@ -379,7 +379,7 @@ func preflightOutputStructure(root ir.OutputObject) error {
 					if !typesys.Equal(source.RawType, typesys.Primitive("string")) {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "attribute value-source rawType must be string", Path: typed.ID}
 					}
-					if typed.Selection == nil {
+					if typed.Selection == nil && !strings.Contains(path, "[]") {
 						return &ExecutionError{Code: "E_IR_INVALID", Message: "value source requires a selection", Path: typed.ID}
 					}
 					if source.Name == "" {
@@ -529,6 +529,9 @@ func (e *engine) executeDocument(document *dom.Node) (*Result, error) {
 
 func (e *engine) readOutputField(scope *dom.Node, field ir.Field, path string) (any, error) {
 	var selected *dom.Node
+	if scope.Type == dom.ElementNode {
+		selected = scope
+	}
 	if field.Selection != nil {
 		selector, _ := e.selector(field.Selection.Selector)
 		limit := 1

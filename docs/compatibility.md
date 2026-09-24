@@ -22,6 +22,8 @@ The Go and TypeScript core packages intentionally have no browser-library depend
 
 The Go and TypeScript libraries publish their exact accepted sets through `SupportedLanguageVersions` / `SupportedIRVersions` and `supportedLanguageVersions` / `supportedIRVersions`. These values are opaque identifiers; an earlier date is not implicitly compatible with a later date.
 
+Collection fields may now omit `select` to read the current row element with a `value` source. Existing explicit descendant selectors retain their behavior, and top-level `value` sources still require `select`.
+
 ## Migration from the untagged working draft
 
 - Replace integer root properties such as `version=1` with a real document revision such as `version="2026-07-15"`.

@@ -7,7 +7,7 @@
   "files": [
     {
       "path": "basic-http.kdl",
-      "sha256": "847cf887089e106900cb9b00bf43be1895db7bcd6a6b57cfb2279e904910b30b"
+      "sha256": "04a5bd2ba16807896ec6291f9ae25d17f070c34dd230080fd4d178215cf96c93"
     }
   ],
   "source": {
@@ -181,13 +181,63 @@
         "kind": "collection",
         "id": "output.items",
         "name": "items",
-        "selector": "ul.items \u003e li",
+        "selector": "ul.items \u003e li \u003e a",
         "required": false,
         "minItems": 1,
         "onRowError": "fail",
         "row": {
           "kind": "object",
           "members": [
+            {
+              "kind": "field",
+              "id": "output.items[].href",
+              "name": "href",
+              "successfulType": {
+                "kind": "primitive",
+                "name": "string"
+              },
+              "effectiveType": {
+                "kind": "primitive",
+                "name": "string"
+              },
+              "required": true,
+              "valueSource": {
+                "kind": "attribute",
+                "name": "href",
+                "rawType": {
+                  "kind": "primitive",
+                  "name": "string"
+                },
+                "span": {
+                  "file": "basic-http.kdl",
+                  "start": {
+                    "offset": 449,
+                    "line": 17,
+                    "column": 7
+                  },
+                  "end": {
+                    "offset": 461,
+                    "line": 17,
+                    "column": 19
+                  }
+                }
+              },
+              "transforms": [],
+              "onError": "fail",
+              "span": {
+                "file": "basic-http.kdl",
+                "start": {
+                  "offset": 399,
+                  "line": 16,
+                  "column": 5
+                },
+                "end": {
+                  "offset": 479,
+                  "line": 18,
+                  "column": 6
+                }
+              }
+            },
             {
               "kind": "field",
               "id": "output.items[].value",
@@ -207,13 +257,13 @@
                 "span": {
                   "file": "basic-http.kdl",
                   "start": {
-                    "offset": 442,
-                    "line": 17,
+                    "offset": 531,
+                    "line": 20,
                     "column": 7
                   },
                   "end": {
-                    "offset": 457,
-                    "line": 17,
+                    "offset": 546,
+                    "line": 20,
                     "column": 22
                   }
                 }
@@ -227,13 +277,13 @@
                 "span": {
                   "file": "basic-http.kdl",
                   "start": {
-                    "offset": 476,
-                    "line": 18,
+                    "offset": 565,
+                    "line": 21,
                     "column": 7
                   },
                   "end": {
-                    "offset": 488,
-                    "line": 18,
+                    "offset": 577,
+                    "line": 21,
                     "column": 19
                   }
                 }
@@ -257,13 +307,13 @@
                   "span": {
                     "file": "basic-http.kdl",
                     "start": {
-                      "offset": 495,
-                      "line": 19,
+                      "offset": 584,
+                      "line": 22,
                       "column": 7
                     },
                     "end": {
-                      "offset": 507,
-                      "line": 19,
+                      "offset": 596,
+                      "line": 22,
                       "column": 19
                     }
                   }
@@ -291,13 +341,13 @@
                   "span": {
                     "file": "basic-http.kdl",
                     "start": {
-                      "offset": 514,
-                      "line": 20,
+                      "offset": 603,
+                      "line": 23,
                       "column": 7
                     },
                     "end": {
-                      "offset": 531,
-                      "line": 20,
+                      "offset": 620,
+                      "line": 23,
                       "column": 24
                     }
                   }
@@ -307,13 +357,13 @@
               "span": {
                 "file": "basic-http.kdl",
                 "start": {
-                  "offset": 395,
-                  "line": 16,
+                  "offset": 484,
+                  "line": 19,
                   "column": 5
                 },
                 "end": {
-                  "offset": 545,
-                  "line": 21,
+                  "offset": 634,
+                  "line": 24,
                   "column": 6
                 }
               }
@@ -328,8 +378,8 @@
             "column": 3
           },
           "end": {
-            "offset": 549,
-            "line": 22,
+            "offset": 638,
+            "line": 25,
             "column": 4
           }
         }
@@ -347,8 +397,8 @@
       "column": 1
     },
     "end": {
-      "offset": 551,
-      "line": 23,
+      "offset": 640,
+      "line": 26,
       "column": 2
     }
   }

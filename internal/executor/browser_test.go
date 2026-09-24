@@ -134,6 +134,29 @@ func TestExecuteBrowser(t *testing.T) {
 	}
 }
 
+func TestBrowserCollectionFieldReadsCurrentRow(t *testing.T) {
+	path := compileTestSpec(t, `extractor "row-attribute" version="2026-07-15" language-version="2026-07-15" {
+  source "html" { fetch mode="browser" url="https://example.invalid/" }
+  collection "entries" {
+    select "table.entries tbody tr"
+    field "href" type="string" required=#true { value "attr" name="href" }
+  }
+}`)
+	extractor, diagnostics := compileFile(t, path)
+	if diagnostics.HasErrors() {
+		t.Fatalf("compile diagnostics = %#v", diagnostics)
+	}
+	result, err := Execute(context.Background(), extractor, nil, Options{Browser: &fakeBrowser{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range result.Value["entries"].([]any) {
+		if got := row.(map[string]any)["href"]; got != "/horse/123/" {
+			t.Fatalf("row href = %v", got)
+		}
+	}
+}
+
 func TestExecuteBrowserUsesBoundedQueriesForFirstAndOne(t *testing.T) {
 	path := compileTestSpec(t, `extractor "browser-query-limit" version="2026-07-15" language-version="2026-07-15" {
   source "html" { fetch mode="browser" url="https://example.invalid/" }

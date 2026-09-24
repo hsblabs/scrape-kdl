@@ -554,7 +554,7 @@ function readFieldValue(
   field: FieldIR,
   path: string,
 ): JsonValue {
-  let selected: ElementNode | undefined;
+  let selected: ElementNode | undefined = "tagName" in scope ? scope : undefined;
   if (field.selection !== undefined) {
     const matches = queryAll(
       scope,

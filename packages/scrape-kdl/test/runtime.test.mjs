@@ -16,6 +16,14 @@ const sourcePrefix = `extractor "runtime" version="2026-07-15" language-version=
   input "id" type="string" required=#true
 `;
 
+test("top-level value still requires select", async () => {
+  const result = await compile({ path: "extractor.kdl", data: `${sourcePrefix}
+    field "href" type="string" { value "attr" name="href" }
+  }` });
+  assert.equal(result.program, undefined);
+  assert.ok(result.diagnostics.some((item) => item.code === "E_SELECTOR_REQUIRED"));
+});
+
 test("parse5 DOM boundary implements the portable selector profile", () => {
   const document = parseHTML(`<!doctype html><main>
     <ul id="items" class="list"><li class="entry first" data-k="a"><a href="/a">A</a></li><li class="entry" data-k="b"><a href="/b">B</a></li><li class="entry"><span>C</span></li></ul>

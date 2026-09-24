@@ -70,7 +70,7 @@ Runtime warnings MUST be ordered by actual extraction execution order.
 - `E_MATCH_DUPLICATE_CASE`: duplicate match input value.
 - `E_VALUE_SOURCE_MISSING`: field has no value source.
 - `E_VALUE_SOURCE_MULTIPLE`: field has multiple value sources.
-- `E_SELECTOR_REQUIRED`: value source requires select.
+- `E_SELECTOR_REQUIRED`: top-level value source requires select, or collection requires exactly one select.
 - `E_SELECTOR_FORBIDDEN`: select is invalid for chosen JS scope.
 - `E_SELECTOR_INVALID`: malformed CSS selector.
 - `E_SELECTOR_UNSUPPORTED`: selector lies outside portable profile.
